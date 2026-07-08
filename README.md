@@ -29,6 +29,19 @@ Criar uma solução funcional capaz de:
 
 ---
 
+## Estrutura do Repositório
+
+```text
+backend/       -> API Java + Flyway migrations
+frontend/      -> interface web
+data-science/  -> notebook, dataset, modelo e API Python
+infra/         -> Docker, OCI, scripts e deploy
+docs/          -> documentação do projeto
+```
+
+---
+
+
 ## Funcionalidades obrigatórias
 
 O MVP deve contemplar:
