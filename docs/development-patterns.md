@@ -8,13 +8,16 @@ Este documento define os padrões de Git, GitHub e processos de entrega adotados
 
 Caso precise consultar rapidamente a estrutura padrão para o fluxo de trabalho:
 
-| Elemento | Padrão Recomendado | Exemplo Real |
+| Elemento | Padrão Recomendado | Observações / Exemplos |
 | :--- | :--- | :--- |
+| **Idioma de Issues/PRs** | Preferencialmente em **Português (PT-BR)** | Facilita a comunicação e documentação do time. |
+| **Idioma de Commits** | **Português (PT-BR)** ou **Inglês** | Escolha do autor. Não misturar idiomas no mesmo commit. |
 | **Branch** | `<tipo>/<issue-id>/<descricao>` | `feature/12/criar-endpoint-analise-energetica` |
-| **Commit** | `<tipo>(<escopo>): <descricao>` | `feat(api): adicionar endpoint de analise energetica` |
-| **Título do PR** | `<tipo>(<escopo>): <descricao> (#<issue-id>)` | `feat(api): adicionar endpoint de analise energetica (#12)` |
+| **Commit** | `<tipo>(<escopo>): <descricao>` | `feat(api): adicionar endpoint de analise energetica` (ou versão em inglês) |
+| **Título do PR & Squash** | `<tipo>(<escopo>): <descricao> (#<issue-id>)` | Usar o número da **Issue principal** (não do PR). Sem duplicações. |
 | **Corpo do PR** | Vinculação direta da Issue | `Closes #12` |
-| **Estratégia de Merge** | **Squash Merge** | Todos os commits intermediários são consolidados em um commit com o título do PR. |
+| **Estratégia de Merge** | **Squash Merge** | Consolida todos os commits do PR em um único commit limpo. |
+| **Extended Description** | Resumo Técnico + `Closes #issue` | Substituir a lista automática por um resumo do que foi entregue. |
 
 ---
 

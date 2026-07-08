@@ -72,25 +72,39 @@ Ao redigir a mensagem do commit, atente-se às seguintes boas práticas:
 
 ---
 
+## Idioma dos Commits
+
+* **Inglês ou PT-BR**: Os commits podem ser escritos em inglês ou português (PT-BR), conforme a preferência do autor da alteração. Ambos os idiomas são plenamente aceitos.
+* **Sem Misturar Idiomas**: Independentemente do idioma escolhido, a mensagem de commit deve ser consistente. Não misture português e inglês em uma mesma mensagem de commit (ex: evitar `feat(api): adicionar energy analysis endpoint`).
+* **Conventional Commits Obrigatório**: Tanto em inglês quanto em PT-BR, o padrão de Conventional Commits e as regras de formatação (letras minúsculas, sem ponto final, etc.) devem ser seguidos rigorosamente.
+* **Descrições Objetivas**: Mantenha as mensagens claras, objetivas e sem ponto final ao final da linha.
+
+---
+
 ## Exemplos Práticos
 
-### Commits Corretos
-
+### Exemplos Válidos em PT-BR
 ```bash
 feat(api): adicionar endpoint de analise energetica
-feat(classification): implementar classificacao por consumo
 fix(validation): impedir consumo kwh negativo
-docs(readme): adicionar instrucoes de execucao local
-refactor(service): simplificar regra de classificacao
+docs(patterns): atualizar padroes de desenvolvimento
 test(service): adicionar testes da classificacao energetica
-chore(docker): adicionar dockerfile da api
-ci(github): adicionar validacao de build no pull request
+refactor(dto): padronizar objetos de entrada e saida
 ```
 
-### Commits Incorretos (Evite!)
+### Exemplos Válidos em Inglês
+```bash
+feat(api): add energy analysis endpoint
+fix(validation): prevent negative kwh consumption
+docs(patterns): update development guidelines
+test(service): add energy classification tests
+refactor(dto): standardize request and response objects
+```
 
-* `Feat: Adicionei endpoint.` (Letra maiúscula, verbo no passado e com ponto final)
+### Exemplos Inválidos (Evite!)
+* `feat(api): adicionar energy analysis endpoint` (Mistura de idiomas na mesma mensagem)
 * `fix:arrumando bug` (Sem espaço após os dois-pontos, verbo no gerúndio)
 * `update code` (Sem tipo ou escopo, descrição genérica)
-* `alterações finais` (Genérico e com acentuação)
-* `commit do lucas` (Não descreve a alteração e não segue padrão)
+* `Feat(API): Add endpoint.` (Uso de letras maiúsculas, com ponto final)
+* `docs(patterns): atualizar documentação.` (Com ponto final, uso de caracteres acentuados)
+

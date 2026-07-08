@@ -26,6 +26,7 @@ Ao abrir uma nova Issue, certifique-se de preencher as seguintes informações e
    * `dados` (dataset, notebooks, etc.)
    * `infra` / `docker` / `oci`
    * `documentacao`
+5. **Idioma**: As Issues devem ser escritas preferencialmente em português (PT-BR).
 
 ---
 
