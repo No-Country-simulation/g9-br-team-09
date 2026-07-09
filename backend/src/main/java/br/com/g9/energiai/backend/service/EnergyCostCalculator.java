@@ -15,8 +15,12 @@ public class EnergyCostCalculator {
     }
 
     public BigDecimal calculate(Double consumptionKwh) {
-        if (consumptionKwh == null || consumptionKwh < 0) {
+        if (consumptionKwh == null) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        if (consumptionKwh < 0) {
+            throw new IllegalArgumentException("consumptionKwh must be greater than or equal to zero");
         }
 
         return BigDecimal.valueOf(consumptionKwh)
