@@ -1,0 +1,143 @@
+name: PR Conventions
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+      - ready_for_review
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-conventions-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-conventions:
+    name: pr-conventions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR title and branch name
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          event_path = os.environ["GITHUB_EVENT_PATH"]
+
+          with open(event_path, "r", encoding="utf-8") as file:
+              event = json.load(file)
+
+          pr = event["pull_request"]
+
+          title = pr["title"].strip()
+          branch = pr["head"]["ref"].strip()
+
+          # Bypass validation for main system branches (develop and main)
+          if branch in ["main", "develop"]:
+              print(f"Skipping PR conventions check for system branch: {branch}")
+              sys.exit(0)
+
+          allowed_types = [
+              "feat",
+              "fix",
+              "docs",
+              "style",
+              "refactor",
+              "perf",
+              "test",
+              "build",
+              "chore",
+              "ci",
+              "revert",
+              "deps",
+          ]
+
+          # Pattern matches conventional commits and requires the issue number in parentheses at the end:
+          # e.g., "feat(api): add endpoint (#12)"
+          title_pattern = re.compile(
+              r"^(feat|fix|docs|style|refactor|perf|test|build|chore|ci|revert|deps)"
+              r"(\([a-z0-9-]+\))?: .{8,} \(#[0-9]+\)$"
+          )
+
+          # Pattern matches branch naming convention: <type>/<issue-number>/<description>
+          # e.g., "feature/12/criar-endpoint-analise-energetica"
+          branch_pattern = re.compile(
+              r"^(feature|fix|docs|test|refactor|chore|hotfix)/([0-9]+)/([a-z0-9-]+)$"
+          )
+
+          errors = []
+
+          title_match = title_pattern.match(title)
+          if not title_match:
+              errors.append(
+                  "Título do PR inválido.\n"
+                  "Formato esperado:\n"
+                  "  tipo(escopo): descrição (#issue)\n\n"
+                  "Exemplos válidos:\n"
+                  "  feat(api): adicionar endpoint de analise energetica (#12)\n"
+                  "  docs(patterns): atualizar padroes de desenvolvimento (#1)\n"
+                  "  fix(validation): corrigir validacao de consumo negativo (#18)\n\n"
+                  f"Tipos permitidos: {', '.join(allowed_types)}"
+              )
+
+          branch_match = branch_pattern.match(branch)
+          if not branch_match:
+              errors.append(
+                  "Nome da branch inválido.\n"
+                  "Formato esperado:\n"
+                  "  tipo/numero-da-issue/descricao-curta\n\n"
+                  "Exemplos válidos:\n"
+                  "  feature/12/criar-endpoint-analise-energetica\n"
+                  "  fix/5/corrigir-validacao-consumo-kwh\n"
+                  "  chore/13/configurar-docker\n\n"
+                  "Tipos permitidos: feature, fix, docs, test, refactor, chore, hotfix\n"
+                  "A descrição da branch deve conter apenas letras minúsculas e hífens."
+              )
+
+          # Verify that the issue number in the PR title matches the issue number in the branch name
+          if title_match and branch_match:
+              title_issue_match = re.search(r"\(#([0-9]+)\)$", title)
+              title_issue = title_issue_match.group(1) if title_issue_match else None
+              branch_issue = branch_match.group(2)
+
+              if title_issue and branch_issue and title_issue != branch_issue:
+                  errors.append(
+                      f"O número da Issue no título do PR (#{title_issue}) não corresponde "
+                      f"ao número da Issue na branch (#{branch_issue}).\n"
+                      "Eles devem ser idênticos para garantir a rastreabilidade."
+                  )
+
+          if title.lower().startswith(("wip:", "draft:")):
+              errors.append(
+                  "Evite prefixos como WIP: ou Draft: no título do PR. "
+                  "Use o modo Draft do próprio GitHub."
+              )
+
+          if errors:
+              print("PR reprovado nas convenções.\n")
+              for index, error in enumerate(errors, start=1):
+                  print(f"{index}. {error}\n")
+
+              print("Dados recebidos:")
+              print(f"  PR title: {title}")
+              print(f"  Branch:   {branch}")
+              sys.exit(1)
+
+          print("PR aprovado nas convenções.")
+          print(f"PR title: {title}")
+          print(f"Branch:   {branch}")
+          PY
