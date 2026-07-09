@@ -1,6 +1,10 @@
 package br.com.g9.energiai.backend.enums;
 
 public enum PropertyType {
-    RESIDENTIAL,
-    COMMERCIAL
+    CASA,
+    APARTAMENTO,
+    COMERCIO,
+    ESCRITORIO,
+    INDUSTRIA,
+    OUTRO
 }
