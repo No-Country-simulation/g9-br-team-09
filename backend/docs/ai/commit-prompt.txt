@@ -1,5 +1,0 @@
-Please analyze my repository state and craft a commit message in English based on the provided context. 
-
-Determine whether there are staged changes; if none, explicitly say so and ask how to proceed. If there are staged changes, summarize what was added/modified/removed at the module or feature level (do not list file names), infer the commit-message convention from recent history, and produce one final commit message that follows that style (for example, main: feat (scope) - ...). 
-
-Return only one message option in English, either as a single paragraph or as a short subject plus a 1–3 sentence body. Do not run git commit; after proposing the message, ask whether I want to commit as-is or adjust wording.
