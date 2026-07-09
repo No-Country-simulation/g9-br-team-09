@@ -4,12 +4,14 @@ import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.List;
 
-public record EnergyAnalysisResponse (
-        EnergyCategory energyCategory,
-        Double probability,
-        BigDecimal estimatedCost,
-        LocalDateTime analysisDate,
-        ClassificationSource classificationSource
-){}
+public record EnergyAnalysisResponse(
+        EnergyCategory categoria,
+        Double probabilidade,
+        Integer score,
+        BigDecimal custoEstimadoMensal,
+        List<String> recomendacoes,
+        ClassificationSource fonteClassificacao
+) {
+}
