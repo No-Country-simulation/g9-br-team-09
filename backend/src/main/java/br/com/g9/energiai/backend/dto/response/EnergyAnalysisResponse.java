@@ -7,11 +7,11 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record EnergyAnalysisResponse(
-        EnergyCategory categoria,
-        Double probabilidade,
-        Integer score,
-        BigDecimal custoEstimadoMensal,
-        List<String> recomendacoes,
-        ClassificationSource fonteClassificacao
+    EnergyCategory categoria,
+    Double probabilidade,
+    Integer score,
+    BigDecimal custoEstimadoMensal,
+    List<String> recomendacoes,
+    ClassificationSource fonteClassificacao
 ) {
 }

@@ -6,11 +6,11 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record EnergyAnalysisSummaryResponse(
-        Long id,
-        EnergyCategory categoria,
-        Double probabilidade,
-        Integer score,
-        BigDecimal custoEstimadoMensal,
-        LocalDateTime criadoEm
+    Long id,
+    EnergyCategory categoria,
+    Double probabilidade,
+    Integer score,
+    BigDecimal custoEstimadoMensal,
+    LocalDateTime criadoEm
 ) {
 }
