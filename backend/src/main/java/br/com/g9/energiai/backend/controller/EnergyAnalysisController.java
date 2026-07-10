@@ -12,15 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/energy-analyses")
+@RequestMapping("/analises-energeticas")
 @RequiredArgsConstructor
 public class EnergyAnalysisController {
 
     private final EnergyAnalysisService energyAnalysisService;
 
-    /**
-     * Endpoint para realizar a análise energética completa.
-     */
     @PostMapping
     public ResponseEntity<EnergyAnalysisResponse> createAnalysis(@RequestBody @Valid EnergyAnalysisRequest request) {
         EnergyAnalysisResponse response = energyAnalysisService.analyze(request);
