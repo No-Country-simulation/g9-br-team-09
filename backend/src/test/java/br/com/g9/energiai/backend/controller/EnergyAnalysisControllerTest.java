@@ -39,7 +39,7 @@ class EnergyAnalysisControllerTest {
                 8
         );
 
-        mockMvc.perform(post("/energy-analyses")
+        mockMvc.perform(post("/analises-energeticas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -62,7 +62,7 @@ class EnergyAnalysisControllerTest {
                 8
         );
 
-        mockMvc.perform(post("/energy-analyses")
+        mockMvc.perform(post("/analises-energeticas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
