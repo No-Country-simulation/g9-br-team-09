@@ -61,22 +61,6 @@ O MVP deve contemplar:
 
 ---
 
-## Configuracao da tarifa
-
-A tarifa padrao usada no calculo financeiro fica em `backend/src/main/resources/application.properties`.
-
-Formula aplicada:
-
-`custoEstimadoMensal = consumoKwh * tarifaKwh`
-
-Valor padrao atual:
-
-`energy.tariff.default=0.75`
-
-Para alterar a tarifa de referencia do MVP, ajuste essa propriedade.
-
----
-
 ## Exemplo de entrada JSON
 
 ```json
