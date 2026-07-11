@@ -41,6 +41,18 @@ docs/          -> documentação do projeto
 
 ---
 
+## Documentação do Projeto
+
+A documentação principal do projeto está organizada na pasta `docs/`.
+
+| Documento                                                     | Descrição                                                                    |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`project-status.md`](docs/project-status.md)                 | Status geral do projeto, responsáveis, pendências, riscos e próximos passos. |
+| [`api-contract.md`](docs/api-contract.md)                     | Contrato inicial da API, endpoint obrigatório e exemplos de uso.             |
+| [`architecture-decisions.md`](docs/architecture-decisions.md) | Decisões técnicas e organizacionais registradas durante o projeto.           |
+| [`meetings.md`](docs/meetings.md)                             | Atas e registros das principais reuniões da equipe.                          |
+
+---
 
 ## Funcionalidades obrigatórias
 
@@ -87,3 +99,4 @@ Para alterar a tarifa de referencia do MVP, ajuste essa propriedade.
   "tipo_imovel": "Casa",
   "horas_alto_consumo": 8
 }
+```
