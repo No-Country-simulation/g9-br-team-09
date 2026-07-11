@@ -1,5 +1,8 @@
 package br.com.g9.energiai.backend.controller;
 
+import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -26,6 +31,11 @@ class EnergyAnalysisControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private EnergyAnalysisRepository energyAnalysisRepository;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
     @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa incluindo ID")
     void shouldPerformAnalysisSuccessfully() throws Exception {
@@ -39,7 +49,9 @@ class EnergyAnalysisControllerTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/analise-energetica")
+        long countBefore = energyAnalysisRepository.count();
+
+        String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -61,7 +73,16 @@ class EnergyAnalysisControllerTest {
                         "Avaliar equipamentos com alto consumo energético.",
                         "Distribuir o consumo ao longo do dia.",
                         "Verificar a eficiência energética dos equipamentos."
-                )));
+                )))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode jsonResponse = objectMapper.readTree(responseBody);
+        long persistedId = jsonResponse.get("id").asLong();
+
+        assertEquals(countBefore + 1, energyAnalysisRepository.count());
+        assertTrue(energyAnalysisRepository.findById(persistedId).isPresent());
     }
 
     @Test
