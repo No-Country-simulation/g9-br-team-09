@@ -12,6 +12,12 @@ import java.util.List;
 @Schema(name = "EnergyAnalysisResponse", description = "Resultado da análise energética")
 public record EnergyAnalysisResponse(
     @Schema(
+        description = "Identificador único da análise energética persistida.",
+        example = "1"
+    )
+    Long id,
+
+    @Schema(
         description = "Categoria final de eficiência energética.",
         example = "INEFICIENTE",
         allowableValues = {"EFICIENTE", "MODERADO", "INEFICIENTE"}
