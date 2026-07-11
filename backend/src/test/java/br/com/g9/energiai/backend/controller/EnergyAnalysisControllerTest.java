@@ -1,20 +1,19 @@
 package br.com.g9.energiai.backend.controller;
 
-import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
-import br.com.g9.energiai.backend.enums.PropertyType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -24,48 +23,62 @@ class EnergyAnalysisControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
-
     @Test
-    @DisplayName("Deve realizar análise energética com sucesso e retornar 200 OK")
+    @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa")
     void shouldPerformAnalysisSuccessfully() throws Exception {
-        // Cenário: Consumo ineficiente
-        EnergyAnalysisRequest request = new EnergyAnalysisRequest(
-                500.0,
-                true,
-                10,
-                PropertyType.CASA,
-                8
-        );
+        String requestBody = """
+            {
+              "consumoKwh": 500,
+              "usoHorarioPico": true,
+              "quantidadeEquipamentos": 10,
+              "tipoImovel": "CASA",
+              "horasAltoConsumo": 8
+            }
+            """;
 
-        mockMvc.perform(post("/analises-energeticas")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
-                .andExpect(jsonPath("$.custoEstimadoMensal").value(375.00))
-                .andExpect(jsonPath("$.recomendacoes").isArray())
-                .andExpect(jsonPath("$.fonteClassificacao").value("RULE_BASED"));
+        mockMvc.perform(post("/api/v1/analises-energeticas")
+                .contextPath("/api/v1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
+            .andExpect(jsonPath("$.probabilidade").value(0.95))
+            .andExpect(jsonPath("$.score").value(95))
+            .andExpect(jsonPath("$.custoEstimadoMensal").value(375.00))
+            .andExpect(jsonPath("$.fonteClassificacao").value("RULE_BASED"))
+            .andExpect(jsonPath("$.recomendacoes").isArray())
+            .andExpect(jsonPath("$.recomendacoes.length()").value(4))
+            .andExpect(jsonPath("$.recomendacoes", containsInAnyOrder(
+                "Reduzir o uso de equipamentos durante horários de pico.",
+                "Avaliar equipamentos com alto consumo energético.",
+                "Distribuir o consumo ao longo do dia.",
+                "Verificar a eficiência energética dos equipamentos."
+            )));
     }
 
     @Test
-    @DisplayName("Deve retornar 400 Bad Request quando os dados de entrada forem inválidos")
+    @DisplayName("Deve retornar 400 quando os dados de entrada forem inválidos")
     void shouldReturnBadRequestWhenInputIsInvalid() throws Exception {
-        // Cenário: Consumo negativo
-        EnergyAnalysisRequest request = new EnergyAnalysisRequest(
-                -100.0,
-                true,
-                10,
-                PropertyType.CASA,
-                8
-        );
+        String requestBody = """
+            {
+              "consumoKwh": -100,
+              "usoHorarioPico": true,
+              "quantidadeEquipamentos": 10,
+              "tipoImovel": "CASA",
+              "horasAltoConsumo": 8
+            }
+            """;
 
-        mockMvc.perform(post("/analises-energeticas")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+        mockMvc.perform(post("/api/v1/analises-energeticas")
+                .contextPath("/api/v1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.message").isNotEmpty())
+            .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 }
