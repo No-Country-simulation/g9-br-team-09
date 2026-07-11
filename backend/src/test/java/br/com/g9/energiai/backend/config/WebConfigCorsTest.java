@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +61,21 @@ class WebConfigCorsTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestJson()))
                 .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+    }
+
+    @Test
+    @DisplayName("Deve validar a requisição de preflight OPTIONS com sucesso")
+    void shouldAllowPreflightOptionsRequest() throws Exception {
+        mockMvc.perform(options("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Content-Type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(header().string("Access-Control-Allow-Methods", containsString("POST")))
+                .andExpect(header().string("Access-Control-Allow-Headers", containsString("Content-Type")))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
     private String validRequestJson() {
