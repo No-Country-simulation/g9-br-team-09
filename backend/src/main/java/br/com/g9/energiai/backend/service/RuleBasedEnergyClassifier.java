@@ -36,6 +36,7 @@ public class RuleBasedEnergyClassifier implements EnergyClassifier {
         double probabilidade = estimateProbability(score);
 
         return new EnergyAnalysisResponse(
+                null,
                 categoria,
                 probabilidade,
                 score,
