@@ -9,14 +9,14 @@ public record ApiErrorResponse(
     @Schema(description = "Data e hora em que o erro foi gerado.", example = "2026-07-10T18:30:00")
     LocalDateTime timestamp,
 
-    @Schema(description = "Codigo HTTP retornado pela API.", example = "400")
+    @Schema(description = "Código HTTP retornado pela API.", example = "400")
     Integer status,
 
-    @Schema(description = "Codigo resumido do tipo de erro.", example = "VALIDATION_ERROR")
+    @Schema(description = "Código resumido do tipo de erro.", example = "VALIDATION_ERROR")
     String error,
 
     @Schema(
-        description = "Mensagem publica com o motivo do erro.",
+        description = "Mensagem pública com o motivo do erro.",
         example = "consumo_kwh: O consumo deve ser um valor positivo"
     )
     String message

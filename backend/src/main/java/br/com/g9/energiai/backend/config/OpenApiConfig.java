@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Configuration;
         title = "EnergIAI API",
         version = "v1",
         description = """
-            API REST para analise de consumo energetico, classificacao
-            de eficiencia, calculo de custo e geracao de recomendacoes.
+            API REST para análise de consumo energético, classificação
+            de eficiência, cálculo de custo e geração de recomendações.
             """
     )
 )
