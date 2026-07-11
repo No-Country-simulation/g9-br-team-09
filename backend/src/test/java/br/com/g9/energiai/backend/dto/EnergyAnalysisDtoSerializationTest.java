@@ -38,8 +38,8 @@ class EnergyAnalysisDtoSerializationTest {
         String json = objectMapper.writeValueAsString(request);
 
         assertEquals(
-            "{\"consumoKwh\":250.5,\"usoHorarioPico\":true,\"quantidadeEquipamentos\":8,"
-                + "\"tipoImovel\":\"APARTAMENTO\",\"horasAltoConsumo\":4}",
+            "{\"consumo_kwh\":250.5,\"uso_horario_pico\":true,\"quantidade_equipamentos\":8,"
+                + "\"tipo_imovel\":\"APARTAMENTO\",\"horas_alto_consumo\":4}",
             json
         );
     }
@@ -59,8 +59,8 @@ class EnergyAnalysisDtoSerializationTest {
 
         assertEquals(
             "{\"categoria\":\"MODERADO\",\"probabilidade\":0.87,\"score\":72,"
-                + "\"custoEstimadoMensal\":189.90,\"recomendacoes\":[\"Trocar lampadas\","
-                + "\"Reduzir uso no horario de pico\"],\"fonteClassificacao\":\"RULE_BASED\"}",
+                + "\"custo_estimado_mensal\":189.90,\"recomendacoes\":[\"Trocar lampadas\","
+                + "\"Reduzir uso no horario de pico\"],\"fonte_classificacao\":\"RULE_BASED\"}",
             json
         );
     }
