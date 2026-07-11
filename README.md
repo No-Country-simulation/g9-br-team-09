@@ -59,13 +59,13 @@ A documentação principal do projeto está organizada na pasta `docs/`.
 O MVP deve contemplar:
 
 - Classificação do perfil energético em:
-  - `Eficiente`
-  - `Moderado`
-  - `Ineficiente`
+  - `EFICIENTE`
+  - `MODERADO`
+  - `INEFICIENTE`
 - Geração de recomendações de otimização energética;
 - Estimativa financeira usando tarifa de referência de **R$ 0,75/kWh**;
 - API REST com endpoint principal:
-  - `POST /analise-energetica`
+  - `POST /api/v1/analise-energetica`
 - Retorno em formato JSON;
 - Modelo treinado e carregado corretamente;
 - Integração com pelo menos um serviço OCI;
@@ -96,7 +96,7 @@ Para alterar a tarifa de referencia do MVP, ajuste essa propriedade.
   "consumo_kwh": 420,
   "uso_horario_pico": true,
   "quantidade_equipamentos": 10,
-  "tipo_imovel": "Casa",
+  "tipo_imovel": "CASA",
   "horas_alto_consumo": 8
 }
 ```
