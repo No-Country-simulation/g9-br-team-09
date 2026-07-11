@@ -96,5 +96,65 @@ O backend deve concentrar validação de entrada, cálculo de custo, orquestraç
 O endpoint mínimo obrigatório do MVP será:
 
 ```http
-POST /analise-energetica
+POST /api/v1/analise-energetica
 ```
+
+### Motivo ADR-006
+
+O backend expõe o controller em `/analise-energetica`, mas o contrato público final inclui o `context-path` global `/api/v1`.
+
+### Impacto ADR-006
+
+O contrato documental e os testes públicos devem referenciar `POST /api/v1/analise-energetica`.
+
+---
+
+## ADR-007 — Oracle Autonomous Database como serviço OCI principal
+
+### Decisão ADR-007
+
+Oracle Autonomous Database é o serviço OCI principal definido para persistência no ambiente cloud.
+
+### Motivo ADR-007
+
+Essa escolha atende ao requisito de uso de OCI e alinha a estratégia de persistência do projeto ao ambiente Oracle Cloud.
+
+### Impacto ADR-007
+
+A documentação deve tratar Oracle Autonomous Database como serviço cloud alvo, mantendo a necessidade de evidência técnica compatível com o estado real do projeto.
+
+---
+
+## ADR-008 — H2 para desenvolvimento local e testes
+
+### Decisão ADR-008
+
+H2 é utilizado como banco local/de desenvolvimento/testes conforme a configuração definida pelo projeto.
+
+### Motivo ADR-008
+
+O perfil local do backend já usa H2 em memória, o que simplifica desenvolvimento, testes e execução do projeto sem dependência imediata do ambiente cloud.
+
+### Impacto ADR-008
+
+Documentação, onboarding e troubleshooting devem diferenciar o banco local H2 da persistência-alvo em Oracle Autonomous Database.
+
+---
+
+## ADR-009 — Separação entre estado atual do backend e arquitetura-alvo com Data Science
+
+### Decisão ADR-009
+
+O estado atual do backend usa classificação local baseada em regras com `fonte_classificacao = RULE_BASED`.
+
+A arquitetura-alvo prevê integração com Data Science para classificação via `ML_MODEL`, com possibilidade de `RULE_BASED_FALLBACK` em caso de erro, timeout ou resposta inválida.
+
+### Motivo ADR-009
+
+Os enums públicos já preveem `RULE_BASED`, `ML_MODEL` e `RULE_BASED_FALLBACK`, mas a integração com Data Science ainda não está implementada no backend atual.
+
+### Impacto ADR-009
+
+- O backend continua responsável pela API pública, validação, orquestração, cálculo de custo, persistência e resposta final.
+- A documentação não deve apresentar a integração HTTP com Data Science como concluída.
+- A responsabilidade final pelas recomendações em cenário `ML_MODEL` deve seguir o contrato de integração validado entre as frentes.
