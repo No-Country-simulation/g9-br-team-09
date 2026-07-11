@@ -16,24 +16,21 @@ public class EnergyAnalysisService {
     private final EnergyCostCalculator energyCostCalculator;
     private final EnergyRecommendationService energyRecommendationService;
 
-    /**
-     * Executa o fluxo completo de análise: Classificação, Cálculo de Custo e Recomendações.
-     */
     public EnergyAnalysisResponse analyze(EnergyAnalysisRequest request) {
-
-        EnergyAnalysisResponse partialResponse = energyClassifier.classify(request);
-
+        EnergyAnalysisResponse classification = energyClassifier.classify(request);
         BigDecimal estimatedCost = energyCostCalculator.calculate(request.consumoKwh());
-
-        List<String> recommendations = energyRecommendationService.generate(request, partialResponse.categoria());
+        List<String> recommendations = energyRecommendationService.generate(
+            request,
+            classification.categoria()
+        );
 
         return new EnergyAnalysisResponse(
-                partialResponse.categoria(),
-                partialResponse.probabilidade(),
-                partialResponse.score(),
-                estimatedCost,
-                recommendations,
-                partialResponse.fonteClassificacao()
+            classification.categoria(),
+            classification.probabilidade(),
+            classification.score(),
+            estimatedCost,
+            recommendations,
+            classification.fonteClassificacao()
         );
     }
 }

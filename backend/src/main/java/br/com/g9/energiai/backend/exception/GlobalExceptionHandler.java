@@ -25,6 +25,7 @@ import tools.jackson.databind.exc.InvalidFormatException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
@@ -44,6 +45,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final String GENERIC_INVALID_BODY_TYPE_MESSAGE = "Um campo do corpo da requisição possui tipo inválido";
     private static final String GENERIC_HTTP_MESSAGE = "Corpo da requisição inválido";
     private static final String GENERIC_INTERNAL_MESSAGE = "Erro interno no servidor";
+    private static final Map<String, String> PUBLIC_FIELD_NAMES = Map.of(
+        "consumoKwh", "consumo_kwh",
+        "usoHorarioPico", "uso_horario_pico",
+        "quantidadeEquipamentos", "quantidade_equipamentos",
+        "tipoImovel", "tipo_imovel",
+        "horasAltoConsumo", "horas_alto_consumo"
+    );
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException exception,
@@ -167,7 +175,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             .getFieldErrors()
             .stream()
             .filter(error -> hasText(error.getField()) && hasText(error.getDefaultMessage()))
-            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .map(error -> toPublicFieldName(error.getField()) + ": " + error.getDefaultMessage())
             .sorted()
             .toList();
 
@@ -219,7 +227,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private String formatPathReference(JacksonException.Reference reference) {
         if (hasText(reference.getPropertyName())) {
-            return reference.getPropertyName();
+            return toPublicFieldName(reference.getPropertyName());
         }
 
         if (reference.getIndex() >= 0) {
@@ -241,5 +249,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String toPublicFieldName(String fieldName) {
+        return PUBLIC_FIELD_NAMES.getOrDefault(fieldName, fieldName);
     }
 }

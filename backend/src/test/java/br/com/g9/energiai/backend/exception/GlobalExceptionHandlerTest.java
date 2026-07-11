@@ -49,7 +49,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(400, response.status());
         assertEquals("VALIDATION_ERROR", response.error());
         assertEquals(
-            "consumoKwh: O consumo deve ser um valor positivo; quantidadeEquipamentos: Deve haver pelo menos 1 equipamento registrado",
+            "consumo_kwh: O consumo deve ser um valor positivo; quantidade_equipamentos: Deve haver pelo menos 1 equipamento registrado",
             response.message()
         );
         assertNotNull(response.timestamp());

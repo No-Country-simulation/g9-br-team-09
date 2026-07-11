@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class ExceptionHandlingTestController {
 
-    @PostMapping(path = "/analise-energetica", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/test/analise-energetica", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     EnergyAnalysisRequest analyze(@Valid @RequestBody EnergyAnalysisRequest request) {
         return request;
     }

@@ -29,66 +29,66 @@ class GlobalExceptionHandlerMvcTest {
     @Test
     @DisplayName("Retorna 400 VALIDATION_ERROR para consumoKwh negativo")
     void shouldReturnValidationErrorForNegativeConsumption() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": -10,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": 10,
-                      "tipoImovel": "CASA",
-                      "horasAltoConsumo": 8
+                      "consumo_kwh": -10,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": 10,
+                      "tipo_imovel": "CASA",
+                      "horas_alto_consumo": 8
                     }
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-            .andExpect(jsonPath("$.message").value("consumoKwh: O consumo deve ser um valor positivo"))
+            .andExpect(jsonPath("$.message").value("consumo_kwh: O consumo deve ser um valor positivo"))
             .andExpect(jsonPath("$.timestamp").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T.*")));
     }
 
     @Test
     @DisplayName("Retorna 400 para consumoKwh nulo")
     void shouldReturnValidationErrorForNullConsumption() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": null,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": 10,
-                      "tipoImovel": "CASA",
-                      "horasAltoConsumo": 8
+                      "consumo_kwh": null,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": 10,
+                      "tipo_imovel": "CASA",
+                      "horas_alto_consumo": 8
                     }
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-            .andExpect(jsonPath("$.message").value("consumoKwh: ConsumoKwh não deve ser nulo"))
+            .andExpect(jsonPath("$.message").value("consumo_kwh: O consumo não deve ser nulo"))
             .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     @Test
     @DisplayName("Retorna 400 para quantidadeEquipamentos igual a zero")
     void shouldReturnValidationErrorForZeroEquipmentCount() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": 420.0,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": 0,
-                      "tipoImovel": "CASA",
-                      "horasAltoConsumo": 8
+                      "consumo_kwh": 420.0,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": 0,
+                      "tipo_imovel": "CASA",
+                      "horas_alto_consumo": 8
                     }
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
             .andExpect(jsonPath("$.message").value(
-                "quantidadeEquipamentos: Deve haver pelo menos 1 equipamento registrado"
+                "quantidade_equipamentos: Deve haver pelo menos 1 equipamento registrado"
             ))
             .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
@@ -96,42 +96,42 @@ class GlobalExceptionHandlerMvcTest {
     @Test
     @DisplayName("Retorna 400 para horasAltoConsumo menor que zero")
     void shouldReturnValidationErrorForNegativePeakHours() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": 420.0,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": 10,
-                      "tipoImovel": "CASA",
-                      "horasAltoConsumo": -1
+                      "consumo_kwh": 420.0,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": 10,
+                      "tipo_imovel": "CASA",
+                      "horas_alto_consumo": -1
                     }
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-            .andExpect(jsonPath("$.message").value("horasAltoConsumo: Valor mínimo permitido 0"))
+            .andExpect(jsonPath("$.message").value("horas_alto_consumo: Valor mínimo permitido 0"))
             .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     @Test
     @DisplayName("Retorna 400 para horasAltoConsumo maior que 24")
     void shouldReturnValidationErrorForPeakHoursAboveLimit() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": 420.0,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": 10,
-                      "tipoImovel": "CASA",
-                      "horasAltoConsumo": 25
+                      "consumo_kwh": 420.0,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": 10,
+                      "tipo_imovel": "CASA",
+                      "horas_alto_consumo": 25
                     }
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-            .andExpect(jsonPath("$.message").value("horasAltoConsumo: Valor máximo permitido 24"))
+            .andExpect(jsonPath("$.message").value("horas_alto_consumo: Valor máximo permitido 24"))
             .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
@@ -140,15 +140,15 @@ class GlobalExceptionHandlerMvcTest {
     void shouldReturnSortedValidationErrorsForMultipleInvalidFields() throws Exception {
         String invalidPayload = """
             {
-              "consumoKwh": -10,
-              "usoHorarioPico": true,
-              "quantidadeEquipamentos": 0,
-              "tipoImovel": "CASA",
-              "horasAltoConsumo": 8
+              "consumo_kwh": -10,
+              "uso_horario_pico": true,
+              "quantidade_equipamentos": 0,
+              "tipo_imovel": "CASA",
+              "horas_alto_consumo": 8
             }
             """;
 
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(invalidPayload))
             .andExpect(status().isBadRequest())
@@ -156,7 +156,7 @@ class GlobalExceptionHandlerMvcTest {
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
             .andExpect(jsonPath("$.message").value(
-                "consumoKwh: O consumo deve ser um valor positivo; quantidadeEquipamentos: Deve haver pelo menos 1 equipamento registrado"
+                "consumo_kwh: O consumo deve ser um valor positivo; quantidade_equipamentos: Deve haver pelo menos 1 equipamento registrado"
             ))
             .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
@@ -164,15 +164,15 @@ class GlobalExceptionHandlerMvcTest {
     @Test
     @DisplayName("Retorna 400 ENUM_TYPE_ERROR para enum inválido")
     void shouldReturnEnumTypeError() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": 420.0,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": 10,
-                      "tipoImovel": "GALPAO",
-                      "horasAltoConsumo": 8
+                      "consumo_kwh": 420.0,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": 10,
+                      "tipo_imovel": "GALPAO",
+                      "horas_alto_consumo": 8
                     }
                     """))
             .andExpect(status().isBadRequest())
@@ -188,31 +188,31 @@ class GlobalExceptionHandlerMvcTest {
     @Test
     @DisplayName("Retorna 400 INVALID_TYPE_ERROR para tipo incompatível no JSON")
     void shouldReturnInvalidTypeError() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "consumoKwh": 420.0,
-                      "usoHorarioPico": true,
-                      "quantidadeEquipamentos": "abc",
-                      "tipoImovel": "CASA",
-                      "horasAltoConsumo": 8
+                      "consumo_kwh": 420.0,
+                      "uso_horario_pico": true,
+                      "quantidade_equipamentos": "abc",
+                      "tipo_imovel": "CASA",
+                      "horas_alto_consumo": 8
                     }
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.status").value(400))
             .andExpect(jsonPath("$.error").value("INVALID_TYPE_ERROR"))
-            .andExpect(jsonPath("$.message").value("Campo quantidadeEquipamentos possui tipo inválido"))
+            .andExpect(jsonPath("$.message").value("Campo quantidade_equipamentos possui tipo inválido"))
             .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     @Test
     @DisplayName("Retorna 400 HTTP_MESSAGE_ERROR para JSON malformado")
     void shouldReturnHttpMessageErrorForMalformedJson() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"consumoKwh\":420,"))
+                .content("{\"consumo_kwh\":420,"))
             .andExpect(status().isBadRequest())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.status").value(400))
@@ -248,7 +248,7 @@ class GlobalExceptionHandlerMvcTest {
     @Test
     @DisplayName("Retorna 405 METHOD_NOT_ALLOWED_ERROR para método não suportado")
     void shouldReturnMethodNotAllowedError() throws Exception {
-        mockMvc.perform(get("/analise-energetica"))
+        mockMvc.perform(get("/test/analise-energetica"))
             .andExpect(status().isMethodNotAllowed())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.status").value(405))
@@ -260,7 +260,7 @@ class GlobalExceptionHandlerMvcTest {
     @Test
     @DisplayName("Retorna 415 UNSUPPORTED_MEDIA_TYPE_ERROR para media type não suportado")
     void shouldReturnUnsupportedMediaTypeError() throws Exception {
-        mockMvc.perform(post("/analise-energetica")
+        mockMvc.perform(post("/test/analise-energetica")
                 .contentType(MediaType.TEXT_PLAIN)
                 .content(validRequestJson()))
             .andExpect(status().isUnsupportedMediaType())
@@ -324,11 +324,11 @@ class GlobalExceptionHandlerMvcTest {
     private String validRequestJson() {
         return """
             {
-              "consumoKwh": 420.0,
-              "usoHorarioPico": true,
-              "quantidadeEquipamentos": 10,
-              "tipoImovel": "CASA",
-              "horasAltoConsumo": 8
+              "consumo_kwh": 420.0,
+              "uso_horario_pico": true,
+              "quantidade_equipamentos": 10,
+              "tipo_imovel": "CASA",
+              "horas_alto_consumo": 8
             }
             """;
     }
