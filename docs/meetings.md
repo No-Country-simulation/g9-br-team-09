@@ -27,7 +27,7 @@ Reunião realizada para alinhar organização do projeto, responsabilidades inic
 - Os campos do JSON seguirão o padrão `snake_case`.
 - O código interno seguirá nomes em inglês.
 - Backend será desenvolvido em Java/Spring Boot.
-- O endpoint mínimo obrigatório do MVP será `POST /analise-energetica`.
+- Decisão inicial: o endpoint mínimo obrigatório do MVP seria a análise energética sem o prefixo de versionamento consolidado posteriormente.
 - A tarifa de referência para cálculo de custo será R$ 0,75/kWh.
 - O serviço OCI principal definido foi Oracle Autonomous Database.
 - O banco local/de testes definido foi H2.
@@ -35,13 +35,24 @@ Reunião realizada para alinhar organização do projeto, responsabilidades inic
 - A frente de backend será conduzida por Gustavo, Lucas, Rafaela, Adriana e Alan.
 - A documentação, requisitos, status do MVP, atas e organização de evidências ficarão sob responsabilidade principal de Fábio.
 
+### Consolidação posterior do contrato público
+
+- O contrato público implementado no backend foi consolidado como `POST /api/v1/analise-energetica`.
+- O prefixo `/api/v1` faz parte do contrato público porque está centralizado no `server.servlet.context-path`.
+- Os exemplos externos do contrato usam `snake_case`, enums em caixa alta e incluem `score` e `fonte_classificacao` na resposta oficial.
+
 ### Alinhamento Backend e Data Science
 
 Fluxo definido até o momento:
 
-- Python/Data Science será a fonte principal para classificação energética e recomendações.
-- Backend será responsável por validação da entrada, cálculo de custo estimado, orquestração, persistência e retorno da API.
-- Backend também deverá possuir fallback local para classificação e recomendações caso a API Python esteja indisponível ou retorne resposta inválida.
+- Decisão inicial:
+  - Python/Data Science seria a fonte principal para classificação energética e recomendações.
+  - Backend seria responsável por validação da entrada, cálculo de custo estimado, orquestração, persistência e retorno da API.
+  - Backend também deveria possuir fallback local caso a API Python estivesse indisponível ou retornasse resposta inválida.
+- Consolidação posterior:
+  - No estado atual do backend, a classificação é executada localmente com `RULE_BASED`.
+  - A integração com Data Science permanece como arquitetura-alvo.
+  - A responsabilidade final pela geração de recomendações na integração futura ainda depende do contrato definido entre as frentes.
 
 ### Pendências da reunião
 
@@ -49,10 +60,8 @@ Fluxo definido até o momento:
 - Consolidar dataset inicial.
 - Registrar critérios de classificação energética.
 - Definir modelo simples para o MVP.
-- Confirmar implementação e documentação do endpoint `POST /analise-energetica`.
-- Documentar exemplos de request e response.
+- Implementar e documentar a integração HTTP com Data Science.
 - Registrar evidência de uso do Oracle Autonomous Database.
-- Atualizar README com links para documentação principal.
 - Abrir Pull Request para revisão da documentação antes de merge.
 
 ### Observações
