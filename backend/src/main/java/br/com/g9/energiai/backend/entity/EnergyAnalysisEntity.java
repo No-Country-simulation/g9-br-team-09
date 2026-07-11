@@ -3,8 +3,22 @@ package br.com.g9.energiai.backend.entity;
 import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.enums.PropertyType;
-import jakarta.persistence.*;
-import lombok.*;
+import br.com.g9.energiai.backend.persistence.converter.RecommendationListConverter;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -57,10 +71,11 @@ public class EnergyAnalysisEntity {
     @Column(name = "fonte_classificacao", nullable = false)
     private ClassificationSource fonteClassificacao;
 
-    @ElementCollection
-    @CollectionTable(name = "energy_analysis_recommendations", joinColumns = @JoinColumn(name = "analysis_id"))
-    @Column(name = "recommendation")
-    private List<String> recomendacoes;
+    @Builder.Default
+    @Lob
+    @Convert(converter = RecommendationListConverter.class)
+    @Column(name = "recomendacoes", nullable = false)
+    private List<String> recomendacoes = List.of();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
