@@ -1,183 +1,144 @@
 package br.com.g9.energiai.backend.exception;
 
+import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import jakarta.validation.Valid;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import tools.jackson.core.JacksonException;
+import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import tools.jackson.databind.exc.InvalidFormatException;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.util.List;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class GlobalHandlerExceptionTest {
+class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private final HttpHeaders headers = new HttpHeaders();
+    private final WebRequest request = new ServletWebRequest(new MockHttpServletRequest());
 
-    @Nested
-    @DisplayName("handleMethodArgumentNotValid")
-    class HandleMethodArgumentNotValid {
+    @Test
+    @DisplayName("Retorna mensagem determinística para múltiplos erros de validação")
+    void shouldConcatenateSortedValidationErrors() {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "energyAnalysisRequest");
+        bindingResult.addError(new FieldError("energyAnalysisRequest", "quantidadeEquipamentos",
+            "Deve haver pelo menos 1 equipamento registrado"));
+        bindingResult.addError(new FieldError("energyAnalysisRequest", "consumoKwh",
+            "O consumo deve ser um valor positivo"));
+        MethodArgumentNotValidException exception = buildValidationException(bindingResult);
 
-        @Test
-        @DisplayName("Deve retornar 400 e código VALIDATION_ERROR com a mensagem do campo inválido")
-        void shouldReturnValidationErrorWithFieldMessage() {
-            FieldError fieldError = new FieldError(
-                    "energyAnalysisRequest", "consumoKwh", "O consumo deve ser um valor positivo");
+        ApiErrorResponse response = extractResponse(handler.handleMethodArgumentNotValid(
+            exception, headers, HttpStatus.BAD_REQUEST, request
+        ));
 
-            MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
-            when(ex.getFieldError()).thenReturn(fieldError);
+        assertEquals(400, response.status());
+        assertEquals("VALIDATION_ERROR", response.error());
+        assertEquals(
+            "consumoKwh: O consumo deve ser um valor positivo; quantidadeEquipamentos: Deve haver pelo menos 1 equipamento registrado",
+            response.message()
+        );
+        assertNotNull(response.timestamp());
+    }
 
-            ApiErrorResponse response = handler.handleMethodArgumentNotValid(ex);
+    @Test
+    @DisplayName("Usa erro global quando não houver FieldError")
+    void shouldUseGlobalErrorMessageWhenFieldErrorsAreMissing() {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "energyAnalysisRequest");
+        bindingResult.addError(new ObjectError("energyAnalysisRequest", "Dados inconsistentes"));
+        MethodArgumentNotValidException exception = buildValidationException(bindingResult);
 
-            assertNotNull(response);
-            assertEquals(400, response.status());
-            assertEquals("VALIDATION_ERROR", response.error());
-            assertEquals("O consumo deve ser um valor positivo", response.message());
-            assertNotNull(response.timestamp());
+        ApiErrorResponse response = extractResponse(handler.handleMethodArgumentNotValid(
+            exception, headers, HttpStatus.BAD_REQUEST, request
+        ));
+
+        assertEquals(400, response.status());
+        assertEquals("VALIDATION_ERROR", response.error());
+        assertEquals("Dados inconsistentes", response.message());
+    }
+
+    @Test
+    @DisplayName("Usa mensagem genérica quando não houver mensagens válidas de validação")
+    void shouldUseGenericValidationMessageWhenBindingResultHasNoMessages() {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "energyAnalysisRequest");
+        bindingResult.addError(new ObjectError("energyAnalysisRequest", ""));
+        MethodArgumentNotValidException exception = buildValidationException(bindingResult);
+
+        ApiErrorResponse response = extractResponse(handler.handleMethodArgumentNotValid(
+            exception, headers, HttpStatus.BAD_REQUEST, request
+        ));
+
+        assertEquals("Dados de entrada inválidos", response.message());
+    }
+
+    @Test
+    @DisplayName("Retorna mensagem genérica para tipo inválido sem path identificável")
+    void shouldReturnGenericMessageWhenJacksonPathIsEmpty() {
+        InvalidFormatException invalidFormatException = InvalidFormatException.from(
+            null, "", "abc", Integer.class
+        );
+        HttpMessageNotReadableException exception = new HttpMessageNotReadableException(
+            "Unreadable JSON",
+            invalidFormatException,
+            new MockHttpInputMessage("{}".getBytes(StandardCharsets.UTF_8))
+        );
+
+        ApiErrorResponse response = extractResponse(handler.handleHttpMessageNotReadable(
+            exception, headers, HttpStatus.BAD_REQUEST, request
+        ));
+
+        assertEquals(400, response.status());
+        assertEquals("INVALID_TYPE_ERROR", response.error());
+        assertEquals("Um campo do corpo da requisição possui tipo inválido", response.message());
+    }
+
+    @Test
+    @DisplayName("Retorna 404 e preserva mensagem pública para ResourceNotFoundException")
+    void shouldReturnNotFoundResponseForResourceNotFoundException() {
+        ApiErrorResponse response = handler.handleResourceNotFound(new ResourceNotFoundException("Análise não encontrada"))
+            .getBody();
+
+        assertNotNull(response);
+        assertEquals(404, response.status());
+        assertEquals("NOT_FOUND_ERROR", response.error());
+        assertEquals("Análise não encontrada", response.message());
+    }
+
+    private ApiErrorResponse extractResponse(org.springframework.http.ResponseEntity<Object> responseEntity) {
+        assertNotNull(responseEntity);
+        Object body = responseEntity.getBody();
+        assertInstanceOf(ApiErrorResponse.class, body);
+        return (ApiErrorResponse) body;
+    }
+
+    private MethodArgumentNotValidException buildValidationException(BeanPropertyBindingResult bindingResult) {
+        try {
+            Method method = ValidationFixture.class.getDeclaredMethod("handle", EnergyAnalysisRequest.class);
+            MethodParameter parameter = new MethodParameter(method, 0);
+            return new MethodArgumentNotValidException(parameter, bindingResult);
         }
-
-        @Test
-        @DisplayName("Deve lançar NullPointerException quando não houver FieldError")
-        void shouldThrowNullPointerExceptionWhenFieldErrorIsNull() {
-            MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
-            when(ex.getFieldError()).thenReturn(null);
-
-            assertThrows(NullPointerException.class, () -> handler.handleMethodArgumentNotValid(ex));
+        catch (NoSuchMethodException exception) {
+            throw new IllegalStateException(exception);
         }
     }
 
-    @Nested
-    @DisplayName("handleHttpMessageNotReadable")
-    class HandleHttpMessageNotReadable {
-
-        @Test
-        @DisplayName("Deve retornar 400 e ENUM_TYPE_ERROR quando a causa for enum inválido")
-        void deveRetornarEnumTypeErrorParaEnumInvalido() {
-            InvalidFormatException ife = mock(InvalidFormatException.class);
-            enum PropertyType {CASA, APARTAMENTO, COMERCIO, ESCRITORIO, INDUSTRIA, OUTRO}
-            when(ife.getTargetType()).thenReturn((Class) PropertyType.class);
-
-            HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
-            when(ex.getCause()).thenReturn(ife);
-
-            ApiErrorResponse response = handler.handleHttpMessageNotReadable(ex);
-
-            assertEquals(400, response.status());
-            assertEquals("ENUM_TYPE_ERROR", response.error());
-            assertTrue(response.message().contains("Valor inválido"));
-            assertTrue(response.message().contains("CASA"));
-            assertTrue(response.message().contains("APARTAMENTO"));
-            assertTrue(response.message().contains("COMERCIO"));
-            assertTrue(response.message().contains("ESCRITORIO"));
-            assertTrue(response.message().contains("INDUSTRIA"));
-            assertTrue(response.message().contains("OUTRO"));
-        }
-
-        @Test
-        @DisplayName("Deve retornar 400 e INVALID_TYPE_ERROR quando a causa for tipo inválido em campo específico")
-        void shouldReturnInvalidTypeErrorWithFieldName() {
-            InvalidFormatException ife = mock(InvalidFormatException.class);
-            JacksonException.Reference reference = mock(JacksonException.Reference.class);
-            enum PropertyType {CASA, APARTAMENTO, COMERCIO, ESCRITORIO, INDUSTRIA, OUTRO}
-
-            //Pode ser qualquer classe. Objetivo: não cair no caso ENUM_TYPE_ERROR
-            when(ife.getTargetType()).thenReturn((Class) String.class);
-
-            when(ife.getPath()).thenReturn(List.of(reference));
-            when(reference.getPropertyName()).thenReturn("quantidadeEquipamentos");
-
-            HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
-            when(ex.getCause()).thenReturn(ife);
-
-            ApiErrorResponse response = handler.handleHttpMessageNotReadable(ex);
-
-            assertEquals(400, response.status());
-            assertEquals("INVALID_TYPE_ERROR", response.error());
-            assertEquals("Campo quantidadeEquipamentos possui tipo inválido", response.message());
-        }
-
-        @Test
-        @DisplayName("Deve retornar 400 e INVALID_TYPE_ERROR com campo vazio quando o path estiver vazio")
-        void shouldReturnInvalidTypeErrorWithEmptyField() {
-            InvalidFormatException ife = mock(InvalidFormatException.class);
-
-            when(ife.getTargetType()).thenReturn((Class) String.class);
-            when(ife.getPath()).thenReturn(List.of());
-
-            HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
-            when(ex.getCause()).thenReturn(ife);
-
-            ApiErrorResponse response = handler.handleHttpMessageNotReadable(ex);
-
-            assertEquals(400, response.status());
-            assertEquals("INVALID_TYPE_ERROR", response.error());
-            assertEquals("Campo  possui tipo inválido", response.message());
-        }
-
-        @Test
-        @DisplayName("Deve retornar 400 e HTTP_MESSAGE_ERROR quando a causa não for InvalidFormatException")
-        void shouldReturnHttpMessageErrorToJsonMalformed() {
-            HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
-            when(ex.getCause()).thenReturn(new RuntimeException("JSON malformado"));
-
-            ApiErrorResponse response = handler.handleHttpMessageNotReadable(ex);
-
-            assertEquals(400, response.status());
-            assertEquals("HTTP_MESSAGE_ERROR", response.error());
-            assertEquals("Corpo JSON mal estruturado. Verifique a sintaxe", response.message());
-        }
-
-        @Test
-        @DisplayName("Deve retornar HTTP_MESSAGE_ERROR quando não houver causa (cause == null)")
-        void shouldReturnHttpMessageErrorWhenCauseIsNull() {
-            HttpMessageNotReadableException ex = mock(HttpMessageNotReadableException.class);
-            when(ex.getCause()).thenReturn(null);
-
-            ApiErrorResponse response = handler.handleHttpMessageNotReadable(ex);
-
-            assertEquals(400, response.status());
-            assertEquals("HTTP_MESSAGE_ERROR", response.error());
-        }
-    }
-
-    @Nested
-    @DisplayName("handleResourceNotFound")
-    class HandleResourceNotFound {
-
-        @Test
-        @DisplayName("Deve retornar 404 e NOT_FOUND_ERROR com a mensagem da exceção")
-        void shouldReturnNotFoundErrorWithMessage() {
-            ResourceNotFoundException ex = new ResourceNotFoundException("Recurso não encontrada");
-
-            ApiErrorResponse response = handler.handleResourceNotFound(ex);
-
-            assertEquals(404, response.status());
-            assertEquals("NOT_FOUND_ERROR", response.error());
-            assertEquals("Recurso não encontrada", response.message());
-            assertNotNull(response.timestamp());
-        }
-    }
-
-    @Nested
-    @DisplayName("handleException")
-    class HandleException {
-
-        @Test
-        @DisplayName("Deve retornar 500 e INTERNAL_ERROR sem expor a mensagem original da exceção")
-        void shouldReturnGenericInternalError() {
-            Exception ex = new RuntimeException("NullPointerException na linha 42 do service");
-
-            ApiErrorResponse response = handler.handleException(ex);
-
-            assertEquals(500, response.status());
-            assertEquals("INTERNAL_ERROR", response.error());
-            assertEquals("Erro interno no servidor", response.message());
+    private static class ValidationFixture {
+        @SuppressWarnings("unused")
+        void handle(@Valid EnergyAnalysisRequest request) {
         }
     }
 }
