@@ -8,13 +8,13 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record EnergyAnalysisResponse(
-    EnergyCategory categoria,
-    Double probabilidade,
-    Integer score,
-    @JsonProperty("custo_estimado_mensal")
-    BigDecimal custoEstimadoMensal,
-    List<String> recomendacoes,
-    @JsonProperty("fonte_classificacao")
-    ClassificationSource fonteClassificacao
-) {
-}
+        Long id,
+        EnergyCategory categoria,
+        Double probabilidade,
+        Integer score,
+        @JsonProperty("custo_estimado_mensal")
+        BigDecimal custoEstimadoMensal,
+        List<String> recomendacoes,
+        @JsonProperty("fonte_classificacao")
+        ClassificationSource fonteClassificacao
+) {}
