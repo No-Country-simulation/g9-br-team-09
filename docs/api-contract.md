@@ -108,34 +108,6 @@ Fórmula:
 custo_estimado_mensal = consumo_kwh * 0.75
 ```
 
-## Exemplo adicional de requisição moderada
-
-```json
-{
-  "consumo_kwh": 260,
-  "uso_horario_pico": true,
-  "quantidade_equipamentos": 8,
-  "tipo_imovel": "APARTAMENTO",
-  "horas_alto_consumo": 5
-}
-```
-
-## Exemplo adicional de resposta moderada
-
-```json
-{
-  "categoria": "MODERADO",
-  "probabilidade": 0.60,
-  "score": 60,
-  "custo_estimado_mensal": 195.00,
-  "recomendacoes": [
-    "Reduzir o uso de equipamentos durante horários de pico.",
-    "Distribuir o consumo ao longo do dia."
-  ],
-  "fonte_classificacao": "RULE_BASED"
-}
-```
-
 ## Tratamento de erros
 
 Formato atual documentado para erros de validação:
