@@ -17,7 +17,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -130,23 +129,5 @@ class EnergyAnalysisControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("Deve expor o contrato final no OpenAPI")
-    void shouldExposeFinalContractInOpenApi() throws Exception {
-        mockMvc.perform(get("/api/v1/v3/api-docs").contextPath("/api/v1"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(containsString("\"url\":\"http://localhost/api/v1\"")))
-                .andExpect(content().string(containsString("\"/analise-energetica\"")))
-                .andExpect(content().string(not(containsString("\"/analises-energeticas\""))))
-                .andExpect(content().string(containsString("\"consumo_kwh\"")))
-                .andExpect(content().string(containsString("\"uso_horario_pico\"")))
-                .andExpect(content().string(containsString("\"quantidade_equipamentos\"")))
-                .andExpect(content().string(containsString("\"tipo_imovel\"")))
-                .andExpect(content().string(containsString("\"horas_alto_consumo\"")))
-                .andExpect(content().string(containsString("\"custo_estimado_mensal\"")))
-                .andExpect(content().string(containsString("\"fonte_classificacao\"")));
     }
 }

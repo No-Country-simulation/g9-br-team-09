@@ -36,6 +36,7 @@ public interface EnergyAnalysisApi {
                 examples = @ExampleObject(
                     value = """
                         {
+                          "id": 1,
                           "categoria": "INEFICIENTE",
                           "probabilidade": 0.95,
                           "score": 95,
