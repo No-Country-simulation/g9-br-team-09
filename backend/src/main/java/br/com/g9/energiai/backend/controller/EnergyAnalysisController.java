@@ -1,5 +1,6 @@
 package br.com.g9.energiai.backend.controller;
 
+import br.com.g9.energiai.backend.documentation.EnergyAnalysisApi;
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.service.EnergyAnalysisService;
@@ -14,13 +15,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/analise-energetica")
 @RequiredArgsConstructor
-public class EnergyAnalysisController {
+public class EnergyAnalysisController implements EnergyAnalysisApi {
 
     private final EnergyAnalysisService energyAnalysisService;
 
+    @Override
     @PostMapping
-    public ResponseEntity<EnergyAnalysisResponse> createAnalysis(@RequestBody @Valid EnergyAnalysisRequest request) {
-        EnergyAnalysisResponse response = energyAnalysisService.analyze(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<EnergyAnalysisResponse> createAnalysis(
+        @RequestBody @Valid EnergyAnalysisRequest request
+    ) {
+        return ResponseEntity.ok(energyAnalysisService.analyze(request));
     }
 }
