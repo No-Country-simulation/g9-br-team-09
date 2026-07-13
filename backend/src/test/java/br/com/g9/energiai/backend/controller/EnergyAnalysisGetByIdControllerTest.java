@@ -1,0 +1,78 @@
+package br.com.g9.energiai.backend.controller;
+
+import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
+import br.com.g9.energiai.backend.enums.ClassificationSource;
+import br.com.g9.energiai.backend.enums.EnergyCategory;
+import br.com.g9.energiai.backend.enums.PropertyType;
+import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("local")
+class EnergyAnalysisGetByIdControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private EnergyAnalysisRepository energyAnalysisRepository;
+
+    @BeforeEach
+    void setup() {
+        energyAnalysisRepository.deleteAll();
+    }
+
+    @Test
+    @DisplayName("Deve retornar análise energética quando o ID existir")
+    void shouldReturnAnalysisWhenIdExists() throws Exception {
+        EnergyAnalysisEntity analysis = EnergyAnalysisEntity.builder()
+                .consumoKwh(420.0)
+                .usoHorarioPico(true)
+                .quantidadeEquipamentos(10)
+                .tipoImovel(PropertyType.CASA)
+                .horasAltoConsumo(8)
+                .categoria(EnergyCategory.INEFICIENTE)
+                .probabilidade(0.95)
+                .score(95)
+                .custoEstimadoMensal(new BigDecimal("315.00"))
+                .fonteClassificacao(ClassificationSource.RULE_BASED)
+                .recomendacoes(List.of("Reduzir consumo no pico"))
+                .build();
+
+        EnergyAnalysisEntity saved = energyAnalysisRepository.save(analysis);
+
+        mockMvc.perform(get("/api/v1/analise-energetica/{id}", saved.getId())
+                        .contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(saved.getId()))
+                .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
+                .andExpect(jsonPath("$.score").value(95))
+                .andExpect(jsonPath("$.custo_estimado_mensal").value(315.00));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 404 Not Found quando o ID não existir")
+    void shouldReturnNotFoundWhenIdDoesNotExist() throws Exception {
+        mockMvc.perform(get("/api/v1/analise-energetica/{id}", 999L)
+                        .contextPath("/api/v1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"))
+                .andExpect(jsonPath("$.message").value("Análise não encontrada com o ID: 999"));
+    }
+}
