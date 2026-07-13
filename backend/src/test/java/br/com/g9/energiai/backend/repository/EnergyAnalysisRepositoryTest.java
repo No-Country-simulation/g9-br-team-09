@@ -88,6 +88,7 @@ class EnergyAnalysisRepositoryTest {
         assertEquals(new BigDecimal("315.00"), reloaded.getCustoEstimadoMensal());
         assertEquals(recommendations, reloaded.getRecomendacoes());
         assertEquals(saved.getId(), reloaded.getId());
+        assertTrue(reloaded.getUsoHorarioPico());
         assertNotNull(reloaded.getCreatedAt());
         assertTrue(reloaded.getCreatedAt().isEqual(saved.getCreatedAt()) || reloaded.getCreatedAt().isAfter(saved.getCreatedAt()));
     }
