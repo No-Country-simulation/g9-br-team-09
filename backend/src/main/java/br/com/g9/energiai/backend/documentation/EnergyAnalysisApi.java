@@ -2,6 +2,7 @@ package br.com.g9.energiai.backend.documentation;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDashboardResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
@@ -141,4 +142,40 @@ public interface EnergyAnalysisApi {
             )
             Long id
     );
+
+    @Operation(
+            summary = "Obter resumo estatístico das análises",
+            description = "Retorna os indicadores agregados utilizados pelo dashboard de consumo energético."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Resumo estatístico recuperado com sucesso",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = EnergyAnalysisDashboardResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                          "total_analises": 35,
+                          "media_consumo_kwh": 382.5,
+                          "media_custo_mensal": 286.87,
+                          "total_eficiente": 8,
+                          "total_moderado": 16,
+                          "total_ineficiente": 11
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno ao gerar o resumo estatístico",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<EnergyAnalysisDashboardResponse> getDashboardSummary();
 }
