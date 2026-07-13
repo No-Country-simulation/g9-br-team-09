@@ -1,4 +1,4 @@
-# G9-BR-TEAM-09 — EnergIAI
+# G9-BR-TEAM-09 — EnergiAI
 
 ## Inteligência para Consumo Energético
 
@@ -41,19 +41,31 @@ docs/          -> documentação do projeto
 
 ---
 
+## Documentação do Projeto
+
+A documentação principal do projeto está organizada na pasta `docs/`.
+
+| Documento                                                     | Descrição                                                                    |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`project-status.md`](docs/project-status.md)                 | Status geral do projeto, responsáveis, pendências, riscos e próximos passos. |
+| [`api-contract.md`](docs/api-contract.md)                     | Contrato inicial da API, endpoint obrigatório e exemplos de uso.             |
+| [`architecture-decisions.md`](docs/architecture-decisions.md) | Decisões técnicas e organizacionais registradas durante o projeto.           |
+| [`meetings.md`](docs/meetings.md)                             | Atas e registros das principais reuniões da equipe.                          |
+
+---
 
 ## Funcionalidades obrigatórias
 
 O MVP deve contemplar:
 
 - Classificação do perfil energético em:
-  - `Eficiente`
-  - `Moderado`
-  - `Ineficiente`
+  - `EFICIENTE`
+  - `MODERADO`
+  - `INEFICIENTE`
 - Geração de recomendações de otimização energética;
 - Estimativa financeira usando tarifa de referência de **R$ 0,75/kWh**;
 - API REST com endpoint principal:
-  - `POST /analise-energetica`
+  - `POST /api/v1/analise-energetica`
 - Retorno em formato JSON;
 - Modelo treinado e carregado corretamente;
 - Integração com pelo menos um serviço OCI;
@@ -61,19 +73,19 @@ O MVP deve contemplar:
 
 ---
 
-## Configuracao da tarifa
+## Configuração da tarifa
 
-A tarifa padrao usada no calculo financeiro fica em `backend/src/main/resources/application.properties`.
+A tarifa padrão usada no cálculo financeiro fica em `backend/src/main/resources/application.properties`.
 
-Formula aplicada:
+Fórmula aplicada:
 
 `custoEstimadoMensal = consumoKwh * tarifaKwh`
 
-Valor padrao atual:
+Valor padrão atual:
 
 `energy.tariff.default=0.75`
 
-Para alterar a tarifa de referencia do MVP, ajuste essa propriedade.
+Para alterar a tarifa de referência do MVP, ajuste essa propriedade.
 
 ---
 
@@ -84,7 +96,7 @@ Para alterar a tarifa de referencia do MVP, ajuste essa propriedade.
   "consumo_kwh": 420,
   "uso_horario_pico": true,
   "quantidade_equipamentos": 10,
-  "tipo_imovel": "Casa",
+  "tipo_imovel": "CASA",
   "horas_alto_consumo": 8
 }
 ```
@@ -97,6 +109,7 @@ cd backend
 ```
 
 O backend utiliza H2 em memória no profile `local`. Os dados são perdidos quando a aplicação é encerrada.
+
 O schema de domínio será criado por migrations Flyway, e a migration inicial será implementada na issue `#16`.
 
 ### Swagger
