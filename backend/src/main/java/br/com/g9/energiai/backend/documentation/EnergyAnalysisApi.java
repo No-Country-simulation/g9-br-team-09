@@ -2,6 +2,7 @@ package br.com.g9.energiai.backend.documentation;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,27 +15,27 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(
-    name = "Análise energética",
-    description = "Operações para análise do perfil de consumo energético"
+        name = "Análise energética",
+        description = "Operações para análise do perfil de consumo energético"
 )
 public interface EnergyAnalysisApi {
 
     @Operation(
-        summary = "Criar análise energética",
-        description = """
+            summary = "Criar análise energética",
+            description = """
             Valida os dados de consumo, calcula o custo mensal estimado,
             classifica o perfil energético e retorna recomendações.
             """
     )
     @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "Análise realizada com sucesso",
-            content = @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = EnergyAnalysisResponse.class),
-                examples = @ExampleObject(
-                    value = """
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Análise realizada com sucesso",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = EnergyAnalysisResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
                         {
                           "id": 1,
                           "categoria": "INEFICIENTE",
@@ -47,25 +48,65 @@ public interface EnergyAnalysisApi {
                           "fonte_classificacao": "RULE_BASED"
                         }
                         """
-                )
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Dados inválidos, enum inválido, tipo inválido ou JSON malformado",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno inesperado, sem exposição de stack trace",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)
+                    )
             )
-        ),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Dados inválidos, enum inválido, tipo inválido ou JSON malformado",
-            content = @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = ApiErrorResponse.class)
-            )
-        ),
-        @ApiResponse(
-            responseCode = "500",
-            description = "Erro interno inesperado, sem exposição de stack trace",
-            content = @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                schema = @Schema(implementation = ApiErrorResponse.class)
-            )
-        )
     })
     ResponseEntity<EnergyAnalysisResponse> createAnalysis(EnergyAnalysisRequest request);
+
+    @Operation(
+            summary = "Listar histórico de análises",
+            description = "Retorna uma lista resumida de todas as análises energéticas persistidas no sistema."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de análises recuperada com sucesso",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = EnergyAnalysisListResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                        {
+                          "analises": [
+                            {
+                              "id": 1,
+                              "categoria": "INEFICIENTE",
+                              "probabilidade": 0.95,
+                              "score": 95,
+                              "custo_estimado_mensal": 315.00,
+                              "criado_em": "2026-07-10T18:30:00"
+                            }
+                          ]
+                        }
+                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno ao buscar o histórico",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)
+                    )
+            )
+    })
+    ResponseEntity<EnergyAnalysisListResponse> listAnalyses();
 }

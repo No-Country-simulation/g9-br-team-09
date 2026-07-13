@@ -1,6 +1,7 @@
 package br.com.g9.energiai.backend.service;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
@@ -43,5 +44,16 @@ public class EnergyAnalysisService {
         EnergyAnalysisEntity savedEntity = energyAnalysisRepository.save(entity);
 
         return energyAnalysisMapper.toResponse(savedEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public EnergyAnalysisListResponse findAll() {
+        List<EnergyAnalysisEntity> entities = energyAnalysisRepository.findAll();
+
+        var summaries = entities.stream()
+                .map(energyAnalysisMapper::toSummaryResponse)
+                .toList();
+
+        return new EnergyAnalysisListResponse(summaries);
     }
 }
