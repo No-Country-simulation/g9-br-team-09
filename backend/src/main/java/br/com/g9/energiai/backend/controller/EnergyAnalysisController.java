@@ -10,8 +10,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+<<<<<<< HEAD
 import org.springframework.data.web.PageableDefault;
 import org.springdoc.core.annotations.ParameterObject;
+=======
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,11 +38,16 @@ public class EnergyAnalysisController implements EnergyAnalysisApi {
 
     @Override
     @GetMapping
+<<<<<<< HEAD
     public ResponseEntity<EnergyAnalysisListResponse> listAnalyses(
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             @ParameterObject
             Pageable pageable
     ) {
         return ResponseEntity.ok(energyAnalysisService.findAll(pageable));
+=======
+    public ResponseEntity<EnergyAnalysisListResponse> listAnalyses() {
+        return ResponseEntity.ok(energyAnalysisService.findAll());
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
     }
 }

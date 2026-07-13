@@ -49,6 +49,7 @@ public class EnergyAnalysisService {
     }
 
     @Transactional(readOnly = true)
+<<<<<<< HEAD
     public EnergyAnalysisListResponse findAll(Pageable pageable) {
         Page<EnergyAnalysisEntity> analysisPage = energyAnalysisRepository.findAll(pageable);
 
@@ -63,5 +64,15 @@ public class EnergyAnalysisService {
                 analysisPage.getTotalElements(),
                 analysisPage.getTotalPages()
         );
+=======
+    public EnergyAnalysisListResponse findAll() {
+        List<EnergyAnalysisEntity> entities = energyAnalysisRepository.findAll();
+
+        var summaries = entities.stream()
+                .map(energyAnalysisMapper::toSummaryResponse)
+                .toList();
+
+        return new EnergyAnalysisListResponse(summaries);
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
     }
 }

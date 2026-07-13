@@ -14,11 +14,16 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+<<<<<<< HEAD
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+=======
+
+import java.math.BigDecimal;
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,15 +40,19 @@ class EnergyAnalysisListControllerTest {
     @Autowired
     private EnergyAnalysisRepository energyAnalysisRepository;
 
+<<<<<<< HEAD
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+=======
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
     @BeforeEach
     void setup() {
         energyAnalysisRepository.deleteAll();
     }
 
     @Test
+<<<<<<< HEAD
     @DisplayName("Deve retornar histórico vazio paginado com 200 OK")
     void shouldReturnEmptyPaginatedHistory() throws Exception {
         mockMvc.perform(get("/api/v1/analise-energetica").contextPath("/api/v1"))
@@ -110,25 +119,46 @@ class EnergyAnalysisListControllerTest {
     }
 
     private void persistAnalysis(EnergyCategory categoria, int score, LocalDateTime createdAt) {
+=======
+    @DisplayName("Deve listar histórico de análises com sucesso e retornar 200 OK")
+    void shouldListHistorySuccessfully() throws Exception {
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
         EnergyAnalysisEntity analysis = EnergyAnalysisEntity.builder()
                 .consumoKwh(420.0)
                 .usoHorarioPico(true)
                 .quantidadeEquipamentos(10)
                 .tipoImovel(PropertyType.CASA)
                 .horasAltoConsumo(8)
+<<<<<<< HEAD
                 .categoria(categoria)
                 .probabilidade(0.95)
                 .score(score)
+=======
+                .categoria(EnergyCategory.INEFICIENTE)
+                .probabilidade(0.95)
+                .score(95)
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
                 .custoEstimadoMensal(new BigDecimal("315.00"))
                 .fonteClassificacao(ClassificationSource.RULE_BASED)
                 .recomendacoes(List.of("Dica 1"))
                 .build();
 
+<<<<<<< HEAD
         EnergyAnalysisEntity savedAnalysis = energyAnalysisRepository.saveAndFlush(analysis);
         jdbcTemplate.update(
                 "UPDATE energy_analysis SET created_at = ? WHERE id = ?",
                 Timestamp.valueOf(createdAt),
                 savedAnalysis.getId()
         );
+=======
+        energyAnalysisRepository.save(analysis);
+
+        mockMvc.perform(get("/api/v1/analise-energetica").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.analises").isArray())
+                .andExpect(jsonPath("$.analises[0].categoria").value("INEFICIENTE"))
+                .andExpect(jsonPath("$.analises[0].score").value(95));
+>>>>>>> 5157723 (feat (backend) - Implemented energy analysis history listing)
     }
 }
