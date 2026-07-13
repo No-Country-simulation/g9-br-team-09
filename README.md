@@ -1,4 +1,4 @@
-# G9-BR-TEAM-09 — EnergIAI
+﻿# G9-BR-TEAM-09 — EnergIAI
 
 ## Inteligência para Consumo Energético
 
@@ -99,4 +99,35 @@ Para alterar a tarifa de referência do MVP, ajuste essa propriedade.
   "tipo_imovel": "CASA",
   "horas_alto_consumo": 8
 }
+```
+
+## Executar localmente
+
+```bash
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+O backend utiliza H2 em memória no profile `local`. Os dados são perdidos quando a aplicação é encerrada.
+
+O schema de domínio será criado por migrations Flyway, e a migration inicial será implementada na issue `#16`.
+
+### Swagger
+
+```text
+http://localhost:8080/api/v1/swagger-ui/index.html
+```
+
+### H2 Console
+
+```text
+http://localhost:8080/api/v1/h2-console
+```
+
+### Credenciais do H2
+
+```text
+JDBC URL: jdbc:h2:mem:energiai
+User Name: sa
+Password: vazio
 ```
