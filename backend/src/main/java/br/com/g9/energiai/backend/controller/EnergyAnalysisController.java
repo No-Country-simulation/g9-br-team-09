@@ -2,11 +2,17 @@ package br.com.g9.energiai.backend.controller;
 
 import br.com.g9.energiai.backend.documentation.EnergyAnalysisApi;
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.service.EnergyAnalysisService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,8 +28,18 @@ public class EnergyAnalysisController implements EnergyAnalysisApi {
     @Override
     @PostMapping
     public ResponseEntity<EnergyAnalysisResponse> createAnalysis(
-        @RequestBody @Valid EnergyAnalysisRequest request
+            @RequestBody @Valid EnergyAnalysisRequest request
     ) {
         return ResponseEntity.ok(energyAnalysisService.analyze(request));
+    }
+
+    @Override
+    @GetMapping
+    public ResponseEntity<EnergyAnalysisListResponse> listAnalyses(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            @ParameterObject
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(energyAnalysisService.findAll(pageable));
     }
 }

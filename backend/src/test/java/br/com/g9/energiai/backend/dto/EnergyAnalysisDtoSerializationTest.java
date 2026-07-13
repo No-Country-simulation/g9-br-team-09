@@ -69,45 +69,50 @@ class EnergyAnalysisDtoSerializationTest {
     @Test
     void shouldSerializeEnergyAnalysisSummaryResponseUsingExpectedFieldNames() throws Exception {
         EnergyAnalysisSummaryResponse summary = new EnergyAnalysisSummaryResponse(
-            10L,
-            EnergyCategory.EFICIENTE,
-            0.95,
-            91,
-            new BigDecimal("120.00"),
-            LocalDateTime.of(2026, 7, 9, 14, 30, 0)
+                10L,
+                EnergyCategory.EFICIENTE,
+                0.95,
+                91,
+                new BigDecimal("120.00"),
+                LocalDateTime.of(2026, 7, 9, 14, 30, 0)
         );
 
         String json = objectMapper.writeValueAsString(summary);
 
         assertEquals(
-            "{\"id\":10,\"categoria\":\"EFICIENTE\",\"probabilidade\":0.95,\"score\":91,"
-                + "\"custoEstimadoMensal\":120.00,\"criadoEm\":\"2026-07-09T14:30:00\"}",
-            json
+                "{\"id\":10,\"categoria\":\"EFICIENTE\",\"probabilidade\":0.95,\"score\":91,"
+                        + "\"custo_estimado_mensal\":120.00,\"criado_em\":\"2026-07-09T14:30:00\"}",
+                json
         );
     }
 
     @Test
     void shouldSerializeEnergyAnalysisListResponseUsingExpectedFieldNames() throws Exception {
         EnergyAnalysisListResponse listResponse = new EnergyAnalysisListResponse(
-            List.of(
-                new EnergyAnalysisSummaryResponse(
-                    10L,
-                    EnergyCategory.EFICIENTE,
-                    0.95,
-                    91,
-                    new BigDecimal("120.00"),
-                    LocalDateTime.of(2026, 7, 9, 14, 30, 0)
-                )
-            )
+                List.of(
+                        new EnergyAnalysisSummaryResponse(
+                                10L,
+                                EnergyCategory.EFICIENTE,
+                                0.95,
+                                91,
+                                new BigDecimal("120.00"),
+                                LocalDateTime.of(2026, 7, 9, 14, 30, 0)
+                        )
+                ),
+                0,
+                20,
+                1L,
+                1
         );
 
         String json = objectMapper.writeValueAsString(listResponse);
 
         assertEquals(
-            "{\"analises\":[{\"id\":10,\"categoria\":\"EFICIENTE\",\"probabilidade\":0.95,"
-                + "\"score\":91,\"custoEstimadoMensal\":120.00,"
-                + "\"criadoEm\":\"2026-07-09T14:30:00\"}]}",
-            json
+                "{\"analises\":[{\"id\":10,\"categoria\":\"EFICIENTE\",\"probabilidade\":0.95,"
+                        + "\"score\":91,\"custo_estimado_mensal\":120.00,"
+                        + "\"criado_em\":\"2026-07-09T14:30:00\"}],\"pagina_atual\":0,"
+                        + "\"tamanho_pagina\":20,\"total_elementos\":1,\"total_paginas\":1}",
+                json
         );
     }
 

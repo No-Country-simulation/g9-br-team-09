@@ -1,11 +1,14 @@
 package br.com.g9.energiai.backend.service;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,5 +46,22 @@ public class EnergyAnalysisService {
         EnergyAnalysisEntity savedEntity = energyAnalysisRepository.save(entity);
 
         return energyAnalysisMapper.toResponse(savedEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public EnergyAnalysisListResponse findAll(Pageable pageable) {
+        Page<EnergyAnalysisEntity> analysisPage = energyAnalysisRepository.findAll(pageable);
+
+        var summaries = analysisPage.getContent().stream()
+                .map(energyAnalysisMapper::toSummaryResponse)
+                .toList();
+
+        return new EnergyAnalysisListResponse(
+                summaries,
+                analysisPage.getNumber(),
+                analysisPage.getSize(),
+                analysisPage.getTotalElements(),
+                analysisPage.getTotalPages()
+        );
     }
 }
