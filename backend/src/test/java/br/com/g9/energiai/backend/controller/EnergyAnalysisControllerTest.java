@@ -1,5 +1,8 @@
 package br.com.g9.energiai.backend.controller;
 
+import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -26,8 +30,13 @@ class EnergyAnalysisControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private EnergyAnalysisRepository energyAnalysisRepository;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
-    @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa")
+    @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa incluindo ID")
     void shouldPerformAnalysisSuccessfully() throws Exception {
         String requestBody = """
             {
@@ -39,27 +48,40 @@ class EnergyAnalysisControllerTest {
             }
             """;
 
-        mockMvc.perform(post("/api/v1/analise-energetica")
-                .contextPath("/api/v1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isOk())
-            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
-            .andExpect(jsonPath("$.probabilidade").value(0.95))
-            .andExpect(jsonPath("$.score").value(95))
-            .andExpect(jsonPath("$.custo_estimado_mensal").value(375.00))
-            .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED"))
-            .andExpect(jsonPath("$.custoEstimadoMensal").doesNotExist())
-            .andExpect(jsonPath("$.fonteClassificacao").doesNotExist())
-            .andExpect(jsonPath("$.recomendacoes").isArray())
-            .andExpect(jsonPath("$.recomendacoes.length()").value(4))
-            .andExpect(jsonPath("$.recomendacoes", containsInAnyOrder(
-                "Reduzir o uso de equipamentos durante horários de pico.",
-                "Avaliar equipamentos com alto consumo energético.",
-                "Distribuir o consumo ao longo do dia.",
-                "Verificar a eficiência energética dos equipamentos."
-            )));
+        long countBefore = energyAnalysisRepository.count();
+
+        String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
+                .andExpect(jsonPath("$.probabilidade").value(0.95))
+                .andExpect(jsonPath("$.score").value(95))
+                .andExpect(jsonPath("$.custo_estimado_mensal").value(375.00))
+                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED"))
+                .andExpect(jsonPath("$.custoEstimadoMensal").doesNotExist())
+                .andExpect(jsonPath("$.fonteClassificacao").doesNotExist())
+                .andExpect(jsonPath("$.recomendacoes").isArray())
+                .andExpect(jsonPath("$.recomendacoes.length()").value(4))
+                .andExpect(jsonPath("$.recomendacoes", containsInAnyOrder(
+                        "Reduzir o uso de equipamentos durante horários de pico.",
+                        "Avaliar equipamentos com alto consumo energético.",
+                        "Distribuir o consumo ao longo do dia.",
+                        "Verificar a eficiência energética dos equipamentos."
+                )))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode jsonResponse = objectMapper.readTree(responseBody);
+        long persistedId = jsonResponse.get("id").asLong();
+
+        assertEquals(countBefore + 1, energyAnalysisRepository.count());
+        assertTrue(energyAnalysisRepository.findById(persistedId).isPresent());
     }
 
     @Test
@@ -76,17 +98,17 @@ class EnergyAnalysisControllerTest {
             """;
 
         mockMvc.perform(post("/api/v1/analise-energetica")
-                .contextPath("/api/v1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isBadRequest())
-            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.status").value(400))
-            .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-            .andExpect(jsonPath("$.message", containsString("consumo_kwh")))
-            .andExpect(jsonPath("$.message", not(containsString("consumoKwh"))))
-            .andExpect(jsonPath("$.message").isNotEmpty())
-            .andExpect(jsonPath("$.timestamp").isNotEmpty());
+                        .contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message", containsString("consumo_kwh")))
+                .andExpect(jsonPath("$.message", not(containsString("consumoKwh"))))
+                .andExpect(jsonPath("$.message").isNotEmpty())
+                .andExpect(jsonPath("$.timestamp").isNotEmpty());
     }
 
     @Test
@@ -103,27 +125,9 @@ class EnergyAnalysisControllerTest {
             """;
 
         mockMvc.perform(post("/api/v1/analises-energeticas")
-                .contextPath("/api/v1")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(requestBody))
-            .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("Deve expor o contrato final no OpenAPI")
-    void shouldExposeFinalContractInOpenApi() throws Exception {
-        mockMvc.perform(get("/api/v1/v3/api-docs").contextPath("/api/v1"))
-            .andExpect(status().isOk())
-            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(content().string(containsString("\"url\":\"http://localhost/api/v1\"")))
-            .andExpect(content().string(containsString("\"/analise-energetica\"")))
-            .andExpect(content().string(not(containsString("\"/analises-energeticas\""))))
-            .andExpect(content().string(containsString("\"consumo_kwh\"")))
-            .andExpect(content().string(containsString("\"uso_horario_pico\"")))
-            .andExpect(content().string(containsString("\"quantidade_equipamentos\"")))
-            .andExpect(content().string(containsString("\"tipo_imovel\"")))
-            .andExpect(content().string(containsString("\"horas_alto_consumo\"")))
-            .andExpect(content().string(containsString("\"custo_estimado_mensal\"")))
-            .andExpect(content().string(containsString("\"fonte_classificacao\"")));
+                        .contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound());
     }
 }

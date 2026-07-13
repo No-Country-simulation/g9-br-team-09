@@ -47,21 +47,22 @@ class EnergyAnalysisDtoSerializationTest {
     @Test
     void shouldSerializeEnergyAnalysisResponseUsingExpectedFieldNames() throws Exception {
         EnergyAnalysisResponse response = new EnergyAnalysisResponse(
-            EnergyCategory.MODERADO,
-            0.87,
-            72,
-            new BigDecimal("189.90"),
-            List.of("Trocar lampadas", "Reduzir uso no horario de pico"),
-            ClassificationSource.RULE_BASED
+                1L,
+                EnergyCategory.MODERADO,
+                0.87,
+                72,
+                new BigDecimal("189.90"),
+                List.of("Trocar lampadas", "Reduzir uso no horario de pico"),
+                ClassificationSource.RULE_BASED
         );
 
         String json = objectMapper.writeValueAsString(response);
 
         assertEquals(
-            "{\"categoria\":\"MODERADO\",\"probabilidade\":0.87,\"score\":72,"
-                + "\"custo_estimado_mensal\":189.90,\"recomendacoes\":[\"Trocar lampadas\","
-                + "\"Reduzir uso no horario de pico\"],\"fonte_classificacao\":\"RULE_BASED\"}",
-            json
+                "{\"id\":1,\"categoria\":\"MODERADO\",\"probabilidade\":0.87,\"score\":72,"
+                        + "\"custo_estimado_mensal\":189.90,\"recomendacoes\":[\"Trocar lampadas\","
+                        + "\"Reduzir uso no horario de pico\"],\"fonte_classificacao\":\"RULE_BASED\"}",
+                json
         );
     }
 
