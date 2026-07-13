@@ -1,4 +1,4 @@
-# G9-BR-TEAM-09 — EnergIAI
+# G9-BR-TEAM-09 — EnergiAI
 
 ## Inteligência para Consumo Energético
 
