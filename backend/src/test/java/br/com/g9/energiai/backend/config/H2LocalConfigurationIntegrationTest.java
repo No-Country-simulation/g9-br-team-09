@@ -14,6 +14,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
@@ -68,16 +69,20 @@ class H2LocalConfigurationIntegrationTest {
     }
 
     @Test
-    @DisplayName("Deve inicializar o Flyway apontando para classpath db migration sem exigir migrations de domínio")
-    void shouldInitializeFlywayWithoutDomainMigrations() throws Exception {
+    @DisplayName("Deve aplicar a migration inicial da energy_analysis no profile local")
+    void shouldApplyInitialEnergyAnalysisMigrationWithLocalProfile() throws Exception {
         assertNotNull(flyway);
         assertEquals("classpath:db/migration", environment.getProperty("spring.flyway.locations"));
         assertEquals("true", environment.getProperty("spring.flyway.validate-on-migrate"));
         assertEquals("true", environment.getProperty("spring.flyway.clean-disabled"));
+        assertTrue(
+            Arrays.stream(flyway.info().applied())
+                .anyMatch(migration -> "1".equals(migration.getVersion().getVersion()))
+        );
 
         try (Connection connection = dataSource.getConnection();
              ResultSet resultSet = connection.getMetaData().getTables(null, null, "ENERGY_ANALYSIS", null)) {
-            assertFalse(resultSet.next());
+            assertTrue(resultSet.next());
         }
     }
 

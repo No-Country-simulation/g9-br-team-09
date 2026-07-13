@@ -12,6 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -45,6 +46,10 @@ class H2TestProfileConfigurationIntegrationTest {
         assertEquals("true", environment.getProperty("spring.flyway.enabled"));
         assertFalse(environment.getProperty("spring.datasource.url", "").contains("oracle:thin"));
         assertNotNull(flyway);
+        assertTrue(
+            Arrays.stream(flyway.info().applied())
+                .anyMatch(migration -> "1".equals(migration.getVersion().getVersion()))
+        );
 
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
