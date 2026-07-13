@@ -7,6 +7,8 @@ import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,13 +49,19 @@ public class EnergyAnalysisService {
     }
 
     @Transactional(readOnly = true)
-    public EnergyAnalysisListResponse findAll() {
-        List<EnergyAnalysisEntity> entities = energyAnalysisRepository.findAll();
+    public EnergyAnalysisListResponse findAll(Pageable pageable) {
+        Page<EnergyAnalysisEntity> analysisPage = energyAnalysisRepository.findAll(pageable);
 
-        var summaries = entities.stream()
+        var summaries = analysisPage.getContent().stream()
                 .map(energyAnalysisMapper::toSummaryResponse)
                 .toList();
 
-        return new EnergyAnalysisListResponse(summaries);
+        return new EnergyAnalysisListResponse(
+                summaries,
+                analysisPage.getNumber(),
+                analysisPage.getSize(),
+                analysisPage.getTotalElements(),
+                analysisPage.getTotalPages()
+        );
     }
 }

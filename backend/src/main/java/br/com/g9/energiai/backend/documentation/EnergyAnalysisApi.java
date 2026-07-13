@@ -13,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 
 @Tag(
         name = "Análise energética",
@@ -72,7 +74,9 @@ public interface EnergyAnalysisApi {
 
     @Operation(
             summary = "Listar histórico de análises",
-            description = "Retorna uma lista resumida de todas as análises energéticas persistidas no sistema."
+            description = "Retorna uma página do histórico de análises, da mais recente para a mais antiga. "
+                    + "Aceita os parâmetros page e size; por padrão, retorna a página 0 com 20 itens, "
+                    + "ordenados por createdAt em ordem decrescente."
     )
     @ApiResponses({
             @ApiResponse(
@@ -86,14 +90,18 @@ public interface EnergyAnalysisApi {
                         {
                           "analises": [
                             {
-                              "id": 1,
+                              "id": 2,
                               "categoria": "INEFICIENTE",
                               "probabilidade": 0.95,
                               "score": 95,
                               "custo_estimado_mensal": 315.00,
-                              "criado_em": "2026-07-10T18:30:00"
+                              "criado_em": "2026-07-13T18:30:00"
                             }
-                          ]
+                          ],
+                          "pagina_atual": 0,
+                          "tamanho_pagina": 20,
+                          "total_elementos": 2,
+                          "total_paginas": 1
                         }
                         """
                             )
@@ -108,5 +116,5 @@ public interface EnergyAnalysisApi {
                     )
             )
     })
-    ResponseEntity<EnergyAnalysisListResponse> listAnalyses();
+    ResponseEntity<EnergyAnalysisListResponse> listAnalyses(@ParameterObject Pageable pageable);
 }

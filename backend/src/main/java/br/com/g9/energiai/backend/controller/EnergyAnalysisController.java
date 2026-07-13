@@ -7,7 +7,11 @@ import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.service.EnergyAnalysisService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,7 +35,11 @@ public class EnergyAnalysisController implements EnergyAnalysisApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<EnergyAnalysisListResponse> listAnalyses() {
-        return ResponseEntity.ok(energyAnalysisService.findAll());
+    public ResponseEntity<EnergyAnalysisListResponse> listAnalyses(
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+            @ParameterObject
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(energyAnalysisService.findAll(pageable));
     }
 }
