@@ -1,7 +1,9 @@
 package br.com.g9.energiai.backend.service;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
@@ -10,146 +12,105 @@ import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class EnergyAnalysisServiceTest {
 
+    @Mock
+    private EnergyClassifier energyClassifier;
+
+    @Mock
+    private EnergyCostCalculator energyCostCalculator;
+
+    @Mock
+    private EnergyRecommendationService energyRecommendationService;
+
+    @Mock
+    private EnergyAnalysisRepository energyAnalysisRepository;
+
+    @Mock
+    private EnergyAnalysisMapper energyAnalysisMapper;
+
+    @InjectMocks
+    private EnergyAnalysisService energyAnalysisService;
+
     @Test
-    @DisplayName("Deve orquestrar classificação, custo e recomendações preservando todos os campos da resposta")
-    void shouldAssembleFinalResponseFromCollaborators() {
-        EnergyAnalysisRequest request = new EnergyAnalysisRequest(
-                500.0,
-                true,
-                10,
-                PropertyType.CASA,
-                8
-        );
+    @DisplayName("Deve orquestrar o fluxo de análise e persistência utilizando mocks")
+    void shouldOrchestrateAnalysisAndPersistence() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
+
         EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
-                null,
-                EnergyCategory.INEFICIENTE,
-                0.95,
-                95,
-                null,
-                List.of(),
-                ClassificationSource.RULE_BASED
-        );
-        BigDecimal estimatedCost = new BigDecimal("375.00");
-        List<String> recommendations = List.of(
-                "Reduzir o uso de equipamentos durante horários de pico.",
-                "Avaliar equipamentos com alto consumo energético."
+                null, EnergyCategory.INEFICIENTE, 0.95, 95, null, List.of(), ClassificationSource.RULE_BASED
         );
 
-        StubEnergyClassifier energyClassifier = new StubEnergyClassifier(classification);
-        StubEnergyCostCalculator energyCostCalculator = new StubEnergyCostCalculator(estimatedCost);
-        CapturingEnergyRecommendationService energyRecommendationService =
-                new CapturingEnergyRecommendationService(recommendations);
-        EnergyAnalysisRepository energyAnalysisRepository = mock(EnergyAnalysisRepository.class);
-        EnergyAnalysisMapper energyAnalysisMapper = new EnergyAnalysisMapper();
+        BigDecimal cost = new BigDecimal("375.00");
+        List<String> recommendations = List.of("Dica 1");
+        EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
+        EnergyAnalysisEntity savedEntity = new EnergyAnalysisEntity();
+        savedEntity.setId(1L);
 
-        org.mockito.ArgumentCaptor<EnergyAnalysisEntity> entityCaptor =
-                org.mockito.ArgumentCaptor.forClass(EnergyAnalysisEntity.class);
-
-        when(energyAnalysisRepository.save(any(EnergyAnalysisEntity.class)))
-                .thenAnswer(invocation -> {
-                    EnergyAnalysisEntity entity = invocation.getArgument(0);
-                    entity.setId(1L);
-                    return entity;
-                });
-
-        EnergyAnalysisService service = new EnergyAnalysisService(
-                energyClassifier,
-                energyCostCalculator,
-                energyRecommendationService,
-                energyAnalysisRepository,
-                energyAnalysisMapper
+        EnergyAnalysisResponse expectedResponse = new EnergyAnalysisResponse(
+                1L, EnergyCategory.INEFICIENTE, 0.95, 95, cost, recommendations, ClassificationSource.RULE_BASED
         );
 
-        EnergyAnalysisResponse response = service.analyze(request);
+        when(energyClassifier.classify(request)).thenReturn(classification);
+        when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
+        when(energyRecommendationService.generate(request, EnergyCategory.INEFICIENTE)).thenReturn(recommendations);
+        when(energyAnalysisMapper.toEntity(request, classification, cost, recommendations)).thenReturn(entity);
+        when(energyAnalysisRepository.save(entity)).thenReturn(savedEntity);
+        when(energyAnalysisMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
 
-        assertEquals(EnergyCategory.INEFICIENTE, response.categoria());
-        assertEquals(0.95, response.probabilidade());
-        assertEquals(95, response.score());
-        assertEquals(ClassificationSource.RULE_BASED, response.fonteClassificacao());
-        assertEquals(estimatedCost, response.custoEstimadoMensal());
-        assertEquals(recommendations, response.recomendacoes());
+        EnergyAnalysisResponse response = energyAnalysisService.analyze(request);
+
+        assertNotNull(response);
         assertEquals(1L, response.id());
+        assertEquals(EnergyCategory.INEFICIENTE, response.categoria());
+        assertEquals(cost, response.custoEstimadoMensal());
 
-        assertSame(request, energyClassifier.receivedRequest);
-        assertEquals(500.0, energyCostCalculator.receivedConsumption);
-        assertSame(request, energyRecommendationService.receivedRequest);
-        assertEquals(EnergyCategory.INEFICIENTE, energyRecommendationService.receivedCategory);
-        verify(energyAnalysisRepository).save(entityCaptor.capture());
-
-        EnergyAnalysisEntity persistedEntity = entityCaptor.getValue();
-        assertEquals(500.0, persistedEntity.getConsumoKwh());
-        assertEquals(Boolean.TRUE, persistedEntity.getUsoHorarioPico());
-        assertEquals(10, persistedEntity.getQuantidadeEquipamentos());
-        assertEquals(PropertyType.CASA, persistedEntity.getTipoImovel());
-        assertEquals(8, persistedEntity.getHorasAltoConsumo());
-        assertEquals(EnergyCategory.INEFICIENTE, persistedEntity.getCategoria());
-        assertEquals(0.95, persistedEntity.getProbabilidade());
-        assertEquals(95, persistedEntity.getScore());
-        assertEquals(estimatedCost, persistedEntity.getCustoEstimadoMensal());
-        assertIterableEquals(recommendations, persistedEntity.getRecomendacoes());
-        assertEquals(ClassificationSource.RULE_BASED, persistedEntity.getFonteClassificacao());
+        verify(energyClassifier).classify(request);
+        verify(energyAnalysisRepository).save(entity);
     }
 
-    private static final class StubEnergyClassifier implements EnergyClassifier {
-        private final EnergyAnalysisResponse response;
-        private EnergyAnalysisRequest receivedRequest;
+    @Test
+    @DisplayName("Deve retornar histórico de análises paginado com sucesso")
+    void shouldReturnPaginatedHistorySuccessfully() {
+        Pageable pageable = PageRequest.of(0, 10);
+        EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
+        Page<EnergyAnalysisEntity> page = new PageImpl<>(List.of(entity));
 
-        private StubEnergyClassifier(EnergyAnalysisResponse response) {
-            this.response = response;
-        }
+        EnergyAnalysisSummaryResponse summary = new EnergyAnalysisSummaryResponse(
+                1L, EnergyCategory.EFICIENTE, 0.1, 10, new BigDecimal("75.00"), LocalDateTime.now()
+        );
 
-        @Override
-        public EnergyAnalysisResponse classify(EnergyAnalysisRequest request) {
-            this.receivedRequest = request;
-            return response;
-        }
+        when(energyAnalysisRepository.findAll(pageable)).thenReturn(page);
+        when(energyAnalysisMapper.toSummaryResponse(any(EnergyAnalysisEntity.class))).thenReturn(summary);
+
+        EnergyAnalysisListResponse response = energyAnalysisService.findAll(pageable);
+
+        assertNotNull(response);
+        assertEquals(1, response.analises().size());
+        assertEquals(0, response.paginaAtual());
+        assertEquals(1, response.totalPaginas());
+        assertEquals(1L, response.totalElementos());
+
+        verify(energyAnalysisRepository).findAll(pageable);
+        verify(energyAnalysisMapper).toSummaryResponse(entity);
     }
-
-    private static final class StubEnergyCostCalculator extends EnergyCostCalculator {
-        private final BigDecimal result;
-        private Double receivedConsumption;
-
-        private StubEnergyCostCalculator(BigDecimal result) {
-            super(BigDecimal.ONE);
-            this.result = result;
-        }
-
-        @Override
-        public BigDecimal calculate(Double consumptionKwh) {
-            this.receivedConsumption = consumptionKwh;
-            return result;
-        }
-    }
-
-    private static final class CapturingEnergyRecommendationService implements EnergyRecommendationService {
-        private final List<String> result;
-        private EnergyAnalysisRequest receivedRequest;
-        private EnergyCategory receivedCategory;
-
-        private CapturingEnergyRecommendationService(List<String> result) {
-            this.result = result;
-        }
-
-        @Override
-        public List<String> generate(EnergyAnalysisRequest request, EnergyCategory categoria) {
-            this.receivedRequest = request;
-            this.receivedCategory = categoria;
-            return result;
-        }
-    }
-
 }
