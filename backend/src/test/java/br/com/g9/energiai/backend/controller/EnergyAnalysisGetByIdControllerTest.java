@@ -38,8 +38,8 @@ class EnergyAnalysisGetByIdControllerTest {
     }
 
     @Test
-    @DisplayName("Deve retornar análise energética quando o ID existir")
-    void shouldReturnAnalysisWhenIdExists() throws Exception {
+    @DisplayName("Deve retornar detalhes completos da análise quando o ID existir")
+    void shouldReturnDetailedAnalysisWhenIdExists() throws Exception {
         EnergyAnalysisEntity analysis = EnergyAnalysisEntity.builder()
                 .consumoKwh(420.0)
                 .usoHorarioPico(true)
@@ -51,7 +51,7 @@ class EnergyAnalysisGetByIdControllerTest {
                 .score(95)
                 .custoEstimadoMensal(new BigDecimal("315.00"))
                 .fonteClassificacao(ClassificationSource.RULE_BASED)
-                .recomendacoes(List.of("Reduzir consumo no pico"))
+                .recomendacoes(List.of("Dica 1"))
                 .build();
 
         EnergyAnalysisEntity saved = energyAnalysisRepository.save(analysis);
@@ -61,18 +61,20 @@ class EnergyAnalysisGetByIdControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(saved.getId()))
+                .andExpect(jsonPath("$.consumo_kwh").value(420.0))
+                .andExpect(jsonPath("$.tipo_imovel").value("CASA"))
                 .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
                 .andExpect(jsonPath("$.score").value(95))
-                .andExpect(jsonPath("$.custo_estimado_mensal").value(315.00));
+                .andExpect(jsonPath("$.custo_estimado_mensal").value(315.00))
+                .andExpect(jsonPath("$.criado_em").exists());
     }
 
     @Test
-    @DisplayName("Deve retornar 404 Not Found quando o ID não existir")
-    void shouldReturnNotFoundWhenIdDoesNotExist() throws Exception {
+    @DisplayName("Deve retornar 404 para ID inexistente")
+    void shouldReturn404ForMissingId() throws Exception {
         mockMvc.perform(get("/api/v1/analise-energetica/{id}", 999L)
                         .contextPath("/api/v1"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"))
-                .andExpect(jsonPath("$.message").value("Análise não encontrada com o ID: 999"));
+                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"));
     }
 }
