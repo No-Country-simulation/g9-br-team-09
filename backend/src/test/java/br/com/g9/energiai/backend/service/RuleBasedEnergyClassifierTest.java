@@ -64,6 +64,30 @@ class RuleBasedEnergyClassifierTest {
     }
 
     @Test
+    @DisplayName("Deve aplicar pontuação adicional para imóvel CASA")
+    void shouldApplyAdditionalScoreForHouse() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 2, PropertyType.CASA, 2);
+
+        assertEquals(5, classifier.calculateScore(request));
+    }
+
+    @Test
+    @DisplayName("Deve aplicar pontuação adicional para imóvel COMERCIO")
+    void shouldApplyAdditionalScoreForCommercialProperty() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 2, PropertyType.COMERCIO, 2);
+
+        assertEquals(10, classifier.calculateScore(request));
+    }
+
+    @Test
+    @DisplayName("Não deve adicionar pontuação para imóvel sem regra adicional")
+    void shouldNotApplyAdditionalScoreForPropertyWithoutRule() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 2, PropertyType.APARTAMENTO, 2);
+
+        assertEquals(0, classifier.calculateScore(request));
+    }
+
+    @Test
     @DisplayName("Deve lidar com campos nulos atribuindo pontuação zero")
     void shouldHandleNullFieldsAsZeroScore() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(null, null, null, null, null);

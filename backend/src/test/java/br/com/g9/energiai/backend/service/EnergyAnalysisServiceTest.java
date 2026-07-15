@@ -1,6 +1,8 @@
 package br.com.g9.energiai.backend.service;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDashboardResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
@@ -8,6 +10,7 @@ import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.enums.PropertyType;
+import br.com.g9.energiai.backend.exception.ResourceNotFoundException;
 import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -24,11 +27,16 @@ import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EnergyAnalysisServiceTest {
@@ -85,7 +93,35 @@ class EnergyAnalysisServiceTest {
         assertEquals(cost, response.custoEstimadoMensal());
 
         verify(energyClassifier).classify(request);
+        verify(energyCostCalculator).calculate(request.consumoKwh());
+        verify(energyRecommendationService).generate(request, classification.categoria());
+        verify(energyAnalysisMapper).toEntity(request, classification, cost, recommendations);
         verify(energyAnalysisRepository).save(entity);
+        verify(energyAnalysisMapper).toResponse(savedEntity);
+    }
+
+    @Test
+    @DisplayName("Deve propagar falha inesperada durante a persistência")
+    void shouldPropagateUnexpectedPersistenceFailure() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
+        EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
+                null, EnergyCategory.INEFICIENTE, 0.95, 95, null, List.of(), ClassificationSource.RULE_BASED
+        );
+        BigDecimal cost = new BigDecimal("375.00");
+        List<String> recommendations = List.of("Dica");
+        EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
+        RuntimeException expected = new RuntimeException("Falha inesperada na persistência");
+
+        when(energyClassifier.classify(request)).thenReturn(classification);
+        when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
+        when(energyRecommendationService.generate(request, EnergyCategory.INEFICIENTE)).thenReturn(recommendations);
+        when(energyAnalysisMapper.toEntity(request, classification, cost, recommendations)).thenReturn(entity);
+        when(energyAnalysisRepository.save(entity)).thenThrow(expected);
+
+        RuntimeException actual = assertThrows(RuntimeException.class, () -> energyAnalysisService.analyze(request));
+
+        assertSame(expected, actual);
+        verify(energyAnalysisMapper, never()).toResponse(any(EnergyAnalysisEntity.class));
     }
 
     @Test
@@ -96,7 +132,8 @@ class EnergyAnalysisServiceTest {
         Page<EnergyAnalysisEntity> page = new PageImpl<>(List.of(entity));
 
         EnergyAnalysisSummaryResponse summary = new EnergyAnalysisSummaryResponse(
-                1L, EnergyCategory.EFICIENTE, 0.1, 10, new BigDecimal("75.00"), LocalDateTime.now()
+                1L, EnergyCategory.EFICIENTE, 0.1, 10, new BigDecimal("75.00"),
+                LocalDateTime.of(2026, 7, 14, 18, 0)
         );
 
         when(energyAnalysisRepository.findAll(pageable)).thenReturn(page);
@@ -112,5 +149,77 @@ class EnergyAnalysisServiceTest {
 
         verify(energyAnalysisRepository).findAll(pageable);
         verify(energyAnalysisMapper).toSummaryResponse(entity);
+    }
+
+    @Test
+    @DisplayName("Deve retornar detalhes quando a análise existir")
+    void shouldReturnDetailWhenAnalysisExists() {
+        EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
+        entity.setId(1L);
+        EnergyAnalysisDetailResponse expected = new EnergyAnalysisDetailResponse(
+                1L, 100.0, false, 2, PropertyType.CASA, 2, EnergyCategory.EFICIENTE,
+                0.1, 10, new BigDecimal("75.00"), List.of(), ClassificationSource.RULE_BASED,
+                LocalDateTime.of(2026, 7, 14, 18, 0)
+        );
+
+        when(energyAnalysisRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(energyAnalysisMapper.toDetailResponse(entity)).thenReturn(expected);
+
+        EnergyAnalysisDetailResponse response = energyAnalysisService.findById(1L);
+
+        assertSame(expected, response);
+        verify(energyAnalysisRepository).findById(1L);
+        verify(energyAnalysisMapper).toDetailResponse(entity);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção quando a análise não existir")
+    void shouldThrowWhenAnalysisDoesNotExist() {
+        when(energyAnalysisRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> energyAnalysisService.findById(99L));
+
+        verify(energyAnalysisRepository).findById(99L);
+        verify(energyAnalysisMapper, never()).toDetailResponse(any(EnergyAnalysisEntity.class));
+    }
+
+    @Test
+    @DisplayName("Deve retornar resumo do dashboard com média de custo arredondada")
+    void shouldReturnDashboardSummaryWithRoundedCostAverage() {
+        when(energyAnalysisRepository.count()).thenReturn(3L);
+        when(energyAnalysisRepository.getAverageConsumoKwh()).thenReturn(420.5);
+        when(energyAnalysisRepository.getTotalCustoMensal()).thenReturn(new BigDecimal("100.00"));
+        when(energyAnalysisRepository.countByCategoria(EnergyCategory.EFICIENTE)).thenReturn(1L);
+        when(energyAnalysisRepository.countByCategoria(EnergyCategory.MODERADO)).thenReturn(1L);
+        when(energyAnalysisRepository.countByCategoria(EnergyCategory.INEFICIENTE)).thenReturn(1L);
+
+        EnergyAnalysisDashboardResponse response = energyAnalysisService.getDashboardSummary();
+
+        assertEquals(3L, response.totalAnalises());
+        assertEquals(420.5, response.mediaConsumoKwh());
+        assertEquals(new BigDecimal("33.33"), response.mediaCustoMensal());
+        assertEquals(1L, response.totalEficiente());
+        assertEquals(1L, response.totalModerado());
+        assertEquals(1L, response.totalIneficiente());
+    }
+
+    @Test
+    @DisplayName("Deve retornar zeros quando não houver análises no dashboard")
+    void shouldReturnZeroedDashboardSummaryWhenThereAreNoAnalyses() {
+        when(energyAnalysisRepository.count()).thenReturn(0L);
+        when(energyAnalysisRepository.getAverageConsumoKwh()).thenReturn(null);
+        when(energyAnalysisRepository.getTotalCustoMensal()).thenReturn(null);
+        when(energyAnalysisRepository.countByCategoria(EnergyCategory.EFICIENTE)).thenReturn(0L);
+        when(energyAnalysisRepository.countByCategoria(EnergyCategory.MODERADO)).thenReturn(0L);
+        when(energyAnalysisRepository.countByCategoria(EnergyCategory.INEFICIENTE)).thenReturn(0L);
+
+        EnergyAnalysisDashboardResponse response = energyAnalysisService.getDashboardSummary();
+
+        assertEquals(0L, response.totalAnalises());
+        assertEquals(0.0, response.mediaConsumoKwh());
+        assertEquals(new BigDecimal("0.00"), response.mediaCustoMensal());
+        assertEquals(0L, response.totalEficiente());
+        assertEquals(0L, response.totalModerado());
+        assertEquals(0L, response.totalIneficiente());
     }
 }

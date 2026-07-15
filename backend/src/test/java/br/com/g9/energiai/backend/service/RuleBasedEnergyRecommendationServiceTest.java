@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -49,6 +50,16 @@ class RuleBasedEnergyRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("Não deve recomendar alto consumo quando consumo for exatamente 400")
+    void shouldNotRecommendHighConsumptionAtExactThreshold() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(400.0, false, 2, PropertyType.APARTAMENTO, 2);
+
+        List<String> recommendations = service.generate(request, EnergyCategory.MODERADO);
+
+        assertFalse(recommendations.contains(HIGH_CONSUMPTION_RECOMMENDATION));
+    }
+
+    @Test
     @DisplayName("Deve recomendar distribuir consumo quando horasAltoConsumo for maior que 6")
     void shouldRecommendDistributionWhenUsageHoursAreHigh() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 2, PropertyType.CASA, 7);
@@ -58,12 +69,32 @@ class RuleBasedEnergyRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("Não deve recomendar distribuir consumo quando horas forem exatamente 6")
+    void shouldNotRecommendHighUsageHoursAtExactThreshold() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 2, PropertyType.APARTAMENTO, 6);
+
+        List<String> recommendations = service.generate(request, EnergyCategory.MODERADO);
+
+        assertFalse(recommendations.contains(HIGH_USAGE_HOURS_RECOMMENDATION));
+    }
+
+    @Test
     @DisplayName("Deve recomendar verificar eficiência quando quantidadeEquipamentos for maior que 8")
     void shouldRecommendEfficiencyCheckWhenDeviceCountIsHigh() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 9, PropertyType.CASA, 2);
         List<String> recommendations = service.generate(request, EnergyCategory.MODERADO);
 
         assertTrue(recommendations.contains(MANY_DEVICES_RECOMMENDATION));
+    }
+
+    @Test
+    @DisplayName("Não deve recomendar eficiência dos equipamentos quando quantidade for exatamente 8")
+    void shouldNotRecommendManyDevicesAtExactThreshold() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 8, PropertyType.APARTAMENTO, 2);
+
+        List<String> recommendations = service.generate(request, EnergyCategory.MODERADO);
+
+        assertFalse(recommendations.contains(MANY_DEVICES_RECOMMENDATION));
     }
 
     @Test
@@ -87,6 +118,7 @@ class RuleBasedEnergyRecommendationServiceTest {
         assertTrue(recommendations.contains(HIGH_CONSUMPTION_RECOMMENDATION));
         assertTrue(recommendations.contains(HIGH_USAGE_HOURS_RECOMMENDATION));
         assertTrue(recommendations.contains(MANY_DEVICES_RECOMMENDATION));
+        assertEquals(recommendations.size(), new HashSet<>(recommendations).size());
     }
 
     @Test
