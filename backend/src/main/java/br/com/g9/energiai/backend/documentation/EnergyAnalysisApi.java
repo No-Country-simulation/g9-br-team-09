@@ -7,6 +7,7 @@ import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -131,6 +132,13 @@ public interface EnergyAnalysisApi {
             )
     })
     ResponseEntity<EnergyAnalysisDetailResponse> getAnalysisById(
-            @Parameter(description = "Identificador único da análise", example = "1") Long id
+            @Parameter(
+                    name = "id",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    description = "Identificador único da análise",
+                    example = "1"
+            )
+            Long id
     );
 }

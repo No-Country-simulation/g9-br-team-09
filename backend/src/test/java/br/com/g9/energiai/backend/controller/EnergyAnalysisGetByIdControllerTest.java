@@ -19,7 +19,9 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -81,6 +83,10 @@ class EnergyAnalysisGetByIdControllerTest {
         mockMvc.perform(get("/api/v1/analise-energetica/{id}", 999L)
                         .contextPath("/api/v1"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"));
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"))
+                .andExpect(jsonPath("$.message")
+                        .value("Análise não encontrada com o ID: 999"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 }
