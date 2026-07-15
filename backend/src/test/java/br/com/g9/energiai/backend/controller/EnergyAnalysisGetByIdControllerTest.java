@@ -62,10 +62,16 @@ class EnergyAnalysisGetByIdControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(saved.getId()))
                 .andExpect(jsonPath("$.consumo_kwh").value(420.0))
+                .andExpect(jsonPath("$.uso_horario_pico").value(true))
+                .andExpect(jsonPath("$.quantidade_equipamentos").value(10))
                 .andExpect(jsonPath("$.tipo_imovel").value("CASA"))
+                .andExpect(jsonPath("$.horas_alto_consumo").value(8))
                 .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
+                .andExpect(jsonPath("$.probabilidade").value(0.95))
                 .andExpect(jsonPath("$.score").value(95))
                 .andExpect(jsonPath("$.custo_estimado_mensal").value(315.00))
+                .andExpect(jsonPath("$.recomendacoes[0]").value("Dica 1"))
+                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED"))
                 .andExpect(jsonPath("$.criado_em").exists());
     }
 

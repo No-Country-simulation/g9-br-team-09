@@ -52,7 +52,9 @@ class EnergyAnalysisListControllerTest {
                 .andExpect(jsonPath("$.analises").isArray())
                 .andExpect(jsonPath("$.analises").isEmpty())
                 .andExpect(jsonPath("$.pagina_atual").value(0))
-                .andExpect(jsonPath("$.tamanho_pagina").value(20));
+                .andExpect(jsonPath("$.tamanho_pagina").value(20))
+                .andExpect(jsonPath("$.total_elementos").value(0))
+                .andExpect(jsonPath("$.total_paginas").value(0));
     }
 
     @Test
@@ -63,16 +65,20 @@ class EnergyAnalysisListControllerTest {
 
         mockMvc.perform(get("/api/v1/analise-energetica").contextPath("/api/v1"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.analises[0].categoria").value("INEFICIENTE"))
                 .andExpect(jsonPath("$.analises[0].score").value(95))
+                .andExpect(jsonPath("$.analises[1].categoria").value("EFICIENTE"))
                 .andExpect(jsonPath("$.analises[1].score").value(25));
     }
 
     @Test
     @DisplayName("Deve retornar metadados corretos ao paginar o histórico")
     void shouldPaginateHistory() throws Exception {
-        for (int i = 1; i <= 5; i++) {
-            persistAnalysis(EnergyCategory.MODERADO, i * 10, LocalDateTime.now().minusDays(i));
-        }
+        persistAnalysis(EnergyCategory.EFICIENTE, 10, LocalDateTime.of(2026, 7, 9, 18, 30));
+        persistAnalysis(EnergyCategory.MODERADO, 20, LocalDateTime.of(2026, 7, 10, 18, 30));
+        persistAnalysis(EnergyCategory.MODERADO, 30, LocalDateTime.of(2026, 7, 11, 18, 30));
+        persistAnalysis(EnergyCategory.INEFICIENTE, 40, LocalDateTime.of(2026, 7, 12, 18, 30));
+        persistAnalysis(EnergyCategory.INEFICIENTE, 50, LocalDateTime.of(2026, 7, 13, 18, 30));
 
         mockMvc.perform(get("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
@@ -80,7 +86,22 @@ class EnergyAnalysisListControllerTest {
                         .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.analises.length()").value(2))
+                .andExpect(jsonPath("$.analises[0].score").value(50))
+                .andExpect(jsonPath("$.analises[1].score").value(40))
                 .andExpect(jsonPath("$.pagina_atual").value(0))
+                .andExpect(jsonPath("$.tamanho_pagina").value(2))
+                .andExpect(jsonPath("$.total_elementos").value(5))
+                .andExpect(jsonPath("$.total_paginas").value(3));
+
+        mockMvc.perform(get("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .param("page", "1")
+                        .param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.analises.length()").value(2))
+                .andExpect(jsonPath("$.analises[0].score").value(30))
+                .andExpect(jsonPath("$.analises[1].score").value(20))
+                .andExpect(jsonPath("$.pagina_atual").value(1))
                 .andExpect(jsonPath("$.tamanho_pagina").value(2))
                 .andExpect(jsonPath("$.total_elementos").value(5))
                 .andExpect(jsonPath("$.total_paginas").value(3));
@@ -88,15 +109,24 @@ class EnergyAnalysisListControllerTest {
 
     private void persistAnalysis(EnergyCategory categoria, int score, LocalDateTime createdAt) {
         EnergyAnalysisEntity analysis = EnergyAnalysisEntity.builder()
-                .consumoKwh(400.0).usoHorarioPico(true).quantidadeEquipamentos(5)
-                .tipoImovel(PropertyType.CASA).horasAltoConsumo(5)
-                .categoria(categoria).probabilidade(0.5).score(score)
-                .custoEstimadoMensal(new BigDecimal("300.00"))
-                .fonteClassificacao(ClassificationSource.RULE_BASED).recomendacoes(List.of())
+                .consumoKwh(420.0)
+                .usoHorarioPico(true)
+                .quantidadeEquipamentos(10)
+                .tipoImovel(PropertyType.CASA)
+                .horasAltoConsumo(8)
+                .categoria(categoria)
+                .probabilidade(0.95)
+                .score(score)
+                .custoEstimadoMensal(new BigDecimal("315.00"))
+                .fonteClassificacao(ClassificationSource.RULE_BASED)
+                .recomendacoes(List.of("Dica 1"))
                 .build();
 
-        EnergyAnalysisEntity saved = energyAnalysisRepository.saveAndFlush(analysis);
-        jdbcTemplate.update("UPDATE energy_analysis SET created_at = ? WHERE id = ?",
-                Timestamp.valueOf(createdAt), saved.getId());
+        EnergyAnalysisEntity savedAnalysis = energyAnalysisRepository.saveAndFlush(analysis);
+        jdbcTemplate.update(
+                "UPDATE energy_analysis SET created_at = ? WHERE id = ?",
+                Timestamp.valueOf(createdAt),
+                savedAnalysis.getId()
+        );
     }
 }

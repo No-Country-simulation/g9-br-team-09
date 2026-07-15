@@ -1,7 +1,11 @@
 package br.com.g9.energiai.backend.dto;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
-import br.com.g9.energiai.backend.dto.response.*;
+import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
 import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.enums.PropertyType;
@@ -45,5 +49,73 @@ class EnergyAnalysisDtoSerializationTest {
         );
         String json = objectMapper.writeValueAsString(detail);
         assertEquals("{\"id\":1,\"consumo_kwh\":500.0,\"uso_horario_pico\":true,\"quantidade_equipamentos\":10,\"tipo_imovel\":\"CASA\",\"horas_alto_consumo\":8,\"categoria\":\"INEFICIENTE\",\"probabilidade\":0.95,\"score\":95,\"custo_estimado_mensal\":375.00,\"recomendacoes\":[\"Dica\"],\"fonte_classificacao\":\"RULE_BASED\",\"criado_em\":\"2026-07-13T15:00:00\"}", json);
+    }
+
+    @Test
+    void shouldSerializeEnergyAnalysisSummaryResponseUsingExpectedFieldNames() throws Exception {
+        EnergyAnalysisSummaryResponse summary = new EnergyAnalysisSummaryResponse(
+                10L,
+                EnergyCategory.EFICIENTE,
+                0.95,
+                91,
+                new BigDecimal("120.00"),
+                LocalDateTime.of(2026, 7, 9, 14, 30, 0)
+        );
+
+        String json = objectMapper.writeValueAsString(summary);
+
+        assertEquals(
+                "{\"id\":10,\"categoria\":\"EFICIENTE\",\"probabilidade\":0.95,\"score\":91,"
+                        + "\"custo_estimado_mensal\":120.00,\"criado_em\":\"2026-07-09T14:30:00\"}",
+                json
+        );
+    }
+
+    @Test
+    void shouldSerializeEnergyAnalysisListResponseUsingExpectedFieldNames() throws Exception {
+        EnergyAnalysisListResponse listResponse = new EnergyAnalysisListResponse(
+                List.of(
+                        new EnergyAnalysisSummaryResponse(
+                                10L,
+                                EnergyCategory.EFICIENTE,
+                                0.95,
+                                91,
+                                new BigDecimal("120.00"),
+                                LocalDateTime.of(2026, 7, 9, 14, 30, 0)
+                        )
+                ),
+                0,
+                20,
+                1L,
+                1
+        );
+
+        String json = objectMapper.writeValueAsString(listResponse);
+
+        assertEquals(
+                "{\"analises\":[{\"id\":10,\"categoria\":\"EFICIENTE\",\"probabilidade\":0.95,"
+                        + "\"score\":91,\"custo_estimado_mensal\":120.00,"
+                        + "\"criado_em\":\"2026-07-09T14:30:00\"}],\"pagina_atual\":0,"
+                        + "\"tamanho_pagina\":20,\"total_elementos\":1,\"total_paginas\":1}",
+                json
+        );
+    }
+
+    @Test
+    void shouldSerializeApiErrorResponseUsingExpectedFieldNames() throws Exception {
+        ApiErrorResponse errorResponse = new ApiErrorResponse(
+                LocalDateTime.of(2026, 7, 9, 15, 0, 0),
+                400,
+                "Bad Request",
+                "Payload invalido"
+        );
+
+        String json = objectMapper.writeValueAsString(errorResponse);
+
+        assertEquals(
+                "{\"timestamp\":\"2026-07-09T15:00:00\",\"status\":400,"
+                        + "\"error\":\"Bad Request\",\"message\":\"Payload invalido\"}",
+                json
+        );
     }
 }
