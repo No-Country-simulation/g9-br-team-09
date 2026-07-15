@@ -1,6 +1,7 @@
 package br.com.g9.energiai.backend.mapper;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
@@ -55,6 +56,27 @@ public class EnergyAnalysisMapper {
                 entity.getProbabilidade(),
                 entity.getScore(),
                 entity.getCustoEstimadoMensal(),
+                entity.getCreatedAt()
+        );
+    }
+
+    public EnergyAnalysisDetailResponse toDetailResponse(EnergyAnalysisEntity entity) {
+        List<String> safeRecommendations =
+                entity.getRecomendacoes() == null ? List.of() : List.copyOf(entity.getRecomendacoes());
+
+        return new EnergyAnalysisDetailResponse(
+                entity.getId(),
+                entity.getConsumoKwh(),
+                entity.getUsoHorarioPico(),
+                entity.getQuantidadeEquipamentos(),
+                entity.getTipoImovel(),
+                entity.getHorasAltoConsumo(),
+                entity.getCategoria(),
+                entity.getProbabilidade(),
+                entity.getScore(),
+                entity.getCustoEstimadoMensal(),
+                safeRecommendations,
+                entity.getFonteClassificacao(),
                 entity.getCreatedAt()
         );
     }

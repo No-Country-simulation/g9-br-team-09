@@ -12,9 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -22,7 +22,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,10 +62,8 @@ class EnergyAnalysisListControllerTest {
     @Test
     @DisplayName("Deve ordenar o histórico da análise mais recente para a mais antiga")
     void shouldOrderHistoryByCreatedAtDescending() throws Exception {
-        persistAnalysis(EnergyCategory.EFICIENTE, 25,
-                LocalDateTime.of(2026, 7, 12, 18, 30));
-        persistAnalysis(EnergyCategory.INEFICIENTE, 95,
-                LocalDateTime.of(2026, 7, 13, 18, 30));
+        persistAnalysis(EnergyCategory.EFICIENTE, 25, LocalDateTime.of(2026, 7, 12, 18, 30));
+        persistAnalysis(EnergyCategory.INEFICIENTE, 95, LocalDateTime.of(2026, 7, 13, 18, 30));
 
         mockMvc.perform(get("/api/v1/analise-energetica").contextPath("/api/v1"))
                 .andExpect(status().isOk())

@@ -2,24 +2,24 @@ package br.com.g9.energiai.backend.documentation;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.data.domain.Pageable;
-import org.springdoc.core.annotations.ParameterObject;
 
-@Tag(
-        name = "Análise energética",
-        description = "Operações para análise do perfil de consumo energético"
-)
+@Tag(name = "Análise energética", description = "Operações para análise do perfil de consumo energético")
 public interface EnergyAnalysisApi {
 
     @Operation(
@@ -117,4 +117,28 @@ public interface EnergyAnalysisApi {
             )
     })
     ResponseEntity<EnergyAnalysisListResponse> listAnalyses(@ParameterObject Pageable pageable);
+
+    @Operation(summary = "Buscar análise por ID")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Análise encontrada com sucesso",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = EnergyAnalysisDetailResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Análise não encontrada",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ApiErrorResponse.class))
+            )
+    })
+    ResponseEntity<EnergyAnalysisDetailResponse> getAnalysisById(
+            @Parameter(
+                    name = "id",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    description = "Identificador único da análise",
+                    example = "1"
+            )
+            Long id
+    );
 }

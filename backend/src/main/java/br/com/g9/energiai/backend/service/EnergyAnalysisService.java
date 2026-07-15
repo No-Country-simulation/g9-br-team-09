@@ -1,9 +1,11 @@
 package br.com.g9.energiai.backend.service;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
+import br.com.g9.energiai.backend.exception.ResourceNotFoundException;
 import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,21 +30,10 @@ public class EnergyAnalysisService {
     @Transactional
     public EnergyAnalysisResponse analyze(EnergyAnalysisRequest request) {
         EnergyAnalysisResponse classification = energyClassifier.classify(request);
-
         BigDecimal estimatedCost = energyCostCalculator.calculate(request.consumoKwh());
+        List<String> recommendations = energyRecommendationService.generate(request, classification.categoria());
 
-        List<String> recommendations = energyRecommendationService.generate(
-                request,
-                classification.categoria()
-        );
-
-        EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(
-                request,
-                classification,
-                estimatedCost,
-                recommendations
-        );
-
+        EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(request, classification, estimatedCost, recommendations);
         EnergyAnalysisEntity savedEntity = energyAnalysisRepository.save(entity);
 
         return energyAnalysisMapper.toResponse(savedEntity);
@@ -63,5 +54,12 @@ public class EnergyAnalysisService {
                 analysisPage.getTotalElements(),
                 analysisPage.getTotalPages()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public EnergyAnalysisDetailResponse findById(Long id) {
+        return energyAnalysisRepository.findById(id)
+                .map(energyAnalysisMapper::toDetailResponse)
+                .orElseThrow(() -> new ResourceNotFoundException("Análise não encontrada com o ID: " + id));
     }
 }
