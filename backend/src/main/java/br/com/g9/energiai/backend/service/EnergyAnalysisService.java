@@ -1,10 +1,12 @@
 package br.com.g9.energiai.backend.service;
 
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDashboardResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
+import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.exception.ResourceNotFoundException;
 import br.com.g9.energiai.backend.mapper.EnergyAnalysisMapper;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
@@ -15,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -61,5 +65,29 @@ public class EnergyAnalysisService {
         return energyAnalysisRepository.findById(id)
                 .map(energyAnalysisMapper::toDetailResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("Análise não encontrada com o ID: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public EnergyAnalysisDashboardResponse getDashboardSummary() {
+        long total = energyAnalysisRepository.count();
+
+        Double mediaConsumo = Optional.ofNullable(energyAnalysisRepository.getAverageConsumoKwh())
+                .orElse(0.0);
+
+        BigDecimal totalCusto = Optional.ofNullable(energyAnalysisRepository.getTotalCustoMensal())
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal mediaCusto = total == 0
+                ? BigDecimal.ZERO.setScale(2)
+                : totalCusto.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+
+        return new EnergyAnalysisDashboardResponse(
+                total,
+                mediaConsumo,
+                mediaCusto,
+                energyAnalysisRepository.countByCategoria(EnergyCategory.EFICIENTE),
+                energyAnalysisRepository.countByCategoria(EnergyCategory.MODERADO),
+                energyAnalysisRepository.countByCategoria(EnergyCategory.INEFICIENTE)
+        );
     }
 }

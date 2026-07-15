@@ -2,6 +2,7 @@ package br.com.g9.energiai.backend.controller;
 
 import br.com.g9.energiai.backend.documentation.EnergyAnalysisApi;
 import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
+import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDashboardResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
@@ -40,6 +41,12 @@ public class EnergyAnalysisController implements EnergyAnalysisApi {
             @ParameterObject Pageable pageable
     ) {
         return ResponseEntity.ok(energyAnalysisService.findAll(pageable));
+    }
+
+    @Override
+    @GetMapping("/resumo")
+    public ResponseEntity<EnergyAnalysisDashboardResponse> getDashboardSummary() {
+        return ResponseEntity.ok(energyAnalysisService.getDashboardSummary());
     }
 
     @Override
