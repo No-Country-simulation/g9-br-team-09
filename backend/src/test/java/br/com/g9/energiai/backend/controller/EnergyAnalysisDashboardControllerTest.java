@@ -19,7 +19,9 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -86,6 +88,9 @@ class EnergyAnalysisDashboardControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_analises").value(0))
                 .andExpect(jsonPath("$.media_consumo_kwh").value(0.0))
-                .andExpect(jsonPath("$.media_custo_mensal").value(0.0));
+                .andExpect(jsonPath("$.media_custo_mensal").value(0.0))
+                .andExpect(jsonPath("$.total_eficiente").value(0))
+                .andExpect(jsonPath("$.total_moderado").value(0))
+                .andExpect(jsonPath("$.total_ineficiente").value(0));
     }
 }
