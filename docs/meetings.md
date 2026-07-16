@@ -120,3 +120,80 @@ Reunião realizada para alinhar o andamento da Semana 1 do projeto EnergiAI, rev
 ### Observações sobre a reunião de 13/07
 
 Esta ata registra apenas os pontos operacionais da reunião. A transcrição completa não deve ser publicada no repositório por conter conversas pessoais e trechos informais que não fazem parte da documentação oficial do projeto.
+
+---
+
+## 16/07/2026 — Sprint Demo Semana 1
+
+### Contexto da reunião de 16/07
+
+Sprint Demo realizada para revisar os avanços da Semana 1, identificar bloqueios entre as frentes, alinhar o próximo passo da integração entre Backend e Data Science e definir atividades que podem avançar enquanto o contrato de inferência ainda está pendente.
+
+### Participantes da reunião de 16/07
+
+- Fábio
+- Gustavo
+- Rafaela
+- Adriana — participação via chat
+
+### Ausências registradas em 16/07
+
+- Lucas informou previamente que não poderia participar da reunião.
+- Túlio e Miguel não participaram, e o motivo da ausência não foi informado.
+
+### Avanços apresentados em 16/07
+
+- O backend foi considerado avançado para a Semana 1, com o fluxo mínimo de análise já implementado localmente.
+- O contrato público atual do backend permanece documentado e pode ser adaptado após a consolidação do contrato com Data Science.
+- O notebook inicial de Data Science está versionado e serve como ponto de partida para a evolução da solução.
+- A equipe reconheceu que as variáveis de estudo do notebook não devem ser automaticamente tratadas como campos obrigatórios para o usuário.
+- Rafaela informou que iniciará a elaboração de um protótipo do frontend no Figma para validação da equipe.
+- A área de recursos da plataforma NoCountry foi preenchida com documentação e links já confirmados.
+- A tarefa de ferramentas da equipe foi atualizada na plataforma com tecnologias efetivamente utilizadas.
+
+### Alinhamentos sobre Backend e Data Science em 16/07
+
+- O principal bloqueio identificado é a ausência de um contrato estável entre o modelo de Data Science e a API Python prevista para integração.
+- A equipe precisa definir quais variáveis serão obrigatórias na inferência, quais poderão ser derivadas ou estimadas e quais ficarão para evolução futura.
+- O backend consegue adaptar seus DTOs e a integração após a definição dos campos e da resposta esperada da API Python.
+- O notebook atual deve ser tratado como artefato inicial de estudo e modelagem, não como contrato definitivo de integração.
+- Alterações nas variáveis do modelo devem ser discutidas entre Data Science e Backend antes da implementação, para evitar retrabalho.
+- A frente de Data Science precisa compartilhar dúvidas, bloqueios e tarefas entre Túlio, Miguel e o apoio de Fábio.
+- A participação dos responsáveis de Data Science nas reuniões de alinhamento é necessária para que decisões técnicas não dependam apenas de mensagens assíncronas no Discord.
+
+### Estado de OCI em 16/07
+
+- Oracle Autonomous Database permanece como serviço OCI principal previsto para persistência no ambiente de demonstração.
+- A integração real com OCI ainda precisa ser implementada, testada e comprovada tecnicamente.
+- A documentação não deve apresentar OCI como concluída antes da existência de conexão, migrations, persistência e evidência técnica.
+
+### Estado do frontend em 16/07
+
+- O frontend permanece opcional para o MVP, mas pode avançar sem bloquear as entregas obrigatórias.
+- Rafaela iniciará um protótipo no Figma para validar a estrutura visual antes da implementação.
+- A implementação deverá consumir somente o contrato público do backend, sem acesso direto à futura API Python.
+
+### Pendências identificadas em 16/07
+
+- Consolidar o contrato de integração entre Backend e Data Science.
+- Definir os campos obrigatórios da inferência do modelo.
+- Definir como variáveis auxiliares serão substituídas, derivadas, estimadas ou removidas.
+- Confirmar o modelo e os artefatos que serão carregados pela futura API Python.
+- Implementar e documentar a API Python de inferência.
+- Implementar o client HTTP e o fallback no backend.
+- Implementar e validar tecnicamente a integração com OCI.
+- Submeter o protótipo inicial do frontend para avaliação da equipe.
+- Melhorar a participação e a divisão de tarefas na frente de Data Science.
+
+### Próximos passos definidos em 16/07
+
+- Solicitar posicionamento de Túlio e Miguel sobre o estado atual, bloqueios e divisão das tarefas de Data Science.
+- Manter o backend preparado para adaptação após a definição do contrato de inferência.
+- Avançar no protótipo visual do frontend sem comprometer as entregas obrigatórias do MVP.
+- Acompanhar as issues relacionadas à API Python, integração HTTP, fallback e OCI.
+- Atualizar a documentação somente após decisões confirmadas e evidências técnicas.
+- Registrar no Discord os alinhamentos e compromissos assumidos pelas frentes.
+
+### Observações sobre a reunião de 16/07
+
+Esta ata registra somente os pontos operacionais relevantes da Sprint Demo. A transcrição completa permanece como fonte interna de apoio e não deve ser publicada no repositório por conter trechos informais e discussões que não fazem parte da documentação oficial do projeto.
