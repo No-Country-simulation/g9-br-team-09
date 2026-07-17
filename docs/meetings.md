@@ -139,7 +139,7 @@ Sprint Demo realizada para revisar os avanços da Semana 1, identificar bloqueio
 ### Ausências registradas em 16/07
 
 - Lucas informou previamente que não poderia participar da reunião.
-- Túlio e Miguel não participaram, e o motivo da ausência não foi informado.
+- Alan, Túlio e Miguel não participaram, e o motivo das ausências não foi informado.
 
 ### Avanços apresentados em 16/07
 
