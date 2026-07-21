@@ -64,23 +64,18 @@ class EnergyAnalysisServiceTest {
         EnergyAnalysisResult analysisResult = new EnergyAnalysisResult(
                 EnergyCategory.INEFICIENTE, 0.95, 95, List.of("Dica 1"), ClassificationSource.ML_MODEL
         );
-        EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
-                null, EnergyCategory.INEFICIENTE, 0.95, 95, null, List.of(), ClassificationSource.ML_MODEL
-        );
-
         BigDecimal cost = new BigDecimal("375.00");
-        List<String> recommendations = analysisResult.recomendacoes();
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         EnergyAnalysisEntity savedEntity = new EnergyAnalysisEntity();
         savedEntity.setId(1L);
 
         EnergyAnalysisResponse expectedResponse = new EnergyAnalysisResponse(
-                1L, EnergyCategory.INEFICIENTE, 0.95, 95, cost, recommendations, ClassificationSource.ML_MODEL
+                1L, EnergyCategory.INEFICIENTE, 0.95, 95, cost, analysisResult.recomendacoes(), ClassificationSource.ML_MODEL
         );
 
         when(energyAnalysisOrchestrator.analyze(request)).thenReturn(analysisResult);
         when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
-        when(energyAnalysisMapper.toEntity(request, classification, cost, recommendations)).thenReturn(entity);
+        when(energyAnalysisMapper.toEntity(request, analysisResult, cost)).thenReturn(entity);
         when(energyAnalysisRepository.save(entity)).thenReturn(savedEntity);
         when(energyAnalysisMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
 
@@ -93,7 +88,7 @@ class EnergyAnalysisServiceTest {
 
         verify(energyAnalysisOrchestrator).analyze(request);
         verify(energyCostCalculator).calculate(request.consumoKwh());
-        verify(energyAnalysisMapper).toEntity(request, classification, cost, recommendations);
+        verify(energyAnalysisMapper).toEntity(request, analysisResult, cost);
         verify(energyAnalysisRepository).save(entity);
         verify(energyAnalysisMapper).toResponse(savedEntity);
     }
@@ -105,17 +100,13 @@ class EnergyAnalysisServiceTest {
         EnergyAnalysisResult analysisResult = new EnergyAnalysisResult(
                 EnergyCategory.INEFICIENTE, 0.95, 95, List.of("Dica"), ClassificationSource.ML_MODEL
         );
-        EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
-                null, EnergyCategory.INEFICIENTE, 0.95, 95, null, List.of(), ClassificationSource.ML_MODEL
-        );
         BigDecimal cost = new BigDecimal("375.00");
-        List<String> recommendations = analysisResult.recomendacoes();
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         RuntimeException expected = new RuntimeException("Falha inesperada na persistência");
 
         when(energyAnalysisOrchestrator.analyze(request)).thenReturn(analysisResult);
         when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
-        when(energyAnalysisMapper.toEntity(request, classification, cost, recommendations)).thenReturn(entity);
+        when(energyAnalysisMapper.toEntity(request, analysisResult, cost)).thenReturn(entity);
         when(energyAnalysisRepository.save(entity)).thenThrow(expected);
 
         RuntimeException actual = assertThrows(RuntimeException.class, () -> energyAnalysisService.analyze(request));
