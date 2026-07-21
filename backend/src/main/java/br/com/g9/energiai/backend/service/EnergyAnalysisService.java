@@ -25,19 +25,28 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EnergyAnalysisService {
 
-    private final EnergyClassifier energyClassifier;
+    private final EnergyAnalysisOrchestrator energyAnalysisOrchestrator;
     private final EnergyCostCalculator energyCostCalculator;
-    private final EnergyRecommendationService energyRecommendationService;
     private final EnergyAnalysisRepository energyAnalysisRepository;
     private final EnergyAnalysisMapper energyAnalysisMapper;
 
     @Transactional
     public EnergyAnalysisResponse analyze(EnergyAnalysisRequest request) {
-        EnergyAnalysisResponse classification = energyClassifier.classify(request);
+        EnergyAnalysisResult analysisResult = energyAnalysisOrchestrator.analyze(request);
+        EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
+                null,
+                analysisResult.categoria(),
+                analysisResult.probabilidade(),
+                analysisResult.score(),
+                null,
+                List.of(),
+                analysisResult.fonteClassificacao()
+        );
         BigDecimal estimatedCost = energyCostCalculator.calculate(request.consumoKwh());
-        List<String> recommendations = energyRecommendationService.generate(request, classification.categoria());
 
-        EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(request, classification, estimatedCost, recommendations);
+        EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(
+                request, classification, estimatedCost, analysisResult.recomendacoes()
+        );
         EnergyAnalysisEntity savedEntity = energyAnalysisRepository.save(entity);
 
         return energyAnalysisMapper.toResponse(savedEntity);
