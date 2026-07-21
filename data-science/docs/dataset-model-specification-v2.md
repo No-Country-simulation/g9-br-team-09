@@ -2,7 +2,7 @@
 
 ## 1. Conclusão
 
-A nova versão deverá produzir um **dataset sintético com 5.000 registros**, compatível com o contrato atual do backend, acompanhado de análise científica robusta, modelo supervisionado, probabilidades calibradas, score de risco, recomendações explicáveis e artefatos preparados para integração com FastAPI.
+A nova versão deverá produzir um **dataset sintético com 5.000 registros**, compatível com o contrato atual do backend, acompanhado de análise científica robusta, modelo supervisionado, probabilidades avaliadas e, somente quando houver justificativa técnica, calibradas, score de risco, recomendações explicáveis e artefatos preparados para integração com FastAPI.
 
 O pipeline de produção receberá exclusivamente:
 
@@ -28,7 +28,7 @@ Nenhum arquivo será criado e nenhuma alteração será feita no GitHub antes da
 | 4  | Distribuição das classes | 30% `EFICIENTE`, 40% `MODERADO`, 30% `INEFICIENTE`                        |
 | 5  | Geração do target        | Score explicável com relações não lineares, interações e ruído controlado |
 | 6  | Significado do score     | Score alto representa maior risco de ineficiência                         |
-| 7  | Score de inferência      | Derivado das probabilidades calibradas                                    |
+| 7  | Score de inferência      | Derivado das probabilidades do modelo; calibradas somente quando adotadas |
 | 8  | Limites das categorias   | 0–30, 31–60 e 61–100                                                      |
 | 9  | Ruído de fronteira       | Aproximadamente 3% dos casos próximos aos limites                         |
 | 10 | Casos raros ou extremos  | Aproximadamente 5%                                                        |
@@ -83,6 +83,8 @@ A FastAPI deverá retornar:
 * `recomendacoes`;
 * `modelo_versao`.
 
+A FastAPI deverá retornar `modelo_versao` para rastreabilidade. O DTO interno atual do backend já recebe esse campo, mas o backend ainda não o propaga para `EnergyAnalysisResult`, não o persiste e não o expõe na resposta pública.
+
 A FastAPI não calculará custo, não persistirá análises e não implementará o fallback do backend.
 
 ### Responsabilidades
@@ -114,13 +116,18 @@ custo_estimado_mensal = consumo_kwh × 0,75
 
 * O notebook inicial já foi versionado e preservado como protótipo histórico.
 * A issue do notebook inicial, nº 62, está concluída.
-* A FastAPI, o client HTTP, o fallback, a documentação do contrato interno e os testes de integração continuam pendentes.
+* O client HTTP do backend para `POST /predict` está implementado.
+* A orquestração `ML_MODEL` com `RULE_BASED_FALLBACK` está implementada.
+* Os testes automatizados dos fluxos de sucesso e fallback do backend estão implementados.
+* A FastAPI, o dataset e o modelo V2 continuam pendentes.
+* A documentação consolidada do contrato interno e o teste real ponta a ponta entre Spring Boot e FastAPI continuam pendentes.
+* A integração com OCI continua pendente e não deve ser considerada concluída sem evidência técnica.
 
 O contrato público aceita os seis valores de `tipo_imovel`. No classificador local atual, somente `CASA` e `COMERCIO` recebem pontuação específica por tipo; os demais valores continuam válidos, mas não alteram diretamente o score por essa feature. O modelo de Data Science deverá treinar e avaliar os seis tipos, e a divergência entre `ML_MODEL` e `RULE_BASED_FALLBACK` deverá ser medida e documentada antes da integração.
 
 A semântica de `probabilidade` dependerá temporariamente da fonte da classificação:
 
-* `ML_MODEL`: probabilidade calibrada da categoria prevista;
+* `ML_MODEL`: maior probabilidade retornada para a categoria prevista, calibrada somente quando a calibração for tecnicamente adotada;
 * `RULE_BASED` e `RULE_BASED_FALLBACK`: o valor atual `score / 100` será tratado como confiança heurística, e não como probabilidade calibrada.
 
 Essa diferença deverá permanecer explícita por meio de `fonte_classificacao` até eventual unificação da semântica no backend.
@@ -294,7 +301,7 @@ A seed deverá ser registrada nos metadados.
 
 ### Cálculo da categoria, probabilidade e score de inferência
 
-No fluxo `ML_MODEL`, a categoria e a probabilidade serão obtidas diretamente das probabilidades calibradas do classificador:
+No fluxo `ML_MODEL`, a categoria e a probabilidade serão obtidas diretamente das probabilidades retornadas pelo modelo selecionado. Quando a calibração for adotada após avaliação técnica, serão utilizadas as probabilidades calibradas:
 
 ```text
 categoria = argmax(P(EFICIENTE), P(MODERADO), P(INEFICIENTE))
@@ -484,7 +491,7 @@ Não será usada para calcular custo.
 Serão avaliados:
 
 * conjunto de teste isolado;
-* registros próximos dos limites 30/31 e 60/61;
+* registros próximos dos limites 30/31 e 60/61 do `score_referencia` e do fallback local, sem tratar esses limites como fronteiras obrigatórias do modelo supervisionado;
 * cenários extremos plausíveis;
 * alterações controladas nas distribuições;
 * categorias por tipo de imóvel;
@@ -604,8 +611,8 @@ O carregamento deverá conferir:
 | Uma feature dominar o target        | Modelos individuais, ablação e revisão do gerador                      |
 | Vazamento do target                 | Lista explícita das cinco features e testes do pipeline                |
 | Probabilidade não confiável         | Avaliação e calibração                                                 |
-| Divergência entre score e categoria | Regra única, testes de contrato e casos de fronteira                   |
-| Divergência entre modelo e fallback | Limites iguais e contrato documentado                                  |
+| Divergência entre score e categoria | Categoria por `argmax`, score como severidade e testes de contrato     |
+| Divergência entre modelo e fallback | Contrato externo comum, semântica por fonte e comparação documentada   |
 | Escopo excessivo                    | Clustering e regressão somente como análises auxiliares                |
 | Integração atrasar                  | Artefatos e contrato definidos antes da FastAPI                        |
 | OCI ser declarada sem evidência     | Não relacionar este trabalho a OCI concluída sem prova técnica         |
@@ -634,7 +641,8 @@ O carregamento deverá conferir:
 * teste final isolado;
 * probabilidades avaliadas;
 * score entre 0 e 100;
-* categorias coerentes com os limites;
+* categoria igual à classe de maior probabilidade e não recalculada pelas faixas do score;
+* calibração adotada somente quando houver evidência técnica de melhoria;
 * inferência reproduzível;
 * pipeline serializado;
 * nenhuma variável proibida no pipeline.
