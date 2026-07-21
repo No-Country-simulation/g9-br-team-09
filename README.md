@@ -89,6 +89,27 @@ Para alterar a tarifa de referência do MVP, ajuste essa propriedade.
 
 ---
 
+## Client da API de Machine Learning
+
+O backend possui um client HTTP preparado para a futura API Python de inferência energética. Nesta etapa, o client ainda não está conectado ao fluxo público de análise; a orquestração e o fallback serão implementados posteriormente.
+
+Por padrão, a API Python é esperada em `http://localhost:8000`. As propriedades podem ser configuradas por variáveis de ambiente:
+
+| Variável | Finalidade | Valor padrão |
+| --- | --- | --- |
+| `ML_API_BASE_URL` | URL-base da API Python, usada para o `POST /predict`. | `http://localhost:8000` |
+| `ML_API_CONNECT_TIMEOUT` | Tempo máximo para estabelecer a conexão HTTP. | `2s` |
+| `ML_API_READ_TIMEOUT` | Tempo máximo para aguardar a resposta HTTP. | `5s` |
+
+Exemplo de execução local com valores personalizados:
+
+```bash
+cd backend
+ML_API_BASE_URL=http://localhost:8000 ML_API_CONNECT_TIMEOUT=2s ML_API_READ_TIMEOUT=5s ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+---
+
 ## Exemplo de entrada JSON
 
 ```json
