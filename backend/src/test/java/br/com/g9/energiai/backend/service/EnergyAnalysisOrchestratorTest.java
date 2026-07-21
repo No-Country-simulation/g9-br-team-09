@@ -18,10 +18,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -137,7 +141,10 @@ class EnergyAnalysisOrchestratorTest {
         return Stream.of(
                 Arguments.of("conexão recusada", new MlPredictionClientException("Falha", new IOException("Connection refused"))),
                 Arguments.of("timeout", new MlPredictionClientException("Falha", new SocketTimeoutException("Read timed out"))),
-                Arguments.of("erro HTTP", new MlPredictionClientException("Falha", new RestClientException("Bad gateway"))),
+                Arguments.of("erro HTTP", new MlPredictionClientException("Falha", new RestClientResponseException(
+                        "Bad gateway", HttpStatus.BAD_GATEWAY, "Bad Gateway", HttpHeaders.EMPTY,
+                        new byte[0], StandardCharsets.UTF_8
+                ))),
                 Arguments.of("falha de desserialização", new MlPredictionClientException("Falha", new RestClientException("Invalid JSON")))
         );
     }
