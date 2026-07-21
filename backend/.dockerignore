@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDEs
+.idea
+.vscode
+*.iml
+.classpath
+.project
+.settings
+
+# Maven
+target
+*.class
+dependency-reduced-pom.xml
+
+# Ambiente e credenciais
+.env
+.env.*
+!.env.example
+**/secrets/**
+**/wallet/**
+*.pem
+*.key
+
+# Logs e temporários
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+hs_err_pid*
+replay_pid*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Documentação e arquivos Docker desnecessários no build
+README.md
+README.Docker.md
+compose.yaml
+Dockerfile
