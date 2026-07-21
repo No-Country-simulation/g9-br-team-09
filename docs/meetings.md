@@ -197,3 +197,94 @@ Sprint Demo realizada para revisar os avanços da Semana 1, identificar bloqueio
 ### Observações sobre a reunião de 16/07
 
 Esta ata registra somente os pontos operacionais relevantes da Sprint Demo. A transcrição completa permanece como fonte interna de apoio e não deve ser publicada no repositório por conter trechos informais e discussões que não fazem parte da documentação oficial do projeto.
+
+---
+
+## 20/07/2026 — Sprint Planning Semana 2
+
+### Contexto da reunião de 20/07
+
+Sprint Planning realizada para revisar o andamento do projeto EnergiAI, identificar os bloqueios restantes entre Backend e Data Science, alinhar a elaboração da nova base sintética, acompanhar o início do frontend e definir atividades que podem avançar paralelamente durante a Semana 2.
+
+### Participantes da reunião de 20/07
+
+- Fábio
+- Alan
+- Gustavo
+- Lucas
+- Rafaela
+- Túlio
+
+### Ausências registradas em 20/07
+
+- Adriana não participou, mas justificou previamente que realizaria uma prova na faculdade.
+- Miguel não participou e não apresentou justificativa.
+
+### Avanços apresentados em 20/07
+
+- O backend permanece avançado e preparado para adaptação após a definição do contrato de integração com Data Science.
+- Rafaela informou que iniciou a estrutura de pastas e a organização inicial do projeto frontend.
+- Fábio iniciou a elaboração de uma proposta de especificação para orientar a criação da base sintética.
+- Túlio informou que está trabalhando em uma nova abordagem utilizando somente as variáveis mínimas indicadas no enunciado do desafio.
+- Lucas informou que pretende iniciar testes relacionados à OCI durante a semana, independentemente das pendências atuais de Data Science.
+
+### Alinhamentos sobre Data Science em 20/07
+
+- A nova base sintética deverá priorizar as variáveis mínimas previstas no enunciado oficial do projeto.
+- A proposta de especificação elaborada por Fábio deverá ser tratada como documento inicial de discussão, e não como contrato definitivo ou comprovação de viabilidade do modelo.
+- Túlio e os integrantes do backend deverão revisar a proposta antes ou durante a geração da nova base, reduzindo o risco de retrabalho.
+- A viabilidade matemática e estatística da base ainda precisa ser validada por meio da geração dos dados, treinamento do modelo e análise dos resultados.
+- A base deverá permitir que o modelo identifique padrões sem depender exclusivamente de uma ou duas variáveis.
+- O mesmo intervalo de consumo poderá conter exemplos de perfis eficientes, moderados e ineficientes, desde que os demais atributos justifiquem a classificação.
+- Túlio informou que tentará concluir uma nova versão da base e do modelo após validar a abordagem técnica em estudo.
+- Dúvidas, bloqueios, resultados parciais e alterações relevantes deverão ser compartilhados com a equipe durante o desenvolvimento.
+- A documentação e os artefatos de Data Science deverão ser versionados no GitHub por meio de branch e Pull Request para permitir revisão colaborativa.
+
+### Alinhamentos sobre Backend em 20/07
+
+- O principal bloqueio do backend continua sendo a definição estável dos dados de entrada e da resposta esperada da futura API de Data Science.
+- O backend poderá revisar a proposta de especificação da base para verificar compatibilidade com o contrato público atual.
+- Atividades independentes da integração com Data Science poderão continuar durante a Semana 2.
+- A implementação não deverá tratar propostas ou variáveis ainda em estudo como contrato definitivo.
+- A documentação deverá continuar diferenciando o funcionamento local atual da arquitetura futura com modelo de Machine Learning.
+
+### Estado de OCI em 20/07
+
+- As atividades relacionadas à OCI podem avançar separadamente da definição da base sintética.
+- Lucas informou que pretende iniciar testes durante a semana.
+- A integração com OCI ainda não deve ser considerada concluída sem conexão, testes, persistência e evidência técnica verificável.
+
+### Estado do frontend em 20/07
+
+- Rafaela iniciou a estrutura inicial do projeto frontend.
+- O frontend permanece como entrega complementar e não deve bloquear os requisitos obrigatórios do MVP.
+- A interface deverá consumir o contrato público do backend após sua consolidação.
+
+### Pendências identificadas em 20/07
+
+- Concluir e disponibilizar a proposta de especificação da base sintética.
+- Revisar a proposta entre Fábio, Túlio e integrantes do backend.
+- Gerar uma nova versão da base sintética utilizando as variáveis mínimas do enunciado.
+- Validar a distribuição dos dados e a viabilidade do treinamento supervisionado.
+- Documentar as regras utilizadas na geração das variáveis e da classificação.
+- Definir o contrato estável de inferência entre Data Science e Backend.
+- Definir os artefatos que serão carregados pela futura API Python.
+- Implementar e documentar a API Python de inferência.
+- Implementar o cliente HTTP e o fallback no backend.
+- Implementar, testar e registrar evidência técnica da integração com OCI.
+- Continuar a evolução do frontend sem comprometer os requisitos obrigatórios.
+- Confirmar o horário exato da próxima reunião obrigatória.
+
+### Próximos passos definidos em 20/07
+
+- Fábio deverá concluir e disponibilizar a ata e a proposta de especificação da base sintética.
+- Túlio deverá revisar a proposta, continuar os testes de geração da base e compartilhar os resultados obtidos.
+- Lucas e os integrantes do backend deverão revisar a compatibilidade da proposta com a API e continuar atividades independentes da integração.
+- Lucas deverá iniciar os testes relacionados à OCI conforme disponibilidade durante a semana.
+- Rafaela deverá continuar a estruturação do frontend e apresentar os avanços para validação da equipe.
+- A equipe deverá utilizar Pull Requests para revisar, comentar e aprimorar os documentos e artefatos produzidos.
+- A próxima reunião obrigatória foi prevista para quinta-feira, 23/07/2026, entre 14h e 16h, com horário exato ainda pendente de confirmação.
+
+### Observações sobre a reunião de 20/07
+
+Esta ata registra somente os pontos operacionais relevantes da Sprint Planning. A proposta de especificação da base sintética ainda deverá passar por revisão técnica e não representa um contrato definitivo. A transcrição completa permanece como fonte interna de apoio e não deve ser publicada no repositório por conter trechos informais e discussões que não fazem parte da documentação oficial do projeto.
