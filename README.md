@@ -89,17 +89,39 @@ Para alterar a tarifa de referência do MVP, ajuste essa propriedade.
 
 ---
 
-## Client da API de Machine Learning
+## Integração com a API de Machine Learning
 
-O backend possui um client HTTP preparado para a futura API Python de inferência energética. Nesta etapa, o client ainda não está conectado ao fluxo público de análise; a orquestração e o fallback serão implementados posteriormente.
+O backend utiliza uma estratégia ML-first para realizar a análise energética.
+
+O fluxo principal é:
+
+```text
+Backend
+→ POST /predict na API Python
+→ resposta válida
+→ utiliza classificação e recomendações do modelo
+→ fonte_classificacao = ML_MODEL
+```
+
+Quando a API Python estiver indisponível ou retornar uma resposta inválida, o backend utiliza a classificação e as recomendações locais:
+
+```text
+Backend
+→ falha ou resposta inválida da API Python
+→ classificador local
+→ recomendações locais
+→ fonte_classificacao = RULE_BASED_FALLBACK
+```
+
+O endpoint público continua retornando uma análise válida quando o fallback pode ser executado.
 
 Por padrão, a API Python é esperada em `http://localhost:8000`. As propriedades podem ser configuradas por variáveis de ambiente:
 
-| Variável | Finalidade | Valor padrão |
-| --- | --- | --- |
-| `ML_API_BASE_URL` | URL-base da API Python, usada para o `POST /predict`. | `http://localhost:8000` |
-| `ML_API_CONNECT_TIMEOUT` | Tempo máximo para estabelecer a conexão HTTP. | `2s` |
-| `ML_API_READ_TIMEOUT` | Tempo máximo para aguardar a resposta HTTP. | `5s` |
+| Variável                 | Finalidade                                         | Valor padrão            |
+| ------------------------ | -------------------------------------------------- | ----------------------- |
+| `ML_API_BASE_URL`        | URL-base da API Python usada pelo `POST /predict`. | `http://localhost:8000` |
+| `ML_API_CONNECT_TIMEOUT` | Tempo máximo para estabelecer a conexão HTTP.      | `2s`                    |
+| `ML_API_READ_TIMEOUT`    | Tempo máximo para aguardar a resposta HTTP.        | `5s`                    |
 
 Exemplo de execução local com valores personalizados:
 

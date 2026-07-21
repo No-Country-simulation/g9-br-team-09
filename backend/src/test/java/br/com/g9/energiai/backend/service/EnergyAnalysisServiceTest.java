@@ -42,13 +42,10 @@ import static org.mockito.Mockito.when;
 class EnergyAnalysisServiceTest {
 
     @Mock
-    private EnergyClassifier energyClassifier;
+    private EnergyAnalysisOrchestrator energyAnalysisOrchestrator;
 
     @Mock
     private EnergyCostCalculator energyCostCalculator;
-
-    @Mock
-    private EnergyRecommendationService energyRecommendationService;
 
     @Mock
     private EnergyAnalysisRepository energyAnalysisRepository;
@@ -64,24 +61,21 @@ class EnergyAnalysisServiceTest {
     void shouldOrchestrateAnalysisAndPersistence() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
 
-        EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
-                null, EnergyCategory.INEFICIENTE, 0.95, 95, null, List.of(), ClassificationSource.RULE_BASED
+        EnergyAnalysisResult analysisResult = new EnergyAnalysisResult(
+                EnergyCategory.INEFICIENTE, 0.95, 95, List.of("Dica 1"), ClassificationSource.ML_MODEL
         );
-
         BigDecimal cost = new BigDecimal("375.00");
-        List<String> recommendations = List.of("Dica 1");
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         EnergyAnalysisEntity savedEntity = new EnergyAnalysisEntity();
         savedEntity.setId(1L);
 
         EnergyAnalysisResponse expectedResponse = new EnergyAnalysisResponse(
-                1L, EnergyCategory.INEFICIENTE, 0.95, 95, cost, recommendations, ClassificationSource.RULE_BASED
+                1L, EnergyCategory.INEFICIENTE, 0.95, 95, cost, analysisResult.recomendacoes(), ClassificationSource.ML_MODEL
         );
 
-        when(energyClassifier.classify(request)).thenReturn(classification);
+        when(energyAnalysisOrchestrator.analyze(request)).thenReturn(analysisResult);
         when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
-        when(energyRecommendationService.generate(request, EnergyCategory.INEFICIENTE)).thenReturn(recommendations);
-        when(energyAnalysisMapper.toEntity(request, classification, cost, recommendations)).thenReturn(entity);
+        when(energyAnalysisMapper.toEntity(request, analysisResult, cost)).thenReturn(entity);
         when(energyAnalysisRepository.save(entity)).thenReturn(savedEntity);
         when(energyAnalysisMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
 
@@ -92,10 +86,9 @@ class EnergyAnalysisServiceTest {
         assertEquals(EnergyCategory.INEFICIENTE, response.categoria());
         assertEquals(cost, response.custoEstimadoMensal());
 
-        verify(energyClassifier).classify(request);
+        verify(energyAnalysisOrchestrator).analyze(request);
         verify(energyCostCalculator).calculate(request.consumoKwh());
-        verify(energyRecommendationService).generate(request, classification.categoria());
-        verify(energyAnalysisMapper).toEntity(request, classification, cost, recommendations);
+        verify(energyAnalysisMapper).toEntity(request, analysisResult, cost);
         verify(energyAnalysisRepository).save(entity);
         verify(energyAnalysisMapper).toResponse(savedEntity);
     }
@@ -104,18 +97,16 @@ class EnergyAnalysisServiceTest {
     @DisplayName("Deve propagar falha inesperada durante a persistência")
     void shouldPropagateUnexpectedPersistenceFailure() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
-        EnergyAnalysisResponse classification = new EnergyAnalysisResponse(
-                null, EnergyCategory.INEFICIENTE, 0.95, 95, null, List.of(), ClassificationSource.RULE_BASED
+        EnergyAnalysisResult analysisResult = new EnergyAnalysisResult(
+                EnergyCategory.INEFICIENTE, 0.95, 95, List.of("Dica"), ClassificationSource.ML_MODEL
         );
         BigDecimal cost = new BigDecimal("375.00");
-        List<String> recommendations = List.of("Dica");
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         RuntimeException expected = new RuntimeException("Falha inesperada na persistência");
 
-        when(energyClassifier.classify(request)).thenReturn(classification);
+        when(energyAnalysisOrchestrator.analyze(request)).thenReturn(analysisResult);
         when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
-        when(energyRecommendationService.generate(request, EnergyCategory.INEFICIENTE)).thenReturn(recommendations);
-        when(energyAnalysisMapper.toEntity(request, classification, cost, recommendations)).thenReturn(entity);
+        when(energyAnalysisMapper.toEntity(request, analysisResult, cost)).thenReturn(entity);
         when(energyAnalysisRepository.save(entity)).thenThrow(expected);
 
         RuntimeException actual = assertThrows(RuntimeException.class, () -> energyAnalysisService.analyze(request));

@@ -5,6 +5,7 @@ import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
+import br.com.g9.energiai.backend.service.EnergyAnalysisResult;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -12,6 +13,28 @@ import java.util.List;
 
 @Component
 public class EnergyAnalysisMapper {
+
+    public EnergyAnalysisEntity toEntity(EnergyAnalysisRequest request,
+                                         EnergyAnalysisResult analysisResult,
+                                         BigDecimal estimatedCost) {
+        List<String> safeRecommendations = analysisResult.recomendacoes() == null
+                ? List.of()
+                : List.copyOf(analysisResult.recomendacoes());
+
+        return EnergyAnalysisEntity.builder()
+                .consumoKwh(request.consumoKwh())
+                .usoHorarioPico(request.usoHorarioPico())
+                .quantidadeEquipamentos(request.quantidadeEquipamentos())
+                .tipoImovel(request.tipoImovel())
+                .horasAltoConsumo(request.horasAltoConsumo())
+                .categoria(analysisResult.categoria())
+                .probabilidade(analysisResult.probabilidade())
+                .score(analysisResult.score())
+                .custoEstimadoMensal(estimatedCost)
+                .recomendacoes(safeRecommendations)
+                .fonteClassificacao(analysisResult.fonteClassificacao())
+                .build();
+    }
 
     public EnergyAnalysisEntity toEntity(EnergyAnalysisRequest request,
                                          EnergyAnalysisResponse classification,
