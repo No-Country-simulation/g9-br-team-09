@@ -18,26 +18,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class EnergyAnalysisService {
 
-    private final EnergyClassifier energyClassifier;
+    private final EnergyAnalysisOrchestrator energyAnalysisOrchestrator;
     private final EnergyCostCalculator energyCostCalculator;
-    private final EnergyRecommendationService energyRecommendationService;
     private final EnergyAnalysisRepository energyAnalysisRepository;
     private final EnergyAnalysisMapper energyAnalysisMapper;
 
-    @Transactional
     public EnergyAnalysisResponse analyze(EnergyAnalysisRequest request) {
-        EnergyAnalysisResponse classification = energyClassifier.classify(request);
+        EnergyAnalysisResult analysisResult = energyAnalysisOrchestrator.analyze(request);
         BigDecimal estimatedCost = energyCostCalculator.calculate(request.consumoKwh());
-        List<String> recommendations = energyRecommendationService.generate(request, classification.categoria());
 
-        EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(request, classification, estimatedCost, recommendations);
+        EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(
+                request, analysisResult, estimatedCost
+        );
         EnergyAnalysisEntity savedEntity = energyAnalysisRepository.save(entity);
 
         return energyAnalysisMapper.toResponse(savedEntity);
