@@ -13,16 +13,24 @@ Frontend da aplicação EnergiAI, construído como SPA com React, TypeScript, Vi
 
 ## Pré-requisitos
 
-- Node.js 18+ (recomendado)
-- npm
+- Node.js 20.19+ ou 22.12+
+- npm, pnpm ou yarn
+
+> O projeto não exige um gerenciador de pacotes específico. Utilize npm, pnpm ou yarn conforme sua preferência.
 
 ## Instalação
 
-1. Abra o terminal em `frontend/`
-2. Execute:
+Abra o terminal em `frontend/` e instale as dependências com o gerenciador de sua preferência:
 
 ```bash
+# npm
 npm install
+
+# pnpm
+pnpm install
+
+# yarn
+yarn install
 ```
 
 ## Variáveis de ambiente
@@ -37,18 +45,75 @@ Em seguida, ajuste `VITE_API_BASE_URL` no `.env` para seu backend Spring Boot.
 
 > O frontend lê a URL da API em `src/shared/api/httpClient.ts` via `import.meta.env.VITE_API_BASE_URL`.
 
-## Scripts
+## Desenvolvimento
 
-- `npm run dev` — inicia o servidor de desenvolvimento
-- `npm run build` — gera a versão de produção
-- `npm run preview` — pré-visualiza o build de produção localmente
-- `npm run lint` — executa o ESLint
-- `npm run lint:fix` — tenta corrigir problemas de lint automaticamente
-- `npm run format` — formata o código com Prettier
+```bash
+# npm
+npm run dev
+
+# pnpm
+pnpm dev
+
+# yarn
+yarn dev
+```
+
+## Build
+
+```bash
+# npm
+npm run build
+
+# pnpm
+pnpm build
+
+# yarn
+yarn build
+```
+
+## Lint
+
+```bash
+# npm
+npm run lint
+
+# pnpm
+pnpm lint
+
+# yarn
+yarn lint
+```
+
+O script `lint:fix` tenta corrigir problemas de lint automaticamente.
+
+## Formatação
+
+```bash
+# npm
+npm run format
+
+# pnpm
+pnpm format
+
+# yarn
+yarn format
+```
+
+## Preview
+
+```bash
+# npm
+npm run preview
+
+# pnpm
+pnpm preview
+
+# yarn
+yarn preview
+```
 
 ## Estrutura do projeto
 
 - `src/app/` — configuração global da aplicação e roteamento
 - `src/features/` — funcionalidades específicas da aplicação
 - `src/shared/` — componentes, hooks, contexto, API e estilos compartilhados
-

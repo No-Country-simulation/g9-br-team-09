@@ -6,7 +6,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: LucideIcon
 }
 const baseClasses =
-  'flex cursor-pointer items-center justify-center font-medium px-2 py:2 text-sm gap-2 sm:px-4 py-3 transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-80'
+  'flex cursor-pointer items-center justify-center gap-2 px-2 py-3 text-sm font-medium transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-80 sm:px-4'
 const variantClasses = {
   primary: 'bg-primary text-primary-foreground font-semibold rounded-xl',
   secondary: 'bg-secondary-button border border-border rounded-3xl',
@@ -17,14 +17,18 @@ export function Button({
   icon: Icon,
   className,
   children,
+  type = 'button',
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
+      className={[baseClasses, variantClasses[variant], className]
+        .filter(Boolean)
+        .join(' ')}
       {...props}
-      className={[baseClasses, variantClasses[variant], className].join(' ')}
     >
-      {Icon ? <Icon size={20}/> : null}
+      {Icon ? <Icon size={20} aria-hidden="true" /> : null}
       {children}
     </button>
   )

@@ -26,6 +26,7 @@ export function Header() {
           <Button
             variant="ghost"
             icon={LucideLayoutDashboard}
+            aria-label="Abrir painel"
             onClick={() => void navigate('/painel')}
           >
             <span className="hidden sm:inline">Painel</span>
@@ -33,6 +34,7 @@ export function Header() {
           <Button
             variant="ghost"
             icon={Clock}
+            aria-label="Abrir histórico de análises"
             onClick={() => void navigate('/historico')}
           >
             <span className="hidden sm:inline">Histórico</span>
@@ -40,6 +42,7 @@ export function Header() {
           <Button
             variant="secondary"
             icon={TrendingUp}
+            aria-label="Iniciar nova análise energética"
             onClick={() => void navigate('/analise-energetica')}
           >
             <span className="hidden sm:inline">Nova análise</span>
@@ -48,6 +51,10 @@ export function Header() {
           <Button
             variant="ghost"
             icon={theme === 'light' ? Moon : Sun}
+            aria-label={
+              theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro'
+            }
+            aria-pressed={theme === 'dark'}
             onClick={toggleTheme}
           />
         </div>
