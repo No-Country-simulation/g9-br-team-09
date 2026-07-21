@@ -1,5 +1,7 @@
 package br.com.g9.energiai.backend.controller;
 
+import br.com.g9.energiai.backend.client.ml.MlPredictionClient;
+import br.com.g9.energiai.backend.client.ml.exception.MlPredictionClientException;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -17,6 +20,9 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,6 +39,9 @@ class EnergyAnalysisControllerTest {
     @Autowired
     private EnergyAnalysisRepository energyAnalysisRepository;
 
+    @MockitoBean
+    private MlPredictionClient mlPredictionClient;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -48,6 +57,8 @@ class EnergyAnalysisControllerTest {
             }
             """;
 
+        when(mlPredictionClient.predict(any())).thenThrow(new MlPredictionClientException("API indisponível"));
+
         long countBefore = energyAnalysisRepository.count();
 
         String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
@@ -62,7 +73,7 @@ class EnergyAnalysisControllerTest {
                 .andExpect(jsonPath("$.probabilidade").value(0.95))
                 .andExpect(jsonPath("$.score").value(95))
                 .andExpect(jsonPath("$.custo_estimado_mensal").value(375.00))
-                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED"))
+                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED_FALLBACK"))
                 .andExpect(jsonPath("$.custoEstimadoMensal").doesNotExist())
                 .andExpect(jsonPath("$.fonteClassificacao").doesNotExist())
                 .andExpect(jsonPath("$.recomendacoes").isArray())
@@ -82,6 +93,7 @@ class EnergyAnalysisControllerTest {
 
         assertEquals(countBefore + 1, energyAnalysisRepository.count());
         assertTrue(energyAnalysisRepository.findById(persistedId).isPresent());
+        verify(mlPredictionClient).predict(any());
     }
 
     @Test
