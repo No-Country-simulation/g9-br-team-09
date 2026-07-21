@@ -23,7 +23,7 @@ Nenhum arquivo será criado e nenhuma alteração será feita no GitHub antes da
 | Nº | Decisão                  | Definição aprovada                                                        |
 | -- | ------------------------ | ------------------------------------------------------------------------- |
 | 1  | Prioridade               | Integração com avaliação científica robusta                               |
-| 2  | Tipos de imóvel          | `CASA`, `APARTAMENTO` e `COMERCIO`                                        |
+| 2  | Tipos de imóvel          | `CASA`, `APARTAMENTO`, `COMERCIO`, `ESCRITORIO`, `INDUSTRIA` e `OUTRO`                                        |
 | 3  | Quantidade de registros  | 5.000                                                                     |
 | 4  | Distribuição das classes | 30% `EFICIENTE`, 40% `MODERADO`, 30% `INEFICIENTE`                        |
 | 5  | Geração do target        | Score explicável com relações não lineares, interações e ruído controlado |
@@ -116,6 +116,8 @@ custo_estimado_mensal = consumo_kwh × 0,75
 * A issue do notebook inicial, nº 62, está concluída.
 * A FastAPI, o client HTTP, o fallback, a documentação do contrato interno e os testes de integração continuam pendentes.
 
+O contrato público aceita os seis valores de `tipo_imovel`. No classificador local atual, somente `CASA` e `COMERCIO` recebem pontuação específica por tipo; os demais valores continuam válidos, mas não alteram diretamente o score por essa feature. O modelo de Data Science deverá treinar e avaliar os seis tipos, e a divergência entre `ML_MODEL` e `RULE_BASED_FALLBACK` deverá ser medida e documentada antes da integração.
+
 O enunciado exige EDA, treinamento supervisionado, métricas, recomendações, serialização, API REST e uso comprovado de OCI.
 
 ---
@@ -146,6 +148,9 @@ tipo_imovel:
 - CASA
 - APARTAMENTO
 - COMERCIO
+- ESCRITORIO
+- INDUSTRIA
+- OUTRO
 
 categoria:
 - EFICIENTE
@@ -213,11 +218,16 @@ Estas definições não foram perguntadas separadamente e serão consideradas ap
 
 ### Distribuição dos imóveis
 
-* 40% `CASA`;
-* 40% `APARTAMENTO`;
-* 20% `COMERCIO`.
+* 32% `CASA`;
+* 32% `APARTAMENTO`;
+* 16% `COMERCIO`;
+* 10% `ESCRITORIO`;
+* 5% `INDUSTRIA`;
+* 5% `OUTRO`.
 
-As proporções poderão variar ligeiramente para atender às quotas por classe e cenário.
+As proporções representam uma distribuição sintética de projeto e poderão variar ligeiramente para atender às quotas por classe e cenário.
+
+Para manter aderência ao escopo do desafio, `INDUSTRIA` representará pequenas unidades produtivas ou oficinas, enquanto `OUTRO` ficará reservado a imóveis de pequeno porte que não se enquadrem nas demais categorias.
 
 ### Divisão dos dados
 
@@ -429,7 +439,9 @@ Serão avaliados:
 * cenários extremos plausíveis;
 * alterações controladas nas distribuições;
 * categorias por tipo de imóvel;
-* valores desconhecidos de enum tratados pelo pipeline;
+* os seis valores válidos de `tipo_imovel` presentes nos conjuntos de treino, validação e teste;
+* valores fora do enum rejeitados pela validação pública da API;
+* `OneHotEncoder(handle_unknown="ignore")` mantido somente como proteção interna do pipeline;
 * estabilidade entre seeds selecionadas.
 
 A auditoria humana utilizará 60 registros distribuídos por:
