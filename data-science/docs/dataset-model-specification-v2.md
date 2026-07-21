@@ -118,6 +118,13 @@ custo_estimado_mensal = consumo_kwh × 0,75
 
 O contrato público aceita os seis valores de `tipo_imovel`. No classificador local atual, somente `CASA` e `COMERCIO` recebem pontuação específica por tipo; os demais valores continuam válidos, mas não alteram diretamente o score por essa feature. O modelo de Data Science deverá treinar e avaliar os seis tipos, e a divergência entre `ML_MODEL` e `RULE_BASED_FALLBACK` deverá ser medida e documentada antes da integração.
 
+A semântica de `probabilidade` dependerá temporariamente da fonte da classificação:
+
+* `ML_MODEL`: probabilidade calibrada da categoria prevista;
+* `RULE_BASED` e `RULE_BASED_FALLBACK`: o valor atual `score / 100` será tratado como confiança heurística, e não como probabilidade calibrada.
+
+Essa diferença deverá permanecer explícita por meio de `fonte_classificacao` até eventual unificação da semântica no backend.
+
 O enunciado exige EDA, treinamento supervisionado, métricas, recomendações, serialização, API REST e uso comprovado de OCI.
 
 ---
@@ -229,6 +236,47 @@ As proporções representam uma distribuição sintética de projeto e poderão 
 
 Para manter aderência ao escopo do desafio, `INDUSTRIA` representará pequenas unidades produtivas ou oficinas, enquanto `OUTRO` ficará reservado a imóveis de pequeno porte que não se enquadrem nas demais categorias.
 
+### Faixas sintéticas das features
+
+As faixas abaixo são premissas controladas do gerador sintético e não alteram as regras de validação pública do backend.
+
+No contrato público atual:
+
+* `consumo_kwh` deve ser maior que zero;
+* `quantidade_equipamentos` deve ser maior ou igual a 1;
+* `horas_alto_consumo` deve estar entre 0 e 24.
+
+#### Limites absolutos do gerador
+
+| Campo                     | Mínimo | Máximo |
+| ------------------------- | -----: | -----: |
+| `consumo_kwh`             |     60 |  2.500 |
+| `quantidade_equipamentos` |      1 |     60 |
+| `horas_alto_consumo`      |      0 |     24 |
+
+#### Faixas típicas por tipo de imóvel
+
+| Tipo          | `consumo_kwh` | Equipamentos | Horas de alto consumo |
+| ------------- | ------------: | -----------: | --------------------: |
+| `CASA`        |       180–520 |         4–22 |                  1–12 |
+| `APARTAMENTO` |       140–390 |         3–18 |                  1–11 |
+| `COMERCIO`    |       240–560 |         5–28 |                  2–14 |
+| `ESCRITORIO`  |       180–700 |         5–35 |                  3–14 |
+| `INDUSTRIA`   |     300–1.400 |         8–50 |                  4–20 |
+| `OUTRO`       |       120–800 |         2–30 |                  1–16 |
+
+Essas faixas não representam estatísticas do mercado real. Elas serão utilizadas para criar cenários sintéticos coerentes, variados e reproduzíveis.
+
+#### Critérios dos casos especiais
+
+* caso típico: todas as variáveis dentro das faixas típicas do respectivo tipo de imóvel;
+* caso raro ou extremo: pelo menos uma variável fora da faixa típica, mas dentro dos limites absolutos;
+* outlier plausível: caso raro identificado por IQR ou escore robusto, ainda dentro dos limites absolutos e sem combinação incoerente;
+* os outliers representarão aproximadamente 3% da base e serão subconjunto dos aproximadamente 5% de casos raros ou extremos;
+* nenhum valor inválido será gerado apenas para testar erros da API.
+
+O campo `uso_horario_pico` será gerado como variável booleana conforme os cenários, as interações entre features e as quotas das categorias.
+
 ### Divisão dos dados
 
 * 70% treino;
@@ -244,13 +292,16 @@ RANDOM_SEED = 42
 
 A seed deverá ser registrada nos metadados.
 
-### Relação entre casos especiais
+### Cálculo da categoria, probabilidade e score de inferência
 
-Os aproximadamente 3% de outliers numéricos serão tratados como subconjunto dos 5% de cenários raros ou extremos, evitando somar artificialmente 8% de casos especiais.
+No fluxo `ML_MODEL`, a categoria e a probabilidade serão obtidas diretamente das probabilidades calibradas do classificador:
 
-### Cálculo do score de inferência
+```text
+categoria = argmax(P(EFICIENTE), P(MODERADO), P(INEFICIENTE))
+probabilidade = max(P(EFICIENTE), P(MODERADO), P(INEFICIENTE))
+```
 
-A proposta inicial é calcular uma severidade esperada com as probabilidades calibradas:
+O score permanecerá como indicador contínuo de severidade esperada:
 
 ```text
 score = round(
@@ -260,11 +311,9 @@ score = round(
 )
 ```
 
-A categoria final será derivada dos limites fixos do score.
+O score deverá permanecer entre 0 e 100 e não substituirá a categoria prevista pelo modelo.
 
-A `probabilidade` retornada será a probabilidade calibrada correspondente à categoria final.
-
-Eventuais divergências entre a categoria de maior probabilidade e a categoria derivada do score deverão ser medidas e documentadas.
+As faixas 0–30, 31–60 e 61–100 serão utilizadas somente para interpretação da severidade do score, e não para recalcular ou sobrescrever a categoria.
 
 ---
 
