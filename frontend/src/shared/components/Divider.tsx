@@ -18,7 +18,7 @@ export function Divider({
     horizontal: 'w-full h-px',
     vertical: 'self-stretch w-px',
   }
-  
+
   return (
     <div
       role="separator"
