@@ -11,6 +11,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.io.IOException;
@@ -100,7 +101,8 @@ class RestMlPredictionClientTest {
                 () -> client.predict(new MlPredictionRequest(420.0, true, 10, PropertyType.CASA, 8))
         );
 
-        assertInstanceOf(Exception.class, exception.getCause());
+        assertEquals("Falha ao chamar a API de ML", exception.getMessage());
+        assertInstanceOf(RestClientException.class, exception.getCause());
     }
 
     @Test
