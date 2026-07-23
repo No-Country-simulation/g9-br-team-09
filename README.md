@@ -159,6 +159,10 @@ Para execução no Oracle Autonomous Database, o profile `oci` usa JDBC Thin com
 
 Durante a validação real no Oracle, a migration e os mapeamentos JPA foram alinhados aos tipos nativos do banco. Os DTOs, o contrato JSON e as regras de negócio permaneceram inalterados.
 
+O profile `local` é independente do Oracle Autonomous Database e não requer `.env`, `oci.env`, `DB_URL`, `DB_USERNAME` ou `DB_PASSWORD`.
+
+As credenciais externas são necessárias somente ao executar o backend com o profile `oci`. Caso o profile `oci` seja ativado sem essas variáveis, a aplicação não conseguirá configurar o datasource e falhará na inicialização.
+
 ### Swagger
 
 ```text
