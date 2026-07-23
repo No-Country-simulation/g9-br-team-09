@@ -20,6 +20,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.NumericBooleanConverter;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,9 +41,11 @@ public class EnergyAnalysisEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "consumo_kwh", nullable = false)
+    @JdbcTypeCode(SqlTypes.NUMERIC)
+    @Column(name = "consumo_kwh", nullable = false, precision = 10, scale = 2)
     private Double consumoKwh;
 
+    @Convert(converter = NumericBooleanConverter.class)
     @Column(name = "uso_horario_pico", nullable = false)
     private Boolean usoHorarioPico;
 
@@ -58,7 +63,8 @@ public class EnergyAnalysisEntity {
     @Column(nullable = false)
     private EnergyCategory categoria;
 
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.NUMERIC)
+    @Column(nullable = false, precision = 5, scale = 2)
     private Double probabilidade;
 
     @Column(nullable = false)
