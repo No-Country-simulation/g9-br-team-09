@@ -1,0 +1,9 @@
+﻿joblib==1.5.3
+jupyterlab==4.6.2
+matplotlib==3.11.1
+nbformat==5.10.4
+numpy==2.5.1
+pandas==3.0.5
+pytest==9.1.1
+scikit-learn==1.9.0
+scipy==1.18.0
