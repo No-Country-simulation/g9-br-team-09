@@ -153,7 +153,15 @@ cd backend
 
 O backend utiliza H2 em memória no profile `local`. Os dados são perdidos quando a aplicação é encerrada.
 
-O schema de domínio será criado por migrations Flyway, e a migration inicial será implementada na issue `#16`.
+O schema de domínio é gerenciado exclusivamente pelo Flyway; a migration inicial `V1` já cria a tabela `energy_analysis`.
+
+Para execução no Oracle Autonomous Database, o profile `oci` usa JDBC Thin com TLS sem wallet. Consulte o [guia operacional do Oracle Autonomous Database](docs/oracle-autonomous-database.md).
+
+Durante a validação real no Oracle, a migration e os mapeamentos JPA foram alinhados aos tipos nativos do banco. Os DTOs, o contrato JSON e as regras de negócio permaneceram inalterados.
+
+O profile `local` é independente do Oracle Autonomous Database e não requer `.env`, `oci.env`, `DB_URL`, `DB_USERNAME` ou `DB_PASSWORD`.
+
+As credenciais externas são necessárias somente ao executar o backend com o profile `oci`. Caso o profile `oci` seja ativado sem essas variáveis, a aplicação não conseguirá configurar o datasource e falhará na inicialização.
 
 ### Swagger
 
