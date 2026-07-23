@@ -163,6 +163,22 @@ O profile `local` é independente do Oracle Autonomous Database e não requer `.
 
 As credenciais externas são necessárias somente ao executar o backend com o profile `oci`. Caso o profile `oci` seja ativado sem essas variáveis, a aplicação não conseguirá configurar o datasource e falhará na inicialização.
 
+### Health check operacional
+
+O backend expõe exclusivamente o health check operacional em `GET /api/v1/actuator/health`. Quando saudável, ele retorna:
+
+```json
+{
+  "status": "UP"
+}
+```
+
+Detalhes internos permanecem ocultos e os demais endpoints do Actuator não são expostos. Valide localmente com:
+
+```bash
+curl --fail http://localhost:8080/api/v1/actuator/health
+```
+
 ### Swagger
 
 ```text
