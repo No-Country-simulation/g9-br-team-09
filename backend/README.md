@@ -127,9 +127,19 @@ Resposta saudável:
 
 ## Banco de dados
 
-No profile `local`, o H2 em memória usa o modo Oracle. Flyway aplica as migrations e Hibernate não gera DDL. O console H2 está em `http://localhost:8080/api/v1/h2-console`, com JDBC URL `jdbc:h2:mem:energiai`, usuário `sa` e senha vazia.
+No profile `local`, o H2 em memória usa o modo Oracle. Flyway aplica as migrations e Hibernate não gera DDL. Os dados são descartados ao encerrar a aplicação. O console H2 está em `http://localhost:8080/api/v1/h2-console`, com:
+
+```text
+JDBC URL: jdbc:h2:mem:energiai;MODE=Oracle;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+User Name: sa
+Password: vazio
+```
+
+Use no console exatamente a URL configurada no datasource. Nos logs de inicialização, confirme o Flyway habilitado, a migration `V1__create_energy_analysis_table.sql` e a criação de `energy_analysis` e `flyway_schema_history`. Para validar persistência, envie uma análise pelo `POST /api/v1/analise-energetica` e consulte o ID retornado em `GET /api/v1/analise-energetica/{id}`.
 
 No profile `oci`, o backend usa Oracle Autonomous Database por JDBC Thin com TLS. Não há credenciais no repositório: use o modelo [`.env.example`](../.env.example) e siga o [guia operacional OCI](../docs/oracle-autonomous-database.md), sem copiar credenciais para o workspace.
+
+O guia OCI concentra a criação do arquivo externo `~/.config/energiai/oci.env` (ou `$HOME\.config\energiai\oci.env` no PowerShell), o carregamento na sessão atual, Docker com `--env-file`, scripts de verificação pela API e o teste opt-in `OracleAutonomousDatabaseIntegrationTest`. Esse teste usa banco externo, confirma Oracle/Flyway/tabelas e remove o registro criado; não faz parte da suíte padrão e não deve ser executado sem autorização.
 
 ## Variáveis de ambiente
 
@@ -141,6 +151,15 @@ No profile `oci`, o backend usa Oracle Autonomous Database por JDBC Thin com TLS
 | `ML_API_READ_TIMEOUT` | Timeout de leitura da ML. | `5s` |
 
 Exclusivas do profile `oci`: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_CONNECT_RETRIES`, `DB_POOL_MIN_IDLE`, `DB_POOL_MAX_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_VALIDATION_TIMEOUT_MS` e `DB_KEEPALIVE_TIME_MS`. As três primeiras são obrigatórias; as demais possuem defaults no profile.
+
+`DB_CONNECT_RETRIES` padrão é `5`; `DB_POOL_MIN_IDLE` é `1`; `DB_POOL_MAX_SIZE` é `5`; `DB_CONNECTION_TIMEOUT_MS`, `DB_VALIDATION_TIMEOUT_MS` e `DB_KEEPALIVE_TIME_MS` são milissegundos, com defaults `30000`, `5000` e `120000`. Em OCI, `DB_URL` deve ser uma string JDBC Thin TLS sem wallet, sem aspas incorporadas, carregada no mesmo processo do Maven. Falhas de datasource normalmente indicam variáveis ausentes, URL inválida, credenciais/privilégio `CREATE SESSION` ou ACL/rede. Não conceda `DBA`, não use `flyway clean` em schema persistente e não altere `ddl-auto` para `update` para mascarar divergências de schema.
+
+## Troubleshooting
+
+- Profile ou datasource ausente: confira `echo "$SPRING_PROFILES_ACTIVE"` ou `$env:SPRING_PROFILES_ACTIVE`; `local` não depende de Oracle e `oci` exige suas variáveis.
+- H2 Console não conecta: confirme aplicação em execução, profile `local`, context path, URL JDBC completa, usuário `sa` e senha vazia.
+- Falha de Flyway ou Hibernate `validate`: revise logs, `flyway_schema_history`, migration aplicada, usuário/schema da conexão e tipos esperados. Flyway é a fonte de verdade do schema; Hibernate não deve criá-lo nem atualizá-lo.
+- H2 em modo Oracle não substitui validação no Oracle real: diferenças de sintaxe e tipos podem existir.
 
 ## Testes
 
