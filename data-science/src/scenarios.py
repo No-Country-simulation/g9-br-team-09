@@ -60,3 +60,12 @@ TYPICAL_RANGES: Final[
 BOUNDARY_CASE_RATIO: Final[float] = 0.03
 RARE_CASE_RATIO: Final[float] = 0.05
 PLAUSIBLE_OUTLIER_RATIO: Final[float] = 0.03
+
+PEAK_USAGE_PROBABILITY_PARAMETERS: Final[dict[str, float]] = {
+    "intercept": 0.15,
+    "equipment_weight": 0.25,
+    "hours_weight": 0.35,
+    "interaction_weight": 0.20,
+    "minimum_probability": 0.05,
+    "maximum_probability": 0.95,
+}
