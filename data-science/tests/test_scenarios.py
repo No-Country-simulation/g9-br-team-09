@@ -80,3 +80,65 @@ def test_proporcoes_dos_casos_especiais() -> None:
         scenarios.PLAUSIBLE_OUTLIER_RATIO
         <= scenarios.RARE_CASE_RATIO
     )
+
+
+def test_parametros_de_probabilidade_de_pico_possuem_chaves_esperadas() -> None:
+    expected_parameters = {
+        "intercept",
+        "equipment_weight",
+        "hours_weight",
+        "interaction_weight",
+        "minimum_probability",
+        "maximum_probability",
+    }
+
+    assert set(
+        scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS
+    ) == expected_parameters
+
+
+def test_parametros_de_probabilidade_de_pico_respeitam_limites() -> None:
+    parameters = scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS
+
+    assert 0.0 <= parameters["minimum_probability"] < 1.0
+    assert 0.0 < parameters["maximum_probability"] <= 1.0
+    assert (
+        parameters["minimum_probability"]
+        < parameters["maximum_probability"]
+    )
+
+    assert (
+        parameters["minimum_probability"]
+        <= parameters["intercept"]
+        <= parameters["maximum_probability"]
+    )
+
+    for parameter_name in (
+        "equipment_weight",
+        "hours_weight",
+        "interaction_weight",
+    ):
+        assert 0.0 <= parameters[parameter_name] <= 1.0
+
+
+def test_probabilidade_teorica_de_pico_permanece_no_intervalo() -> None:
+    parameters = scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS
+
+    minimum_probability = parameters["intercept"]
+    maximum_probability = (
+        parameters["intercept"]
+        + parameters["equipment_weight"]
+        + parameters["hours_weight"]
+        + parameters["interaction_weight"]
+    )
+
+    assert (
+        parameters["minimum_probability"]
+        <= minimum_probability
+        <= parameters["maximum_probability"]
+    )
+    assert (
+        parameters["minimum_probability"]
+        <= maximum_probability
+        <= parameters["maximum_probability"]
+    )
