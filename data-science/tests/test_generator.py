@@ -253,3 +253,118 @@ def test_geracao_de_equipamentos_rejeita_faixa_invertida() -> None:
             invalid_ranges,
             np.random.default_rng(schema.RANDOM_SEED),
         )
+
+
+def test_geracao_de_horas_respeita_faixas_e_seed() -> None:
+    property_types = generator.generate_property_types(
+        100,
+        scenarios.PROPERTY_TYPE_DISTRIBUTION,
+        schema.RANDOM_SEED,
+    )
+
+    first_sample = generator.generate_high_consumption_hours(
+        property_types,
+        scenarios.TYPICAL_RANGES,
+        np.random.default_rng(schema.RANDOM_SEED + 2),
+    )
+    second_sample = generator.generate_high_consumption_hours(
+        property_types,
+        scenarios.TYPICAL_RANGES,
+        np.random.default_rng(schema.RANDOM_SEED + 2),
+    )
+
+    assert len(first_sample) == len(property_types)
+    assert np.issubdtype(first_sample.dtype, np.integer)
+    assert np.array_equal(first_sample, second_sample)
+
+    for property_type, high_consumption_hours in zip(
+        property_types,
+        first_sample,
+        strict=True,
+    ):
+        minimum, maximum = scenarios.TYPICAL_RANGES[
+            str(property_type)
+        ]["horas_alto_consumo"]
+
+        assert minimum <= high_consumption_hours <= maximum
+
+
+def test_geracao_de_horas_rejeita_tipos_vazios() -> None:
+    with pytest.raises(
+        ValueError,
+        match="property_types não pode estar vazio",
+    ):
+        generator.generate_high_consumption_hours(
+            np.array([], dtype=str),
+            scenarios.TYPICAL_RANGES,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_horas_rejeita_imovel_desconhecido() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Tipo de imóvel sem faixas configuradas: DESCONHECIDO",
+    ):
+        generator.generate_high_consumption_hours(
+            np.array(["DESCONHECIDO"], dtype=str),
+            scenarios.TYPICAL_RANGES,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_horas_rejeita_faixa_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 520.0),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de horas_alto_consumo ausente para: CASA",
+    ):
+        generator.generate_high_consumption_hours(
+            np.array(["CASA"], dtype=str),
+            invalid_ranges,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_horas_rejeita_faixa_nao_inteira() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "horas_alto_consumo": (1.5, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="A faixa de horas_alto_consumo deve ser inteira",
+    ):
+        generator.generate_high_consumption_hours(
+            np.array(["CASA"], dtype=str),
+            invalid_ranges,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_horas_rejeita_faixa_invertida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "horas_alto_consumo": (12, 1),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "O mínimo de horas_alto_consumo "
+            "não pode superar o máximo"
+        ),
+    ):
+        generator.generate_high_consumption_hours(
+            np.array(["CASA"], dtype=str),
+            invalid_ranges,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
