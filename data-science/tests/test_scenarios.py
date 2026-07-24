@@ -142,3 +142,52 @@ def test_probabilidade_teorica_de_pico_permanece_no_intervalo() -> None:
         <= maximum_probability
         <= parameters["maximum_probability"]
     )
+
+def test_parametros_de_geracao_de_consumo_possuem_chaves_esperadas() -> None:
+    expected_parameters = {
+        "equipment_weight",
+        "hours_weight",
+        "peak_weight",
+        "interaction_weight",
+        "noise_standard_deviation",
+        "minimum_normalized_consumption",
+        "maximum_normalized_consumption",
+    }
+
+    assert set(
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS
+    ) == expected_parameters
+
+
+def test_pesos_de_geracao_de_consumo_somam_um() -> None:
+    parameters = scenarios.CONSUMPTION_GENERATION_PARAMETERS
+    weight_names = (
+        "equipment_weight",
+        "hours_weight",
+        "peak_weight",
+        "interaction_weight",
+    )
+
+    for weight_name in weight_names:
+        assert 0.0 < parameters[weight_name] <= 1.0
+
+    assert sum(
+        parameters[weight_name]
+        for weight_name in weight_names
+    ) == pytest.approx(1.0)
+
+
+def test_parametros_de_geracao_de_consumo_respeitam_limites() -> None:
+    parameters = scenarios.CONSUMPTION_GENERATION_PARAMETERS
+
+    assert parameters["noise_standard_deviation"] == pytest.approx(0.04)
+    assert parameters["minimum_normalized_consumption"] == pytest.approx(
+        0.0
+    )
+    assert parameters["maximum_normalized_consumption"] == pytest.approx(
+        1.0
+    )
+    assert (
+        parameters["minimum_normalized_consumption"]
+        < parameters["maximum_normalized_consumption"]
+    )
