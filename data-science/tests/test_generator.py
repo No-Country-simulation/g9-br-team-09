@@ -368,3 +368,244 @@ def test_geracao_de_horas_rejeita_faixa_invertida() -> None:
             invalid_ranges,
             np.random.default_rng(schema.RANDOM_SEED),
         )
+
+
+def test_geracao_de_pico_respeita_tipo_tamanho_e_seed() -> None:
+    property_types = generator.generate_property_types(
+        100,
+        scenarios.PROPERTY_TYPE_DISTRIBUTION,
+        schema.RANDOM_SEED,
+    )
+    equipment_counts = generator.generate_equipment_counts(
+        property_types,
+        scenarios.TYPICAL_RANGES,
+        np.random.default_rng(schema.RANDOM_SEED + 1),
+    )
+    high_consumption_hours = (
+        generator.generate_high_consumption_hours(
+            property_types,
+            scenarios.TYPICAL_RANGES,
+            np.random.default_rng(schema.RANDOM_SEED + 2),
+        )
+    )
+
+    first_sample = generator.generate_peak_usage(
+        property_types,
+        equipment_counts,
+        high_consumption_hours,
+        scenarios.TYPICAL_RANGES,
+        scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+        np.random.default_rng(schema.RANDOM_SEED + 3),
+    )
+    second_sample = generator.generate_peak_usage(
+        property_types,
+        equipment_counts,
+        high_consumption_hours,
+        scenarios.TYPICAL_RANGES,
+        scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+        np.random.default_rng(schema.RANDOM_SEED + 3),
+    )
+
+    assert len(first_sample) == len(property_types)
+    assert np.issubdtype(first_sample.dtype, np.bool_)
+    assert np.array_equal(first_sample, second_sample)
+
+
+def test_geracao_de_pico_reflete_extremos_observaveis() -> None:
+    parameters = {
+        "intercept": 0.0,
+        "equipment_weight": 0.25,
+        "hours_weight": 0.35,
+        "interaction_weight": 0.40,
+        "minimum_probability": 0.0,
+        "maximum_probability": 1.0,
+    }
+
+    peak_usage = generator.generate_peak_usage(
+        np.array(["CASA", "CASA"], dtype=str),
+        np.array([4, 22], dtype=int),
+        np.array([1, 12], dtype=int),
+        scenarios.TYPICAL_RANGES,
+        parameters,
+        np.random.default_rng(schema.RANDOM_SEED),
+    )
+
+    assert peak_usage.tolist() == [False, True]
+
+
+def test_geracao_de_pico_rejeita_tipos_vazios() -> None:
+    with pytest.raises(
+        ValueError,
+        match="property_types não pode estar vazio",
+    ):
+        generator.generate_peak_usage(
+            np.array([], dtype=str),
+            np.array([], dtype=int),
+            np.array([], dtype=int),
+            scenarios.TYPICAL_RANGES,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_equipamentos_com_tamanho_diferente() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "equipment_counts deve possuir o mesmo tamanho "
+            "de property_types"
+        ),
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA", "CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5, 6], dtype=int),
+            scenarios.TYPICAL_RANGES,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_horas_com_tamanho_diferente() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "high_consumption_hours deve possuir o mesmo tamanho "
+            "de property_types"
+        ),
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA", "CASA"], dtype=str),
+            np.array([10, 11], dtype=int),
+            np.array([5], dtype=int),
+            scenarios.TYPICAL_RANGES,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_parametro_ausente() -> None:
+    invalid_parameters = dict(
+        scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS
+    )
+    del invalid_parameters["hours_weight"]
+
+    with pytest.raises(
+        ValueError,
+        match="Parâmetros de probabilidade ausentes: hours_weight",
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            scenarios.TYPICAL_RANGES,
+            invalid_parameters,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_imovel_desconhecido() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Tipo de imóvel sem faixas configuradas: DESCONHECIDO",
+    ):
+        generator.generate_peak_usage(
+            np.array(["DESCONHECIDO"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            scenarios.TYPICAL_RANGES,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_faixa_de_equipamentos_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "horas_alto_consumo": (1, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de quantidade_equipamentos ausente para: CASA",
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            invalid_ranges,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_faixa_de_horas_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "quantidade_equipamentos": (4, 22),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de horas_alto_consumo ausente para: CASA",
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            invalid_ranges,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_amplitude_de_equipamentos_invalida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "quantidade_equipamentos": (4, 4),
+            "horas_alto_consumo": (1, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "A faixa de quantidade_equipamentos "
+            "deve possuir amplitude positiva"
+        ),
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA"], dtype=str),
+            np.array([4], dtype=int),
+            np.array([5], dtype=int),
+            invalid_ranges,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_pico_rejeita_amplitude_de_horas_invalida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "quantidade_equipamentos": (4, 22),
+            "horas_alto_consumo": (1, 1),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "A faixa de horas_alto_consumo "
+            "deve possuir amplitude positiva"
+        ),
+    ):
+        generator.generate_peak_usage(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([1], dtype=int),
+            invalid_ranges,
+            scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
