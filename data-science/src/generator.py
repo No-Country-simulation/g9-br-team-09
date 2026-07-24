@@ -219,3 +219,131 @@ def generate_high_consumption_hours(
         )
 
     return high_consumption_hours
+
+
+def generate_peak_usage(
+    property_types: NDArray[np.str_],
+    equipment_counts: NDArray[np.int_],
+    high_consumption_hours: NDArray[np.int_],
+    typical_ranges: Mapping[
+        str,
+        Mapping[str, tuple[float, float]],
+    ],
+    parameters: Mapping[str, float],
+    random_generator: np.random.Generator,
+) -> NDArray[np.bool_]:
+    """Gera o uso em horário de pico a partir de relações observáveis."""
+    sample_size = property_types.size
+
+    if sample_size == 0:
+        raise ValueError("property_types não pode estar vazio")
+
+    if equipment_counts.size != sample_size:
+        raise ValueError(
+            "equipment_counts deve possuir o mesmo tamanho "
+            "de property_types"
+        )
+
+    if high_consumption_hours.size != sample_size:
+        raise ValueError(
+            "high_consumption_hours deve possuir o mesmo tamanho "
+            "de property_types"
+        )
+
+    required_parameters = {
+        "intercept",
+        "equipment_weight",
+        "hours_weight",
+        "interaction_weight",
+        "minimum_probability",
+        "maximum_probability",
+    }
+    missing_parameters = required_parameters - set(parameters)
+
+    if missing_parameters:
+        missing_names = ", ".join(sorted(missing_parameters))
+        raise ValueError(
+            f"Parâmetros de probabilidade ausentes: {missing_names}"
+        )
+
+    probabilities = np.empty(sample_size, dtype=float)
+
+    for property_type in np.unique(property_types):
+        property_type_name = str(property_type)
+        property_ranges = typical_ranges.get(property_type_name)
+
+        if property_ranges is None:
+            raise ValueError(
+                "Tipo de imóvel sem faixas configuradas: "
+                f"{property_type_name}"
+            )
+
+        equipment_range = property_ranges.get(
+            "quantidade_equipamentos"
+        )
+        hours_range = property_ranges.get("horas_alto_consumo")
+
+        if equipment_range is None:
+            raise ValueError(
+                "Faixa de quantidade_equipamentos ausente para: "
+                f"{property_type_name}"
+            )
+
+        if hours_range is None:
+            raise ValueError(
+                "Faixa de horas_alto_consumo ausente para: "
+                f"{property_type_name}"
+            )
+
+        equipment_minimum, equipment_maximum = equipment_range
+        hours_minimum, hours_maximum = hours_range
+
+        if equipment_minimum >= equipment_maximum:
+            raise ValueError(
+                "A faixa de quantidade_equipamentos "
+                "deve possuir amplitude positiva"
+            )
+
+        if hours_minimum >= hours_maximum:
+            raise ValueError(
+                "A faixa de horas_alto_consumo "
+                "deve possuir amplitude positiva"
+            )
+
+        property_mask = property_types == property_type
+
+        normalized_equipment = np.clip(
+            (
+                equipment_counts[property_mask]
+                - equipment_minimum
+            )
+            / (equipment_maximum - equipment_minimum),
+            0.0,
+            1.0,
+        )
+        normalized_hours = np.clip(
+            (
+                high_consumption_hours[property_mask]
+                - hours_minimum
+            )
+            / (hours_maximum - hours_minimum),
+            0.0,
+            1.0,
+        )
+
+        interaction = normalized_equipment * normalized_hours
+
+        property_probabilities = (
+            parameters["intercept"]
+            + parameters["equipment_weight"] * normalized_equipment
+            + parameters["hours_weight"] * normalized_hours
+            + parameters["interaction_weight"] * interaction
+        )
+
+        probabilities[property_mask] = np.clip(
+            property_probabilities,
+            parameters["minimum_probability"],
+            parameters["maximum_probability"],
+        )
+
+    return random_generator.random(sample_size) < probabilities
