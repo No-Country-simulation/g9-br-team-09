@@ -1,8 +1,13 @@
 """Gerador sintético do Dataset EnergIAI V2.
 
-Nesta etapa inicial, o módulo implementa somente a alocação reproduzível
-dos tipos de imóvel. As demais features, score, target e casos especiais
-serão adicionados e validados em etapas posteriores.
+Nesta etapa, o módulo implementa:
+
+- alocação reproduzível dos tipos de imóvel;
+- geração embaralhada dos tipos de imóvel;
+- geração da quantidade de equipamentos nas faixas típicas.
+
+As demais features, score, target e casos especiais serão adicionados e
+validados em etapas posteriores.
 """
 
 from collections.abc import Mapping
@@ -79,3 +84,70 @@ def generate_property_types(
     random_generator.shuffle(property_types)
 
     return property_types
+
+
+def generate_equipment_counts(
+    property_types: NDArray[np.str_],
+    typical_ranges: Mapping[
+        str,
+        Mapping[str, tuple[float, float]],
+    ],
+    random_generator: np.random.Generator,
+) -> NDArray[np.int_]:
+    """Gera equipamentos dentro da faixa típica de cada imóvel."""
+    if property_types.size == 0:
+        raise ValueError("property_types não pode estar vazio")
+
+    equipment_counts = np.empty(property_types.size, dtype=int)
+
+    for property_type in np.unique(property_types):
+        property_type_name = str(property_type)
+        property_ranges = typical_ranges.get(property_type_name)
+
+        if property_ranges is None:
+            raise ValueError(
+                "Tipo de imóvel sem faixas configuradas: "
+                f"{property_type_name}"
+            )
+
+        equipment_range = property_ranges.get(
+            "quantidade_equipamentos"
+        )
+
+        if equipment_range is None:
+            raise ValueError(
+                "Faixa de quantidade_equipamentos ausente para: "
+                f"{property_type_name}"
+            )
+
+        minimum, maximum = equipment_range
+
+        if (
+            not float(minimum).is_integer()
+            or not float(maximum).is_integer()
+        ):
+            raise ValueError(
+                "A faixa de quantidade_equipamentos deve ser inteira"
+            )
+
+        minimum_int = int(minimum)
+        maximum_int = int(maximum)
+
+        if minimum_int > maximum_int:
+            raise ValueError(
+                "O mínimo de quantidade_equipamentos "
+                "não pode superar o máximo"
+            )
+
+        property_mask = property_types == property_type
+        property_count = int(np.count_nonzero(property_mask))
+
+        equipment_counts[property_mask] = (
+            random_generator.integers(
+                minimum_int,
+                maximum_int + 1,
+                size=property_count,
+            )
+        )
+
+    return equipment_counts
