@@ -347,3 +347,183 @@ def generate_peak_usage(
         )
 
     return random_generator.random(sample_size) < probabilities
+
+
+def generate_consumption(
+    property_types: NDArray[np.str_],
+    equipment_counts: NDArray[np.int_],
+    high_consumption_hours: NDArray[np.int_],
+    peak_usage: NDArray[np.bool_],
+    typical_ranges: Mapping[
+        str,
+        Mapping[str, tuple[float, float]],
+    ],
+    parameters: Mapping[str, float],
+    random_generator: np.random.Generator,
+) -> NDArray[np.float64]:
+    """Gera consumo mensal com relações multivariadas e ruído controlado."""
+    sample_size = property_types.size
+
+    if sample_size == 0:
+        raise ValueError("property_types não pode estar vazio")
+
+    if equipment_counts.size != sample_size:
+        raise ValueError(
+            "equipment_counts deve possuir o mesmo tamanho "
+            "de property_types"
+        )
+
+    if high_consumption_hours.size != sample_size:
+        raise ValueError(
+            "high_consumption_hours deve possuir o mesmo tamanho "
+            "de property_types"
+        )
+
+    if peak_usage.size != sample_size:
+        raise ValueError(
+            "peak_usage deve possuir o mesmo tamanho "
+            "de property_types"
+        )
+
+    required_parameters = {
+        "equipment_weight",
+        "hours_weight",
+        "peak_weight",
+        "interaction_weight",
+        "noise_standard_deviation",
+        "minimum_normalized_consumption",
+        "maximum_normalized_consumption",
+    }
+    missing_parameters = required_parameters - set(parameters)
+
+    if missing_parameters:
+        missing_names = ", ".join(sorted(missing_parameters))
+        raise ValueError(
+            f"Parâmetros de geração de consumo ausentes: {missing_names}"
+        )
+
+    if parameters["noise_standard_deviation"] < 0.0:
+        raise ValueError(
+            "noise_standard_deviation não pode ser negativo"
+        )
+
+    normalized_minimum = parameters[
+        "minimum_normalized_consumption"
+    ]
+    normalized_maximum = parameters[
+        "maximum_normalized_consumption"
+    ]
+
+    if normalized_minimum >= normalized_maximum:
+        raise ValueError(
+            "Os limites normalizados de consumo devem possuir "
+            "amplitude positiva"
+        )
+
+    consumption = np.empty(sample_size, dtype=float)
+
+    for property_type in np.unique(property_types):
+        property_type_name = str(property_type)
+        property_ranges = typical_ranges.get(property_type_name)
+
+        if property_ranges is None:
+            raise ValueError(
+                "Tipo de imóvel sem faixas configuradas: "
+                f"{property_type_name}"
+            )
+
+        consumption_range = property_ranges.get("consumo_kwh")
+        equipment_range = property_ranges.get(
+            "quantidade_equipamentos"
+        )
+        hours_range = property_ranges.get("horas_alto_consumo")
+
+        if consumption_range is None:
+            raise ValueError(
+                f"Faixa de consumo_kwh ausente para: {property_type_name}"
+            )
+
+        if equipment_range is None:
+            raise ValueError(
+                "Faixa de quantidade_equipamentos ausente para: "
+                f"{property_type_name}"
+            )
+
+        if hours_range is None:
+            raise ValueError(
+                "Faixa de horas_alto_consumo ausente para: "
+                f"{property_type_name}"
+            )
+
+        consumption_minimum, consumption_maximum = consumption_range
+        equipment_minimum, equipment_maximum = equipment_range
+        hours_minimum, hours_maximum = hours_range
+
+        if consumption_minimum >= consumption_maximum:
+            raise ValueError(
+                "A faixa de consumo_kwh deve possuir amplitude positiva"
+            )
+
+        if equipment_minimum >= equipment_maximum:
+            raise ValueError(
+                "A faixa de quantidade_equipamentos "
+                "deve possuir amplitude positiva"
+            )
+
+        if hours_minimum >= hours_maximum:
+            raise ValueError(
+                "A faixa de horas_alto_consumo "
+                "deve possuir amplitude positiva"
+            )
+
+        property_mask = property_types == property_type
+        property_count = int(np.count_nonzero(property_mask))
+
+        normalized_equipment = np.clip(
+            (
+                equipment_counts[property_mask]
+                - equipment_minimum
+            )
+            / (equipment_maximum - equipment_minimum),
+            0.0,
+            1.0,
+        )
+        normalized_hours = np.clip(
+            (
+                high_consumption_hours[property_mask]
+                - hours_minimum
+            )
+            / (hours_maximum - hours_minimum),
+            0.0,
+            1.0,
+        )
+        normalized_peak = peak_usage[property_mask].astype(float)
+        interaction = normalized_equipment * normalized_hours
+
+        noise = random_generator.normal(
+            loc=0.0,
+            scale=parameters["noise_standard_deviation"],
+            size=property_count,
+        )
+
+        normalized_consumption = (
+            parameters["equipment_weight"] * normalized_equipment
+            + parameters["hours_weight"] * normalized_hours
+            + parameters["peak_weight"] * normalized_peak
+            + parameters["interaction_weight"] * interaction
+            + noise
+        )
+
+        normalized_consumption = np.clip(
+            normalized_consumption,
+            normalized_minimum,
+            normalized_maximum,
+        )
+
+        consumption[property_mask] = (
+            consumption_minimum
+            + normalized_consumption
+            * (consumption_maximum - consumption_minimum)
+        )
+
+    return np.round(consumption, decimals=2)
