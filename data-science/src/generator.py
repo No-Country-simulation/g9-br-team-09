@@ -151,3 +151,71 @@ def generate_equipment_counts(
         )
 
     return equipment_counts
+
+
+def generate_high_consumption_hours(
+    property_types: NDArray[np.str_],
+    typical_ranges: Mapping[
+        str,
+        Mapping[str, tuple[float, float]],
+    ],
+    random_generator: np.random.Generator,
+) -> NDArray[np.int_]:
+    """Gera horas de alto consumo na faixa típica de cada imóvel."""
+    if property_types.size == 0:
+        raise ValueError("property_types não pode estar vazio")
+
+    high_consumption_hours = np.empty(
+        property_types.size,
+        dtype=int,
+    )
+
+    for property_type in np.unique(property_types):
+        property_type_name = str(property_type)
+        property_ranges = typical_ranges.get(property_type_name)
+
+        if property_ranges is None:
+            raise ValueError(
+                "Tipo de imóvel sem faixas configuradas: "
+                f"{property_type_name}"
+            )
+
+        hours_range = property_ranges.get("horas_alto_consumo")
+
+        if hours_range is None:
+            raise ValueError(
+                "Faixa de horas_alto_consumo ausente para: "
+                f"{property_type_name}"
+            )
+
+        minimum, maximum = hours_range
+
+        if (
+            not float(minimum).is_integer()
+            or not float(maximum).is_integer()
+        ):
+            raise ValueError(
+                "A faixa de horas_alto_consumo deve ser inteira"
+            )
+
+        minimum_int = int(minimum)
+        maximum_int = int(maximum)
+
+        if minimum_int > maximum_int:
+            raise ValueError(
+                "O mínimo de horas_alto_consumo "
+                "não pode superar o máximo"
+            )
+
+        property_mask = property_types == property_type
+        property_count = int(np.count_nonzero(property_mask))
+
+        high_consumption_hours[property_mask] = (
+            random_generator.integers(
+                minimum_int,
+                maximum_int + 1,
+                size=property_count,
+            )
+        )
+
+    return high_consumption_hours
