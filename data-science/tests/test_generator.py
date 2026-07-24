@@ -138,3 +138,118 @@ def test_geracao_dos_tipos_respeita_as_contagens() -> None:
         "INDUSTRIA": 5,
         "OUTRO": 5,
     }
+
+
+def test_geracao_de_equipamentos_respeita_faixas_e_seed() -> None:
+    property_types = generator.generate_property_types(
+        100,
+        scenarios.PROPERTY_TYPE_DISTRIBUTION,
+        schema.RANDOM_SEED,
+    )
+
+    first_sample = generator.generate_equipment_counts(
+        property_types,
+        scenarios.TYPICAL_RANGES,
+        np.random.default_rng(schema.RANDOM_SEED + 1),
+    )
+    second_sample = generator.generate_equipment_counts(
+        property_types,
+        scenarios.TYPICAL_RANGES,
+        np.random.default_rng(schema.RANDOM_SEED + 1),
+    )
+
+    assert len(first_sample) == len(property_types)
+    assert np.issubdtype(first_sample.dtype, np.integer)
+    assert np.array_equal(first_sample, second_sample)
+
+    for property_type, equipment_count in zip(
+        property_types,
+        first_sample,
+        strict=True,
+    ):
+        minimum, maximum = scenarios.TYPICAL_RANGES[
+            str(property_type)
+        ]["quantidade_equipamentos"]
+
+        assert minimum <= equipment_count <= maximum
+
+
+def test_geracao_de_equipamentos_rejeita_tipos_vazios() -> None:
+    with pytest.raises(
+        ValueError,
+        match="property_types não pode estar vazio",
+    ):
+        generator.generate_equipment_counts(
+            np.array([], dtype=str),
+            scenarios.TYPICAL_RANGES,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_equipamentos_rejeita_imovel_desconhecido() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Tipo de imóvel sem faixas configuradas: DESCONHECIDO",
+    ):
+        generator.generate_equipment_counts(
+            np.array(["DESCONHECIDO"], dtype=str),
+            scenarios.TYPICAL_RANGES,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_equipamentos_rejeita_faixa_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 520.0),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de quantidade_equipamentos ausente para: CASA",
+    ):
+        generator.generate_equipment_counts(
+            np.array(["CASA"], dtype=str),
+            invalid_ranges,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_equipamentos_rejeita_faixa_nao_inteira() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "quantidade_equipamentos": (4.5, 22),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="A faixa de quantidade_equipamentos deve ser inteira",
+    ):
+        generator.generate_equipment_counts(
+            np.array(["CASA"], dtype=str),
+            invalid_ranges,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_equipamentos_rejeita_faixa_invertida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "quantidade_equipamentos": (22, 4),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "O mínimo de quantidade_equipamentos "
+            "não pode superar o máximo"
+        ),
+    ):
+        generator.generate_equipment_counts(
+            np.array(["CASA"], dtype=str),
+            invalid_ranges,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
