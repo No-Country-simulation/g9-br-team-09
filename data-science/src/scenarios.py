@@ -69,3 +69,13 @@ PEAK_USAGE_PROBABILITY_PARAMETERS: Final[dict[str, float]] = {
     "minimum_probability": 0.05,
     "maximum_probability": 0.95,
 }
+
+CONSUMPTION_GENERATION_PARAMETERS: Final[dict[str, float]] = {
+    "equipment_weight": 0.30,
+    "hours_weight": 0.30,
+    "peak_weight": 0.15,
+    "interaction_weight": 0.25,
+    "noise_standard_deviation": 0.04,
+    "minimum_normalized_consumption": 0.0,
+    "maximum_normalized_consumption": 1.0,
+}
