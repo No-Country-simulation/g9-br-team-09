@@ -106,6 +106,46 @@ docker run --rm \
   energiai-backend:local
 ```
 
+## Imagem publicada no Docker Hub
+
+Após uma integração na branch `develop`, o workflow **Backend Docker** constrói,
+valida e publica a imagem no Docker Hub. Para obter a imagem mais recente
+publicada dessa branch:
+
+```bash
+docker pull pxs00/energiai-backend:develop
+```
+
+Execute-a com o profile local:
+
+```bash
+docker run --rm \
+  --name energiai-backend \
+  -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=local \
+  pxs00/energiai-backend:develop
+```
+
+As tags publicadas têm finalidades diferentes:
+
+- `develop` é mutável e representa a imagem mais recente publicada após uma
+  integração na branch `develop`.
+- `sha-<commit-curto>` é imutável, identifica uma revisão específica e é
+  recomendada para rastreabilidade e reprodução. Por exemplo:
+
+  ```bash
+  docker pull pxs00/energiai-backend:sha-abcdef1
+  ```
+
+Não há publicação automática da tag `latest`. Pull Requests apenas constroem e
+validam a imagem; pushes para `develop` publicam as duas tags; e execuções por
+`workflow_dispatch` executam somente a validação.
+
+As credenciais Oracle não fazem parte da imagem. Em um futuro deploy na OCI
+Compute, a instância poderá obter a imagem diretamente do Docker Hub e receber
+`DB_URL`, `DB_USERNAME` e `DB_PASSWORD` somente em runtime, com o profile
+`oci`. O deploy automático na OCI permanece fora do escopo deste workflow.
+
 ## Variáveis de ambiente
 
 As configurações devem ser fornecidas durante a execução do container.
