@@ -609,3 +609,414 @@ def test_geracao_de_pico_rejeita_amplitude_de_horas_invalida() -> None:
             scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
             np.random.default_rng(schema.RANDOM_SEED),
         )
+
+
+def test_geracao_de_consumo_respeita_tipo_tamanho_seed_e_faixas() -> None:
+    property_types = generator.generate_property_types(
+        100,
+        scenarios.PROPERTY_TYPE_DISTRIBUTION,
+        schema.RANDOM_SEED,
+    )
+    equipment_counts = generator.generate_equipment_counts(
+        property_types,
+        scenarios.TYPICAL_RANGES,
+        np.random.default_rng(schema.RANDOM_SEED + 1),
+    )
+    high_consumption_hours = (
+        generator.generate_high_consumption_hours(
+            property_types,
+            scenarios.TYPICAL_RANGES,
+            np.random.default_rng(schema.RANDOM_SEED + 2),
+        )
+    )
+    peak_usage = generator.generate_peak_usage(
+        property_types,
+        equipment_counts,
+        high_consumption_hours,
+        scenarios.TYPICAL_RANGES,
+        scenarios.PEAK_USAGE_PROBABILITY_PARAMETERS,
+        np.random.default_rng(schema.RANDOM_SEED + 3),
+    )
+
+    first_sample = generator.generate_consumption(
+        property_types,
+        equipment_counts,
+        high_consumption_hours,
+        peak_usage,
+        scenarios.TYPICAL_RANGES,
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+        np.random.default_rng(schema.RANDOM_SEED + 4),
+    )
+    second_sample = generator.generate_consumption(
+        property_types,
+        equipment_counts,
+        high_consumption_hours,
+        peak_usage,
+        scenarios.TYPICAL_RANGES,
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+        np.random.default_rng(schema.RANDOM_SEED + 4),
+    )
+
+    assert len(first_sample) == len(property_types)
+    assert np.issubdtype(first_sample.dtype, np.floating)
+    assert np.array_equal(first_sample, second_sample)
+    assert np.array_equal(
+        first_sample,
+        np.round(first_sample, decimals=2),
+    )
+
+    for property_type, consumption in zip(
+        property_types,
+        first_sample,
+    ):
+        minimum, maximum = scenarios.TYPICAL_RANGES[
+            str(property_type)
+        ]["consumo_kwh"]
+
+        assert minimum <= consumption <= maximum
+
+
+def test_geracao_de_consumo_reflete_extremos_multivariados() -> None:
+    parameters = dict(
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS
+    )
+    parameters["noise_standard_deviation"] = 0.0
+
+    consumption = generator.generate_consumption(
+        np.array(["CASA", "CASA"], dtype=str),
+        np.array([4, 22], dtype=int),
+        np.array([1, 12], dtype=int),
+        np.array([False, True], dtype=bool),
+        scenarios.TYPICAL_RANGES,
+        parameters,
+        np.random.default_rng(schema.RANDOM_SEED),
+    )
+
+    assert consumption.tolist() == [180.0, 520.0]
+
+
+def test_geracao_de_consumo_reflete_uso_em_horario_de_pico() -> None:
+    parameters = {
+        "equipment_weight": 0.0,
+        "hours_weight": 0.0,
+        "peak_weight": 1.0,
+        "interaction_weight": 0.0,
+        "noise_standard_deviation": 0.0,
+        "minimum_normalized_consumption": 0.0,
+        "maximum_normalized_consumption": 1.0,
+    }
+
+    consumption = generator.generate_consumption(
+        np.array(["CASA", "CASA"], dtype=str),
+        np.array([4, 4], dtype=int),
+        np.array([1, 1], dtype=int),
+        np.array([False, True], dtype=bool),
+        scenarios.TYPICAL_RANGES,
+        parameters,
+        np.random.default_rng(schema.RANDOM_SEED),
+    )
+
+    assert consumption.tolist() == [180.0, 520.0]
+
+
+def test_geracao_de_consumo_rejeita_tipos_vazios() -> None:
+    with pytest.raises(
+        ValueError,
+        match="property_types não pode estar vazio",
+    ):
+        generator.generate_consumption(
+            np.array([], dtype=str),
+            np.array([], dtype=int),
+            np.array([], dtype=int),
+            np.array([], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_equipamentos_com_tamanho_diferente() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "equipment_counts deve possuir o mesmo tamanho "
+            "de property_types"
+        ),
+    ):
+        generator.generate_consumption(
+            np.array(["CASA", "CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5, 6], dtype=int),
+            np.array([False, True], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_horas_com_tamanho_diferente() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "high_consumption_hours deve possuir o mesmo tamanho "
+            "de property_types"
+        ),
+    ):
+        generator.generate_consumption(
+            np.array(["CASA", "CASA"], dtype=str),
+            np.array([10, 11], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False, True], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_pico_com_tamanho_diferente() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "peak_usage deve possuir o mesmo tamanho "
+            "de property_types"
+        ),
+    ):
+        generator.generate_consumption(
+            np.array(["CASA", "CASA"], dtype=str),
+            np.array([10, 11], dtype=int),
+            np.array([5, 6], dtype=int),
+            np.array([False], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_parametro_ausente() -> None:
+    invalid_parameters = dict(
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS
+    )
+    del invalid_parameters["peak_weight"]
+
+    with pytest.raises(
+        ValueError,
+        match="Parâmetros de geração de consumo ausentes: peak_weight",
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            invalid_parameters,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_ruido_negativo() -> None:
+    invalid_parameters = dict(
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS
+    )
+    invalid_parameters["noise_standard_deviation"] = -0.01
+
+    with pytest.raises(
+        ValueError,
+        match="noise_standard_deviation não pode ser negativo",
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            invalid_parameters,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_limites_normalizados_invalidos() -> None:
+    invalid_parameters = dict(
+        scenarios.CONSUMPTION_GENERATION_PARAMETERS
+    )
+    invalid_parameters["minimum_normalized_consumption"] = 1.0
+    invalid_parameters["maximum_normalized_consumption"] = 1.0
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Os limites normalizados de consumo devem possuir "
+            "amplitude positiva"
+        ),
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            invalid_parameters,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_imovel_desconhecido() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Tipo de imóvel sem faixas configuradas: DESCONHECIDO",
+    ):
+        generator.generate_consumption(
+            np.array(["DESCONHECIDO"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            scenarios.TYPICAL_RANGES,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_faixa_de_consumo_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "quantidade_equipamentos": (4, 22),
+            "horas_alto_consumo": (1, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de consumo_kwh ausente para: CASA",
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            invalid_ranges,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_faixa_de_equipamentos_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 520.0),
+            "horas_alto_consumo": (1, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de quantidade_equipamentos ausente para: CASA",
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            invalid_ranges,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_faixa_de_horas_ausente() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 520.0),
+            "quantidade_equipamentos": (4, 22),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="Faixa de horas_alto_consumo ausente para: CASA",
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            invalid_ranges,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_amplitude_de_consumo_invalida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 180.0),
+            "quantidade_equipamentos": (4, 22),
+            "horas_alto_consumo": (1, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="A faixa de consumo_kwh deve possuir amplitude positiva",
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            invalid_ranges,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_amplitude_de_equipamentos_invalida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 520.0),
+            "quantidade_equipamentos": (4, 4),
+            "horas_alto_consumo": (1, 12),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "A faixa de quantidade_equipamentos "
+            "deve possuir amplitude positiva"
+        ),
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([4], dtype=int),
+            np.array([5], dtype=int),
+            np.array([False], dtype=bool),
+            invalid_ranges,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_geracao_de_consumo_rejeita_amplitude_de_horas_invalida() -> None:
+    invalid_ranges = {
+        "CASA": {
+            "consumo_kwh": (180.0, 520.0),
+            "quantidade_equipamentos": (4, 22),
+            "horas_alto_consumo": (1, 1),
+        },
+    }
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "A faixa de horas_alto_consumo "
+            "deve possuir amplitude positiva"
+        ),
+    ):
+        generator.generate_consumption(
+            np.array(["CASA"], dtype=str),
+            np.array([10], dtype=int),
+            np.array([1], dtype=int),
+            np.array([False], dtype=bool),
+            invalid_ranges,
+            scenarios.CONSUMPTION_GENERATION_PARAMETERS,
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
