@@ -327,8 +327,8 @@ Sprint Meet obrigatória realizada para compartilhar os avanços da Semana 2, ac
 
 ### Alinhamentos sobre Backend e infraestrutura em 23/07
 
-- O ambiente técnico poderá ser compartilhado com os integrantes para consulta e validação.
-- Credenciais e senhas deverão ser encaminhadas exclusivamente por canais privados.
+- O acesso ao ambiente deverá ser concedido individualmente, com privilégios mínimos necessários para consulta e validação.
+- Quando algum segredo precisar ser transmitido, deverão ser utilizados somente canais privados e temporários, sem publicação no repositório ou em canais abertos.
 - Nenhuma informação sensível deverá ser publicada no Discord, incluída em prints públicos ou versionada no GitHub.
 - Alterações no ambiente deverão ser previamente alinhadas com o responsável técnico.
 - A situação de OCI deverá continuar sendo comprovada por código, testes, conexão, persistência e demais evidências técnicas registradas no repositório.
