@@ -61,6 +61,20 @@ BOUNDARY_CASE_RATIO: Final[float] = 0.03
 RARE_CASE_RATIO: Final[float] = 0.05
 PLAUSIBLE_OUTLIER_RATIO: Final[float] = 0.03
 
+TARGET_CATEGORY_DISTRIBUTION: Final[dict[str, float]] = {
+    "EFICIENTE": 0.30,
+    "MODERADO": 0.40,
+    "INEFICIENTE": 0.30,
+}
+
+REFERENCE_SCORE_CATEGORY_RANGES: Final[
+    dict[str, tuple[int, int]]
+] = {
+    "EFICIENTE": (0, 30),
+    "MODERADO": (31, 60),
+    "INEFICIENTE": (61, 100),
+}
+
 PEAK_USAGE_PROBABILITY_PARAMETERS: Final[dict[str, float]] = {
     "intercept": 0.15,
     "equipment_weight": 0.25,
