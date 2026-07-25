@@ -75,6 +75,18 @@ REFERENCE_SCORE_CATEGORY_RANGES: Final[
     "INEFICIENTE": (61, 100),
 }
 
+REFERENCE_SCORE_PARAMETERS: Final[dict[str, float]] = {
+    "consumption_weight": 0.30,
+    "equipment_weight": 0.18,
+    "hours_weight": 0.18,
+    "peak_weight": 0.08,
+    "consumption_hours_interaction_weight": 0.12,
+    "equipment_hours_interaction_weight": 0.08,
+    "consumption_quadratic_weight": 0.06,
+    "score_intercept": -0.918129,
+    "score_scale": 113.330515,
+}
+
 PEAK_USAGE_PROBABILITY_PARAMETERS: Final[dict[str, float]] = {
     "intercept": 0.15,
     "equipment_weight": 0.25,
