@@ -232,3 +232,36 @@ def test_faixas_do_score_de_referencia() -> None:
         previous_maximum = maximum
 
     assert previous_maximum == int(score_maximum)
+
+
+def test_parametros_do_score_de_referencia() -> None:
+    assert scenarios.REFERENCE_SCORE_PARAMETERS == {
+        "consumption_weight": 0.30,
+        "equipment_weight": 0.18,
+        "hours_weight": 0.18,
+        "peak_weight": 0.08,
+        "consumption_hours_interaction_weight": 0.12,
+        "equipment_hours_interaction_weight": 0.08,
+        "consumption_quadratic_weight": 0.06,
+        "score_intercept": -0.918129,
+        "score_scale": 113.330515,
+    }
+
+
+def test_pesos_do_score_de_referencia_somam_um() -> None:
+    parameters = scenarios.REFERENCE_SCORE_PARAMETERS
+    weight_names = (
+        "consumption_weight",
+        "equipment_weight",
+        "hours_weight",
+        "peak_weight",
+        "consumption_hours_interaction_weight",
+        "equipment_hours_interaction_weight",
+        "consumption_quadratic_weight",
+    )
+
+    assert sum(
+        parameters[name]
+        for name in weight_names
+    ) == pytest.approx(1.0)
+    assert parameters["score_scale"] > 0.0
