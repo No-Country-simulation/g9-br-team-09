@@ -274,3 +274,91 @@ def test_amostra_tipica_rotulada_e_reprodutivel() -> None:
     )
 
     assert first_sample.equals(second_sample)
+
+def test_selecao_fronteiras_respeita_quota_e_reprodutibilidade() -> None:
+    sample = dataset.generate_labeled_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+
+    first_positions = dataset.select_boundary_case_positions(sample)
+    second_positions = dataset.select_boundary_case_positions(sample)
+    selected = sample.iloc[first_positions]
+    ranges = scenarios.REFERENCE_SCORE_CATEGORY_RANGES
+    expected_boundary_scores = {
+        ranges["EFICIENTE"][1],
+        ranges["MODERADO"][0],
+        ranges["MODERADO"][1],
+        ranges["INEFICIENTE"][0],
+    }
+    expected_quota = int(
+        round(len(sample) * scenarios.BOUNDARY_CASE_RATIO)
+    )
+
+    assert first_positions.shape == (expected_quota,)
+    assert np.issubdtype(first_positions.dtype, np.integer)
+    assert np.array_equal(first_positions, second_positions)
+    assert len(np.unique(first_positions)) == expected_quota
+    assert np.all(np.diff(first_positions) > 0)
+    assert set(selected["score_referencia"].unique()) == (
+        expected_boundary_scores
+    )
+
+
+def test_selecao_fronteiras_aceita_quota_zero() -> None:
+    sample = dataset.generate_labeled_typical_sample(
+        20,
+        seed=schema.RANDOM_SEED,
+    )
+
+    positions = dataset.select_boundary_case_positions(
+        sample,
+        ratio=0.0,
+    )
+
+    assert positions.shape == (0,)
+    assert np.issubdtype(positions.dtype, np.integer)
+
+
+@pytest.mark.parametrize(
+    "ratio",
+    [-0.01, 1.01, np.nan, np.inf],
+)
+def test_selecao_fronteiras_rejeita_proporcao_invalida(
+    ratio: float,
+) -> None:
+    sample = dataset.generate_labeled_typical_sample(
+        20,
+        seed=schema.RANDOM_SEED,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="ratio deve estar entre 0 e 1",
+    ):
+        dataset.select_boundary_case_positions(sample, ratio=ratio)
+
+
+def test_selecao_fronteiras_rejeita_score_ausente() -> None:
+    sample = dataset.generate_typical_sample(20)
+
+    with pytest.raises(
+        ValueError,
+        match="Coluna obrigatória ausente: score_referencia",
+    ):
+        dataset.select_boundary_case_positions(sample)
+
+
+def test_selecao_fronteiras_rejeita_candidatos_insuficientes() -> None:
+    sample = pd.DataFrame(
+        {"score_referencia": [30, 40, 50, 70]}
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Casos de fronteira insuficientes "
+            "para a proporção solicitada"
+        ),
+    ):
+        dataset.select_boundary_case_positions(sample, ratio=1.0)
