@@ -162,6 +162,65 @@ def categorize_reference_scores(
     return categories.astype(str)
 
 
+def select_boundary_case_positions(
+    sample: pd.DataFrame,
+    ratio: float = scenarios.BOUNDARY_CASE_RATIO,
+    seed: int = schema.RANDOM_SEED,
+) -> np.ndarray:
+    """Seleciona posições reproduzíveis próximas às fronteiras do target."""
+    if "score_referencia" not in sample.columns:
+        raise ValueError("Coluna obrigatória ausente: score_referencia")
+
+    if not np.isfinite(ratio) or not 0.0 <= ratio <= 1.0:
+        raise ValueError("ratio deve estar entre 0 e 1")
+
+    scores = sample["score_referencia"].to_numpy()
+    categorize_reference_scores(scores)
+
+    category_pairs = zip(
+        schema.ENERGY_CATEGORIES[:-1],
+        schema.ENERGY_CATEGORIES[1:],
+        strict=True,
+    )
+    boundary_scores = np.array(
+        [
+            boundary
+            for lower_category, upper_category in category_pairs
+            for boundary in (
+                scenarios.REFERENCE_SCORE_CATEGORY_RANGES[
+                    lower_category
+                ][1],
+                scenarios.REFERENCE_SCORE_CATEGORY_RANGES[
+                    upper_category
+                ][0],
+            )
+        ],
+        dtype=int,
+    )
+    candidate_positions = np.flatnonzero(
+        np.isin(scores, boundary_scores)
+    )
+    quota = int(round(len(sample) * ratio))
+
+    if quota > len(candidate_positions):
+        raise ValueError(
+            "Casos de fronteira insuficientes para a proporção solicitada"
+        )
+
+    if quota == 0:
+        return np.empty(0, dtype=int)
+
+    rng = np.random.default_rng(seed)
+
+    return np.sort(
+        rng.choice(
+            candidate_positions,
+            size=quota,
+            replace=False,
+        )
+    )
+
+
 def generate_typical_sample(
     sample_size: int,
     seed: int = schema.RANDOM_SEED,
