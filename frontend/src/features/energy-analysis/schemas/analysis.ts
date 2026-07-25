@@ -12,15 +12,15 @@ export const PROPERTY_TYPE_VALUES = [
 export const BOOLEAN_RADIO_VALUES = ['true', 'false'] as const
 
 export const ANALYSIS_FIELD_LIMITS = {
-  applianceCount: { min: 1, max: 500 },
-  monthlyConsumption: { min: 1, max: 5000 },
+  applianceCount: { min: 1 },
+  monthlyConsumption: { min: 1 },
   peakConsumptionHours: { min: 0, max: 24 },
 } as const
 
 const numericStringSchema = (
   fieldLabel: string,
   min: number,
-  max: number,
+  max?: number,
   integer = false,
 ) =>
   z
@@ -41,16 +41,28 @@ const numericStringSchema = (
       return parsedValue
     })
     .pipe(
-      integer
-        ? z
-            .number({ message: `${fieldLabel} deve ser um número válido` })
+      (() => {
+        const hasMax = typeof max === 'number'
+        const rangeMessage = hasMax
+          ? `${fieldLabel} deve estar entre ${min} e ${max}`
+          : `${fieldLabel} deve ser maior ou igual a ${min}`
+
+        const baseNumber = z.number({
+          message: `${fieldLabel} deve ser um número válido`,
+        })
+
+        if (integer) {
+          let schema = baseNumber
             .int(`${fieldLabel} deve ser um número inteiro`)
-            .min(min, `${fieldLabel} deve estar entre ${min} e ${max}`)
-            .max(max, `${fieldLabel} deve estar entre ${min} e ${max}`)
-        : z
-            .number({ message: `${fieldLabel} deve ser um número válido` })
-            .min(min, `${fieldLabel} deve estar entre ${min} e ${max}`)
-            .max(max, `${fieldLabel} deve estar entre ${min} e ${max}`),
+            .min(min, rangeMessage)
+          if (hasMax) schema = schema.max(max as number, rangeMessage)
+          return schema
+        }
+
+        let schema = baseNumber.min(min, rangeMessage)
+        if (hasMax) schema = schema.max(max as number, rangeMessage)
+        return schema
+      })(),
     )
 
 export const analysisFieldSchemas = {
@@ -60,13 +72,12 @@ export const analysisFieldSchemas = {
   applianceCount: numericStringSchema(
     'A quantidade de equipamentos',
     ANALYSIS_FIELD_LIMITS.applianceCount.min,
-    ANALYSIS_FIELD_LIMITS.applianceCount.max,
+    undefined,
     true,
   ),
   monthlyConsumption: numericStringSchema(
     'O consumo mensal',
     ANALYSIS_FIELD_LIMITS.monthlyConsumption.min,
-    ANALYSIS_FIELD_LIMITS.monthlyConsumption.max,
   ),
   peakUsage: z.enum(BOOLEAN_RADIO_VALUES, {
     message: 'Selecione uma opção',

@@ -1,6 +1,7 @@
 export interface CreateAnalysisResponse {
   id: number
   categoria: 'EFICIENTE' | 'MODERADO' | 'INEFICIENTE'
+  score: number
   probabilidade: number
   custo_estimado_mensal: number
   recomendacoes: string[]

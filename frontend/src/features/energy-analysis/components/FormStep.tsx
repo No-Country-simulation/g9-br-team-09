@@ -170,7 +170,7 @@ export function FormStep({
             type="submit"
             variant="primary"
             icon={!submitButtonProps ? ArrowRight : undefined}
-            disabled={!inputValue}
+            disabled={!inputValue || isSubmitting}
             className="order-1 flex-1 sm:order-2"
           >
             {isSubmitting
