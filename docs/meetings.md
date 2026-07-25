@@ -288,3 +288,114 @@ Sprint Planning realizada para revisar o andamento do projeto EnergiAI, identifi
 ### Observações sobre a reunião de 20/07
 
 Esta ata registra somente os pontos operacionais relevantes da Sprint Planning. A proposta de especificação da base sintética ainda deverá passar por revisão técnica e não representa um contrato definitivo. A transcrição completa permanece como fonte interna de apoio e não deve ser publicada no repositório por conter trechos informais e discussões que não fazem parte da documentação oficial do projeto.
+
+---
+
+## 23/07/2026 — Sprint Meet obrigatória
+
+### Contexto da reunião de 23/07
+
+Sprint Meet obrigatória realizada para compartilhar os avanços da Semana 2, acompanhar o ambiente técnico, revisar o progresso de Data Science e Frontend, identificar bloqueios e alinhar a continuidade das atividades pelos canais oficiais.
+
+### Participantes confirmados em 23/07
+
+- Fábio
+- Gustavo
+- Lucas
+- Alan
+- Rafaela
+- Adriana, com participação pelo chat
+
+### Ausências registradas em 23/07
+
+- Túlio não participou e justificou previamente que estaria em outra reunião.
+- Miguel não participou e não apresentou justificativa.
+
+### Observação operacional sobre participação
+
+- Miguel participou da primeira reunião da equipe, mas não teve participação confirmada nas reuniões posteriores analisadas.
+
+### Avanços apresentados em 23/07
+
+- Lucas informou que concluiu uma configuração técnica, abriu o Pull Request correspondente e disponibilizou o ambiente para consulta e testes.
+- O acesso ao ambiente dependerá de credenciais compartilhadas individualmente, sem publicação de senhas em canais abertos ou no repositório.
+- Fábio informou que a implementação oficial de Data Science está sendo realizada de forma incremental, com alterações pequenas, testes, documentação e commits rastreáveis.
+- A construção de Data Science segue o enunciado oficial, o contrato atual do backend e a Especificação V2 aprovada.
+- Foi considerada válida a disponibilização de uma primeira versão funcional de Data Science antes da conclusão integral, permitindo testes antecipados pelo backend.
+- Rafaela informou avanço no formulário de análise energética e intenção de abrir o respectivo Pull Request.
+- Rafaela também iniciou a construção da página principal do frontend.
+
+### Alinhamentos sobre Backend e infraestrutura em 23/07
+
+- O ambiente técnico poderá ser compartilhado com os integrantes para consulta e validação.
+- Credenciais e senhas deverão ser encaminhadas exclusivamente por canais privados.
+- Nenhuma informação sensível deverá ser publicada no Discord, incluída em prints públicos ou versionada no GitHub.
+- Alterações no ambiente deverão ser previamente alinhadas com o responsável técnico.
+- A situação de OCI deverá continuar sendo comprovada por código, testes, conexão, persistência e demais evidências técnicas registradas no repositório.
+
+### Alinhamentos sobre Data Science em 23/07
+
+- A implementação continuará dividida em unidades pequenas e revisáveis.
+- Cada etapa deverá possuir testes e documentação proporcionais ao seu escopo.
+- O objetivo imediato é disponibilizar uma primeira versão utilizável para permitir testes de integração com o backend.
+- Dataset, pipeline, modelo e artefatos deverão permanecer compatíveis com as cinco entradas do contrato vigente.
+- Dúvidas, bloqueios e resultados parciais deverão ser comunicados durante a semana, sem aguardar exclusivamente as reuniões obrigatórias.
+- A participação efetiva de outros integrantes da frente de Dados ainda precisa ser confirmada.
+- A concentração das atividades de Data Science permanece como risco para o cronograma.
+
+### Alinhamentos sobre Frontend em 23/07
+
+- O formulário deverá coletar as cinco entradas previstas no contrato público do backend.
+- Foi discutida a possibilidade de limitar a quantidade de equipamentos informada pelo usuário.
+- Qualquer limite deverá ser definido em conjunto entre Frontend, Backend e Data Science.
+- O valor não deverá ser arbitrário nem incompatível com o schema, o dataset ou as validações do backend.
+- O frontend deverá continuar consumindo somente a API pública do backend.
+
+### Governança e comunicação em 23/07
+
+- As reuniões obrigatórias deverão priorizar status, decisões, bloqueios e próximos passos.
+- Ajustes operacionais e pedidos de revisão deverão continuar durante a semana nos canais oficiais.
+- Código, documentação, decisões e evidências relevantes deverão permanecer registrados no GitHub.
+- Informações críticas não deverão existir somente em conversas com ferramentas de inteligência artificial.
+- A equipe poderá apontar processos redundantes, riscos e oportunidades de simplificação de forma direta e colaborativa.
+- Pull Requests deverão continuar sendo revisados antes do merge.
+
+### Disponibilidade operacional de Fábio
+
+- Fábio informou que poderá ter disponibilidade temporariamente reduzida nos dias seguintes.
+- As atividades imediatas deverão permanecer documentadas, versionadas e compreensíveis para permitir a continuidade do trabalho pela equipe.
+- Essa informação é registrada somente para planejamento operacional, sem detalhamento pessoal adicional.
+
+### Pendências identificadas em 23/07
+
+- Compartilhar o acesso ao ambiente técnico de forma segura.
+- Disponibilizar uma primeira versão utilizável dos componentes de Data Science.
+- Confirmar a participação e a divisão das tarefas na frente de Dados.
+- Abrir e revisar o Pull Request do formulário do frontend.
+- Continuar a implementação da página principal.
+- Definir de forma conjunta os limites de entrada do formulário.
+- Validar a compatibilidade entre dataset, FastAPI, backend e frontend.
+- Preservar evidências técnicas relacionadas à OCI.
+- Manter decisões e avanços atualizados no GitHub e nos canais técnicos correspondentes.
+
+### Próximos passos definidos em 23/07
+
+- Lucas deverá orientar o acesso seguro ao ambiente técnico e continuar as atividades de infraestrutura e backend.
+- Fábio deverá continuar a implementação incremental de Data Science e disponibilizar uma versão testável assim que os componentes mínimos estiverem validados.
+- Rafaela deverá abrir o Pull Request do formulário e continuar a página principal.
+- Frontend, Backend e Data Science deverão alinhar qualquer novo limite aplicado às entradas.
+- A equipe deverá comunicar dúvidas, bloqueios e revisões durante a semana, utilizando GitHub e Discord conforme o tipo de evidência.
+- As tarefas prioritárias deverão permanecer documentadas para reduzir riscos decorrentes de indisponibilidade temporária de integrantes.
+
+### Riscos registrados em 23/07
+
+- Concentração das atividades de Data Science em poucos integrantes.
+- Divergência de validações entre Frontend, Backend e dataset.
+- Exposição indevida de credenciais ou informações sensíveis.
+- Dependência excessiva de ferramentas externas para preservar contexto e decisões.
+- Redução temporária da disponibilidade operacional de Fábio.
+- Atraso da integração caso a primeira versão de Data Science não seja disponibilizada para testes.
+
+### Observações sobre a reunião de 23/07
+
+Esta ata registra somente os pontos operacionais relevantes da Sprint Meet obrigatória. A transcrição revisada permanece como fonte interna de apoio e não deve ser publicada no repositório. A identificação dos participantes foi limitada às pessoas confirmadas pelo contexto disponível, e nenhuma credencial, senha ou informação sensível foi incluída.
