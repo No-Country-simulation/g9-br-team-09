@@ -1,8 +1,8 @@
 """Montagem das amostras sintéticas do Dataset EnergIAI V2.
 
-Nesta etapa, o módulo reúne as cinco features observáveis já implementadas
-em uma amostra típica reproduzível. Target, score, campos de auditoria e
-casos especiais serão adicionados em etapas posteriores.
+O módulo reúne as cinco features observáveis em uma amostra típica
+reproduzível e permite acrescentar score de referência e categoria.
+Campos de auditoria e casos especiais serão adicionados em etapas posteriores.
 """
 
 import numpy as np
@@ -216,3 +216,26 @@ def generate_typical_sample(
     )
 
     return sample.loc[:, list(schema.FEATURE_COLUMNS)]
+
+
+def generate_labeled_typical_sample(
+    sample_size: int,
+    seed: int = schema.RANDOM_SEED,
+) -> pd.DataFrame:
+    """Gera amostra típica com features, categoria e score de referência."""
+    sample = generate_typical_sample(sample_size, seed)
+    scores = calculate_reference_scores(sample)
+
+    labeled_sample = sample.copy()
+    labeled_sample[schema.TARGET_COLUMN] = (
+        categorize_reference_scores(scores)
+    )
+    labeled_sample["score_referencia"] = scores
+
+    columns = (
+        *schema.FEATURE_COLUMNS,
+        schema.TARGET_COLUMN,
+        "score_referencia",
+    )
+
+    return labeled_sample.loc[:, list(columns)]
