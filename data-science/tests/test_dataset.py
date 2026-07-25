@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 
@@ -95,3 +96,72 @@ def test_amostra_de_validacao_respeita_faixas_tipicas() -> None:
             property_type
         ].items():
             assert group[column].between(*limits).all()
+
+
+@pytest.mark.parametrize("property_type", schema.PROPERTY_TYPES)
+def test_score_referencia_respeita_extremos_das_faixas_tipicas(
+    property_type: str,
+) -> None:
+    ranges = scenarios.TYPICAL_RANGES[property_type]
+    sample = pd.DataFrame(
+        [
+            {
+                "consumo_kwh": ranges["consumo_kwh"][0],
+                "uso_horario_pico": False,
+                "quantidade_equipamentos": ranges[
+                    "quantidade_equipamentos"
+                ][0],
+                "tipo_imovel": property_type,
+                "horas_alto_consumo": ranges[
+                    "horas_alto_consumo"
+                ][0],
+            },
+            {
+                "consumo_kwh": ranges["consumo_kwh"][1],
+                "uso_horario_pico": True,
+                "quantidade_equipamentos": ranges[
+                    "quantidade_equipamentos"
+                ][1],
+                "tipo_imovel": property_type,
+                "horas_alto_consumo": ranges[
+                    "horas_alto_consumo"
+                ][1],
+            },
+        ],
+        columns=schema.FEATURE_COLUMNS,
+    )
+
+    scores = dataset.calculate_reference_scores(sample)
+
+    assert scores.tolist() == [0, 100]
+
+
+def test_score_referencia_possui_tipo_limites_e_reprodutibilidade() -> None:
+    sample = dataset.generate_typical_sample(
+        200,
+        seed=schema.RANDOM_SEED,
+    )
+
+    first_scores = dataset.calculate_reference_scores(sample)
+    second_scores = dataset.calculate_reference_scores(sample)
+
+    assert first_scores.shape == (200,)
+    assert np.issubdtype(first_scores.dtype, np.integer)
+    assert int(first_scores.min()) >= 0
+    assert int(first_scores.max()) <= 100
+    assert np.array_equal(first_scores, second_scores)
+
+
+def test_score_referencia_rejeita_colunas_obrigatorias_ausentes() -> None:
+    sample = dataset.generate_typical_sample(3).drop(
+        columns=["consumo_kwh", "tipo_imovel"],
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Colunas obrigatórias ausentes: "
+            "consumo_kwh, tipo_imovel"
+        ),
+    ):
+        dataset.calculate_reference_scores(sample)
