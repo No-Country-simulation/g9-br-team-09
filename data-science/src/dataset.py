@@ -120,6 +120,48 @@ def calculate_reference_scores(
     ).astype(int)
 
 
+def categorize_reference_scores(
+    scores: np.ndarray,
+) -> np.ndarray:
+    """Converte scores inteiros em categorias energéticas."""
+    values = np.asarray(scores)
+
+    if values.ndim != 1:
+        raise ValueError("scores deve ser unidimensional")
+
+    if not np.issubdtype(values.dtype, np.number):
+        raise ValueError("scores deve conter valores numéricos")
+
+    if not np.isfinite(values).all():
+        raise ValueError("scores deve conter valores finitos")
+
+    if not np.equal(values, np.rint(values)).all():
+        raise ValueError("scores devem conter valores inteiros")
+
+    minimum_score, maximum_score = schema.NUMERIC_LIMITS[
+        "score_referencia"
+    ]
+
+    if (
+        (values < minimum_score)
+        | (values > maximum_score)
+    ).any():
+        raise ValueError("scores devem estar entre 0 e 100")
+
+    categories = np.empty(values.shape, dtype=object)
+
+    for category in schema.ENERGY_CATEGORIES:
+        minimum, maximum = (
+            scenarios.REFERENCE_SCORE_CATEGORY_RANGES[
+                category
+            ]
+        )
+        mask = (values >= minimum) & (values <= maximum)
+        categories[mask] = category
+
+    return categories.astype(str)
+
+
 def generate_typical_sample(
     sample_size: int,
     seed: int = schema.RANDOM_SEED,
