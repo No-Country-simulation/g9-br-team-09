@@ -165,3 +165,52 @@ def test_score_referencia_rejeita_colunas_obrigatorias_ausentes() -> None:
         ),
     ):
         dataset.calculate_reference_scores(sample)
+
+
+def test_categorias_respeitam_limites_do_score_de_referencia() -> None:
+    scores = np.array([0, 30, 31, 60, 61, 100])
+
+    categories = dataset.categorize_reference_scores(scores)
+
+    assert categories.tolist() == [
+        "EFICIENTE",
+        "EFICIENTE",
+        "MODERADO",
+        "MODERADO",
+        "INEFICIENTE",
+        "INEFICIENTE",
+    ]
+    assert set(categories) == set(schema.ENERGY_CATEGORIES)
+
+
+@pytest.mark.parametrize(
+    ("scores", "error_message"),
+    [
+        (
+            np.array([[0, 30], [31, 60]]),
+            "scores deve ser unidimensional",
+        ),
+        (
+            np.array(["0", "30"]),
+            "scores deve conter valores numéricos",
+        ),
+        (
+            np.array([0.0, np.nan]),
+            "scores deve conter valores finitos",
+        ),
+        (
+            np.array([30.5, 31.0]),
+            "scores devem conter valores inteiros",
+        ),
+        (
+            np.array([-1, 101]),
+            "scores devem estar entre 0 e 100",
+        ),
+    ],
+)
+def test_categorizacao_rejeita_scores_invalidos(
+    scores: np.ndarray,
+    error_message: str,
+) -> None:
+    with pytest.raises(ValueError, match=error_message):
+        dataset.categorize_reference_scores(scores)
