@@ -11,6 +11,7 @@ SRC_PATH = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(SRC_PATH))
 
 import dataset  # noqa: E402
+import scenarios  # noqa: E402
 import schema  # noqa: E402
 
 
@@ -58,3 +59,39 @@ def test_amostra_tipica_rejeita_tamanho_nao_positivo() -> None:
             match="sample_size deve ser maior que zero",
         ):
             dataset.generate_typical_sample(sample_size)
+
+
+def test_amostra_de_validacao_respeita_distribuicao_e_unicidade() -> None:
+    sample = dataset.generate_typical_sample(
+        200,
+        seed=schema.RANDOM_SEED,
+    )
+
+    counts = sample["tipo_imovel"].value_counts().to_dict()
+
+    assert counts == {
+        "CASA": 64,
+        "APARTAMENTO": 64,
+        "COMERCIO": 32,
+        "ESCRITORIO": 20,
+        "INDUSTRIA": 10,
+        "OUTRO": 10,
+    }
+    assert int(sample.duplicated().sum()) == 0
+
+
+def test_amostra_de_validacao_respeita_faixas_tipicas() -> None:
+    sample = dataset.generate_typical_sample(
+        200,
+        seed=schema.RANDOM_SEED,
+    )
+
+    for property_type in schema.PROPERTY_TYPES:
+        group = sample[
+            sample["tipo_imovel"].eq(property_type)
+        ]
+
+        for column, limits in scenarios.TYPICAL_RANGES[
+            property_type
+        ].items():
+            assert group[column].between(*limits).all()
