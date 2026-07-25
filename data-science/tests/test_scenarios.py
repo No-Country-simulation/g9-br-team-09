@@ -191,3 +191,44 @@ def test_parametros_de_geracao_de_consumo_respeitam_limites() -> None:
         parameters["minimum_normalized_consumption"]
         < parameters["maximum_normalized_consumption"]
     )
+
+
+def test_distribuicao_alvo_das_categorias() -> None:
+    assert set(
+        scenarios.TARGET_CATEGORY_DISTRIBUTION
+    ) == set(schema.ENERGY_CATEGORIES)
+    assert scenarios.TARGET_CATEGORY_DISTRIBUTION == {
+        "EFICIENTE": 0.30,
+        "MODERADO": 0.40,
+        "INEFICIENTE": 0.30,
+    }
+    assert sum(
+        scenarios.TARGET_CATEGORY_DISTRIBUTION.values()
+    ) == pytest.approx(1.0)
+
+
+def test_faixas_do_score_de_referencia() -> None:
+    assert set(
+        scenarios.REFERENCE_SCORE_CATEGORY_RANGES
+    ) == set(schema.ENERGY_CATEGORIES)
+    assert scenarios.REFERENCE_SCORE_CATEGORY_RANGES == {
+        "EFICIENTE": (0, 30),
+        "MODERADO": (31, 60),
+        "INEFICIENTE": (61, 100),
+    }
+
+    score_minimum, score_maximum = schema.NUMERIC_LIMITS[
+        "score_referencia"
+    ]
+    previous_maximum = int(score_minimum) - 1
+
+    for category in schema.ENERGY_CATEGORIES:
+        minimum, maximum = (
+            scenarios.REFERENCE_SCORE_CATEGORY_RANGES[category]
+        )
+
+        assert minimum == previous_maximum + 1
+        assert minimum <= maximum
+        previous_maximum = maximum
+
+    assert previous_maximum == int(score_maximum)
