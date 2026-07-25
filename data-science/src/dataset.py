@@ -13,6 +13,113 @@ import scenarios
 import schema
 
 
+def _normalize_feature_by_property_type(
+    sample: pd.DataFrame,
+    feature: str,
+) -> np.ndarray:
+    """Normaliza uma feature conforme a faixa típica de cada imóvel."""
+    normalized_values = np.empty(len(sample), dtype=float)
+
+    for property_type in schema.PROPERTY_TYPES:
+        mask = sample["tipo_imovel"].eq(property_type).to_numpy()
+
+        if not np.any(mask):
+            continue
+
+        minimum, maximum = scenarios.TYPICAL_RANGES[
+            property_type
+        ][feature]
+
+        if minimum >= maximum:
+            raise ValueError(
+                f"A faixa de {feature} deve possuir amplitude positiva"
+            )
+
+        normalized_values[mask] = np.clip(
+            (
+                sample.loc[mask, feature].to_numpy()
+                - minimum
+            )
+            / (maximum - minimum),
+            0.0,
+            1.0,
+        )
+
+    return normalized_values
+
+
+def calculate_reference_scores(
+    sample: pd.DataFrame,
+) -> np.ndarray:
+    """Calcula o score sintético de referência entre 0 e 100."""
+    missing_columns = [
+        column
+        for column in schema.FEATURE_COLUMNS
+        if column not in sample.columns
+    ]
+    if missing_columns:
+        raise ValueError(
+            "Colunas obrigatórias ausentes: "
+            + ", ".join(missing_columns)
+        )
+
+    normalized_consumption = _normalize_feature_by_property_type(
+        sample,
+        "consumo_kwh",
+    )
+    normalized_equipment = _normalize_feature_by_property_type(
+        sample,
+        "quantidade_equipamentos",
+    )
+    normalized_hours = _normalize_feature_by_property_type(
+        sample,
+        "horas_alto_consumo",
+    )
+    peak_usage = (
+        sample["uso_horario_pico"]
+        .astype(float)
+        .to_numpy()
+    )
+    parameters = scenarios.REFERENCE_SCORE_PARAMETERS
+
+    raw_score = (
+        parameters["consumption_weight"]
+        * normalized_consumption
+        + parameters["equipment_weight"]
+        * normalized_equipment
+        + parameters["hours_weight"]
+        * normalized_hours
+        + parameters["peak_weight"]
+        * peak_usage
+        + parameters[
+            "consumption_hours_interaction_weight"
+        ]
+        * normalized_consumption
+        * normalized_hours
+        + parameters[
+            "equipment_hours_interaction_weight"
+        ]
+        * normalized_equipment
+        * normalized_hours
+        + parameters["consumption_quadratic_weight"]
+        * np.square(normalized_consumption)
+    )
+
+    minimum_score, maximum_score = schema.NUMERIC_LIMITS[
+        "score_referencia"
+    ]
+    scaled_score = (
+        parameters["score_intercept"]
+        + parameters["score_scale"] * raw_score
+    )
+
+    return np.clip(
+        np.rint(scaled_score),
+        minimum_score,
+        maximum_score,
+    ).astype(int)
+
+
 def generate_typical_sample(
     sample_size: int,
     seed: int = schema.RANDOM_SEED,
