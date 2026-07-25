@@ -214,3 +214,63 @@ def test_categorizacao_rejeita_scores_invalidos(
 ) -> None:
     with pytest.raises(ValueError, match=error_message):
         dataset.categorize_reference_scores(scores)
+
+
+def test_amostra_tipica_rotulada_respeita_estrutura_e_coerencia() -> None:
+    sample = dataset.generate_labeled_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    expected_columns = (
+        *schema.FEATURE_COLUMNS,
+        schema.TARGET_COLUMN,
+        "score_referencia",
+    )
+    scores = sample["score_referencia"].to_numpy()
+    expected_categories = dataset.categorize_reference_scores(scores)
+    minimum_score, maximum_score = schema.NUMERIC_LIMITS[
+        "score_referencia"
+    ]
+
+    assert sample.shape == (schema.DATASET_SIZE, 7)
+    assert tuple(sample.columns) == expected_columns
+    assert int(sample.isna().sum().sum()) == 0
+    assert np.issubdtype(scores.dtype, np.integer)
+    assert int(scores.min()) >= minimum_score
+    assert int(scores.max()) <= maximum_score
+    assert np.array_equal(
+        sample[schema.TARGET_COLUMN].to_numpy(),
+        expected_categories,
+    )
+
+
+def test_amostra_tipica_rotulada_respeita_distribuicao_alvo() -> None:
+    sample = dataset.generate_labeled_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    observed = (
+        sample[schema.TARGET_COLUMN]
+        .value_counts(normalize=True)
+        .reindex(schema.ENERGY_CATEGORIES)
+    )
+
+    for category, expected_proportion in (
+        scenarios.TARGET_CATEGORY_DISTRIBUTION.items()
+    ):
+        assert abs(
+            observed[category] - expected_proportion
+        ) <= 0.02
+
+
+def test_amostra_tipica_rotulada_e_reprodutivel() -> None:
+    first_sample = dataset.generate_labeled_typical_sample(
+        200,
+        seed=schema.RANDOM_SEED,
+    )
+    second_sample = dataset.generate_labeled_typical_sample(
+        200,
+        seed=schema.RANDOM_SEED,
+    )
+
+    assert first_sample.equals(second_sample)
