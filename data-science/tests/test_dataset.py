@@ -362,3 +362,72 @@ def test_selecao_fronteiras_rejeita_candidatos_insuficientes() -> None:
         ),
     ):
         dataset.select_boundary_case_positions(sample, ratio=1.0)
+
+
+def test_amostra_tipica_auditada_respeita_schema_e_invariantes() -> None:
+    original = dataset.generate_labeled_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    audited = dataset.generate_audited_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    preserved_columns = (
+        *schema.FEATURE_COLUMNS,
+        schema.TARGET_COLUMN,
+        "score_referencia",
+    )
+
+    assert len(audited) == schema.DATASET_SIZE
+    assert tuple(audited.columns) == schema.DATASET_COLUMNS
+    assert audited.loc[:, list(preserved_columns)].equals(original)
+    assert not audited.isna().any().any()
+    assert audited["caso_fronteira"].dtype == bool
+    assert audited["caso_raro"].dtype == bool
+    assert audited["outlier_plausivel"].dtype == bool
+
+
+def test_amostra_tipica_auditada_marca_fronteiras_e_lote() -> None:
+    audited = dataset.generate_audited_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    expected_boundary_count = int(
+        round(schema.DATASET_SIZE * scenarios.BOUNDARY_CASE_RATIO)
+    )
+    boundary_mask = audited["caso_fronteira"]
+    expected_lot = (
+        f"energiai-v2-seed-{schema.RANDOM_SEED}"
+        f"-size-{schema.DATASET_SIZE}"
+    )
+
+    assert int(boundary_mask.sum()) == expected_boundary_count
+    assert int((audited["tipo_cenario"] == "FRONTEIRA").sum()) == (
+        expected_boundary_count
+    )
+    assert audited.loc[
+        boundary_mask,
+        "tipo_cenario",
+    ].eq("FRONTEIRA").all()
+    assert audited.loc[
+        ~boundary_mask,
+        "tipo_cenario",
+    ].eq("TIPICO").all()
+    assert not audited["caso_raro"].any()
+    assert not audited["outlier_plausivel"].any()
+    assert audited["lote_geracao"].nunique() == 1
+    assert audited["lote_geracao"].iat[0] == expected_lot
+
+
+def test_amostra_tipica_auditada_e_reprodutivel() -> None:
+    first_sample = dataset.generate_audited_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    second_sample = dataset.generate_audited_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+
+    assert first_sample.equals(second_sample)
