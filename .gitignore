@@ -182,6 +182,8 @@ activemq-data/
 .env
 .env.*
 !.env.example
+!data-science/.env.api.example
+data-science/models/*.joblib
 .envrc
 .venv
 env/
