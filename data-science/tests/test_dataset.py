@@ -431,3 +431,133 @@ def test_amostra_tipica_auditada_e_reprodutivel() -> None:
     )
 
     assert first_sample.equals(second_sample)
+
+
+def test_selecao_raros_respeita_quota_e_exclui_fronteiras() -> None:
+    sample = dataset.generate_audited_typical_sample(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    original = sample.copy(deep=True)
+
+    first_positions = dataset.select_rare_case_positions(
+        sample,
+        seed=schema.RANDOM_SEED,
+    )
+    second_positions = dataset.select_rare_case_positions(
+        sample,
+        seed=schema.RANDOM_SEED,
+    )
+
+    expected_quota = int(
+        round(len(sample) * scenarios.RARE_CASE_RATIO)
+    )
+    boundary_positions = np.flatnonzero(
+        sample["caso_fronteira"].to_numpy()
+    )
+
+    assert first_positions.shape == (expected_quota,)
+    assert np.issubdtype(first_positions.dtype, np.integer)
+    assert np.array_equal(first_positions, second_positions)
+    assert len(np.unique(first_positions)) == expected_quota
+    assert np.all(np.diff(first_positions) > 0)
+    assert np.intersect1d(
+        first_positions,
+        boundary_positions,
+    ).size == 0
+    assert not sample.iloc[first_positions]["caso_fronteira"].any()
+    assert sample.equals(original)
+
+
+def test_selecao_raros_aceita_quota_zero() -> None:
+    sample = dataset.generate_audited_typical_sample(
+        20,
+        seed=schema.RANDOM_SEED,
+    )
+
+    positions = dataset.select_rare_case_positions(
+        sample,
+        ratio=0.0,
+    )
+
+    assert positions.shape == (0,)
+    assert np.issubdtype(positions.dtype, np.integer)
+
+
+@pytest.mark.parametrize(
+    "ratio",
+    [-0.01, 1.01, np.nan, np.inf],
+)
+def test_selecao_raros_rejeita_proporcao_invalida(
+    ratio: float,
+) -> None:
+    sample = dataset.generate_audited_typical_sample(
+        20,
+        seed=schema.RANDOM_SEED,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="ratio deve estar entre 0 e 1",
+    ):
+        dataset.select_rare_case_positions(sample, ratio=ratio)
+
+
+def test_selecao_raros_rejeita_flag_ausente() -> None:
+    sample = dataset.generate_labeled_typical_sample(
+        20,
+        seed=schema.RANDOM_SEED,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Coluna obrigatória ausente: caso_fronteira",
+    ):
+        dataset.select_rare_case_positions(sample)
+
+
+def test_selecao_raros_rejeita_flag_nao_booleana() -> None:
+    sample = pd.DataFrame(
+        {"caso_fronteira": [0, 1, 0, 1]}
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="caso_fronteira deve possuir tipo booleano",
+    ):
+        dataset.select_rare_case_positions(sample)
+
+
+def test_selecao_raros_rejeita_flag_nula() -> None:
+    sample = pd.DataFrame(
+        {
+            "caso_fronteira": pd.Series(
+                [True, False, pd.NA],
+                dtype="boolean",
+            )
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="caso_fronteira não pode conter valores nulos",
+    ):
+        dataset.select_rare_case_positions(sample)
+
+
+def test_selecao_raros_rejeita_candidatos_insuficientes() -> None:
+    sample = pd.DataFrame(
+        {"caso_fronteira": [True, True, True, False]}
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Casos não fronteiriços insuficientes "
+            "para a proporção de raros solicitada"
+        ),
+    ):
+        dataset.select_rare_case_positions(
+            sample,
+            ratio=1.0,
+        )
