@@ -10,6 +10,7 @@ Frontend da aplicação EnergiAI, construído como SPA com React, TypeScript, Vi
 - Tailwind CSS
 - React Router Dom
 - Axios
+- Zod
 
 ## Pré-requisitos
 

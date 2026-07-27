@@ -54,5 +54,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-secondary-button: var(--secondary-button);
   --color-input: var(--input);
+  --shadow-card:
+    0px 6px 18px 0px rgba(0, 0, 0, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
