@@ -1027,3 +1027,96 @@ def test_mutacoes_raras_rejeitam_posicoes_duplicadas() -> None:
         )
 
     pd.testing.assert_frame_equal(sample, original)
+
+
+def test_amostra_auditada_com_raros_integra_cenarios_e_rotulos() -> None:
+    sample = dataset.generate_audited_sample_with_rare_cases(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+
+    rare_flags = sample["caso_raro"]
+    boundary_flags = sample["caso_fronteira"]
+    recalculated_scores = dataset.calculate_reference_scores(sample)
+    recalculated_categories = dataset.categorize_reference_scores(
+        recalculated_scores
+    )
+
+    scenario_counts = (
+        sample["tipo_cenario"]
+        .value_counts()
+        .to_dict()
+    )
+
+    assert sample.shape == (
+        schema.DATASET_SIZE,
+        len(schema.DATASET_COLUMNS),
+    )
+    assert tuple(sample.columns) == schema.DATASET_COLUMNS
+    assert scenario_counts == {
+        "TIPICO": 4600,
+        "RARO_EXTREMO": 250,
+        "FRONTEIRA": 150,
+    }
+    assert int(rare_flags.sum()) == 250
+    assert int(boundary_flags.sum()) == 150
+    assert not bool((rare_flags & boundary_flags).any())
+    assert int(sample["outlier_plausivel"].sum()) == 0
+    assert sample.loc[
+        rare_flags,
+        "tipo_cenario",
+    ].eq("RARO_EXTREMO").all()
+    assert np.array_equal(
+        sample["score_referencia"].to_numpy(),
+        recalculated_scores,
+    )
+    assert np.array_equal(
+        sample[schema.TARGET_COLUMN].to_numpy(),
+        recalculated_categories,
+    )
+
+
+def test_amostra_auditada_com_raros_tem_uma_feature_fora_da_faixa() -> None:
+    sample = dataset.generate_audited_sample_with_rare_cases(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    rare_sample = sample.loc[sample["caso_raro"]]
+
+    outside_counts: list[int] = []
+
+    for _, row in rare_sample.iterrows():
+        property_type = str(row["tipo_imovel"])
+        outside_count = 0
+
+        for feature in scenarios.RARE_CASE_FEATURES:
+            typical_minimum, typical_maximum = (
+                scenarios.TYPICAL_RANGES[property_type][feature]
+            )
+            absolute_minimum, absolute_maximum = (
+                schema.NUMERIC_LIMITS[feature]
+            )
+            value = row[feature]
+
+            assert absolute_minimum <= value <= absolute_maximum
+
+            if value < typical_minimum or value > typical_maximum:
+                outside_count += 1
+
+        outside_counts.append(outside_count)
+
+    assert len(outside_counts) == 250
+    assert set(outside_counts) == {1}
+
+
+def test_amostra_auditada_com_raros_e_reproduzivel() -> None:
+    first_sample = dataset.generate_audited_sample_with_rare_cases(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    second_sample = dataset.generate_audited_sample_with_rare_cases(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+
+    pd.testing.assert_frame_equal(first_sample, second_sample)
