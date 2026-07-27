@@ -298,3 +298,30 @@ def generate_labeled_typical_sample(
     )
 
     return labeled_sample.loc[:, list(columns)]
+
+
+def generate_audited_typical_sample(
+    sample_size: int,
+    seed: int = schema.RANDOM_SEED,
+) -> pd.DataFrame:
+    """Integra os campos iniciais de auditoria à amostra rotulada."""
+    audited_sample = generate_labeled_typical_sample(sample_size, seed)
+
+    boundary_positions = select_boundary_case_positions(
+        audited_sample,
+        seed=seed,
+    )
+    boundary_index = audited_sample.index[boundary_positions]
+
+    audited_sample["tipo_cenario"] = "TIPICO"
+    audited_sample["caso_fronteira"] = False
+    audited_sample["caso_raro"] = False
+    audited_sample["outlier_plausivel"] = False
+    audited_sample["lote_geracao"] = (
+        f"energiai-v2-seed-{seed}-size-{sample_size}"
+    )
+
+    audited_sample.loc[boundary_index, "tipo_cenario"] = "FRONTEIRA"
+    audited_sample.loc[boundary_index, "caso_fronteira"] = True
+
+    return audited_sample.loc[:, list(schema.DATASET_COLUMNS)]
