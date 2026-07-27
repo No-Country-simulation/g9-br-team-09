@@ -794,3 +794,236 @@ def test_valor_raro_rejeita_direcao_invalida() -> None:
             "INVALIDA",
             np.random.default_rng(schema.RANDOM_SEED),
         )
+
+
+def test_mutacoes_raras_alteram_somente_celulas_atribuidas() -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    original = sample.copy(deep=True)
+    assignments = [
+        (0, "consumo_kwh", "ABAIXO"),
+        (1, "quantidade_equipamentos", "ACIMA"),
+        (2, "horas_alto_consumo", "ABAIXO"),
+    ]
+
+    mutated = dataset.apply_rare_case_feature_mutations(
+        sample,
+        assignments,
+        seed=schema.RANDOM_SEED,
+    )
+
+    expected_changes = pd.DataFrame(
+        False,
+        index=sample.index,
+        columns=sample.columns,
+    )
+
+    for position, feature, direction in assignments:
+        expected_changes.iat[
+            position,
+            sample.columns.get_loc(feature),
+        ] = True
+
+        row = mutated.iloc[position]
+        property_type = str(row["tipo_imovel"])
+        value = row[feature]
+
+        typical_minimum, typical_maximum = (
+            scenarios.TYPICAL_RANGES[property_type][feature]
+        )
+        absolute_minimum, absolute_maximum = (
+            schema.NUMERIC_LIMITS[feature]
+        )
+
+        assert absolute_minimum <= value <= absolute_maximum
+
+        if direction == "ABAIXO":
+            assert value < typical_minimum
+        else:
+            assert value > typical_maximum
+
+    assert mutated is not sample
+    assert mutated.index.equals(sample.index)
+    assert mutated.columns.equals(sample.columns)
+    pd.testing.assert_frame_equal(sample, original)
+    pd.testing.assert_frame_equal(
+        sample.ne(mutated),
+        expected_changes,
+    )
+
+
+def test_mutacoes_raras_sao_reproduziveis() -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    assignments = [
+        (0, "consumo_kwh", "ABAIXO"),
+        (1, "quantidade_equipamentos", "ACIMA"),
+        (2, "horas_alto_consumo", "ABAIXO"),
+    ]
+
+    first = dataset.apply_rare_case_feature_mutations(
+        sample,
+        assignments,
+        seed=schema.RANDOM_SEED,
+    )
+    second = dataset.apply_rare_case_feature_mutations(
+        sample,
+        assignments,
+        seed=schema.RANDOM_SEED,
+    )
+
+    pd.testing.assert_frame_equal(first, second)
+
+
+def test_mutacoes_raras_aceitam_atribuicoes_vazias() -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+
+    mutated = dataset.apply_rare_case_feature_mutations(
+        sample,
+        [],
+        seed=schema.RANDOM_SEED,
+    )
+
+    assert mutated is not sample
+    pd.testing.assert_frame_equal(mutated, sample)
+
+
+@pytest.mark.parametrize(
+    "missing_column",
+    (
+        "tipo_imovel",
+        *scenarios.RARE_CASE_FEATURES,
+    ),
+)
+def test_mutacoes_raras_rejeitam_coluna_obrigatoria_ausente(
+    missing_column: str,
+) -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    incomplete_sample = sample.drop(columns=[missing_column])
+
+    with pytest.raises(
+        ValueError,
+        match="Colunas obrigatórias ausentes",
+    ):
+        dataset.apply_rare_case_feature_mutations(
+            incomplete_sample,
+            [],
+            seed=schema.RANDOM_SEED,
+        )
+
+
+def test_mutacoes_raras_rejeitam_colunas_duplicadas() -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    duplicated_sample = pd.concat(
+        [
+            sample,
+            sample[["consumo_kwh"]],
+        ],
+        axis=1,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="A amostra não pode possuir colunas duplicadas",
+    ):
+        dataset.apply_rare_case_feature_mutations(
+            duplicated_sample,
+            [],
+            seed=schema.RANDOM_SEED,
+        )
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        True,
+        1.5,
+        "1",
+    ],
+)
+def test_mutacoes_raras_rejeitam_posicao_nao_inteira(
+    position: object,
+) -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    assignments = [
+        (position, "consumo_kwh", "ABAIXO"),
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="As posições das atribuições devem ser inteiras",
+    ):
+        dataset.apply_rare_case_feature_mutations(
+            sample,
+            assignments,
+            seed=schema.RANDOM_SEED,
+        )
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        -1,
+        4,
+    ],
+)
+def test_mutacoes_raras_rejeitam_posicao_fora_da_amostra(
+    position: int,
+) -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    assignments = [
+        (position, "consumo_kwh", "ABAIXO"),
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="Posição rara fora da amostra",
+    ):
+        dataset.apply_rare_case_feature_mutations(
+            sample,
+            assignments,
+            seed=schema.RANDOM_SEED,
+        )
+
+
+def test_mutacoes_raras_rejeitam_posicoes_duplicadas() -> None:
+    sample = dataset.generate_typical_sample(
+        4,
+        seed=schema.RANDOM_SEED,
+    )
+    original = sample.copy(deep=True)
+    assignments = [
+        (0, "consumo_kwh", "ABAIXO"),
+        (0, "quantidade_equipamentos", "ACIMA"),
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="Posição rara duplicada: 0",
+    ):
+        dataset.apply_rare_case_feature_mutations(
+            sample,
+            assignments,
+            seed=schema.RANDOM_SEED,
+        )
+
+    pd.testing.assert_frame_equal(sample, original)
