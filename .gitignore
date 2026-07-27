@@ -180,6 +180,8 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
 .envrc
 .venv
 env/
@@ -233,6 +235,16 @@ cython_debug/
 # .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
+
+# Oracle Autonomous Database credentials and wallets
+**/Wallet_*/
+**/wallet/
+**/wallets/
+**/Wallet_*.zip
+**/cwallet.sso
+**/ewallet.p12
+**/keystore.jks
+**/truststore.jks
 
 # Ruff stuff:
 .ruff_cache/
