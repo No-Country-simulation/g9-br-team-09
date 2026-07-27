@@ -561,3 +561,124 @@ def test_selecao_raros_rejeita_candidatos_insuficientes() -> None:
             sample,
             ratio=1.0,
         )
+
+def test_atribuicoes_raros_sao_balanceadas_e_reprodutiveis() -> None:
+    positions = np.arange(250, dtype=int)
+    original = positions.copy()
+
+    first_assignments = dataset.build_rare_case_assignments(
+        positions,
+        seed=schema.RANDOM_SEED,
+    )
+    second_assignments = dataset.build_rare_case_assignments(
+        positions,
+        seed=schema.RANDOM_SEED,
+    )
+
+    returned_positions = [
+        position
+        for position, _, _ in first_assignments
+    ]
+    features = [
+        feature
+        for _, feature, _ in first_assignments
+    ]
+    directions = [
+        direction
+        for _, _, direction in first_assignments
+    ]
+
+    feature_counts = {
+        feature: features.count(feature)
+        for feature in scenarios.RARE_CASE_FEATURES
+    }
+    direction_counts = {
+        direction: directions.count(direction)
+        for direction in scenarios.RARE_CASE_DIRECTIONS
+    }
+
+    assert first_assignments == second_assignments
+    assert returned_positions == positions.tolist()
+    assert np.array_equal(positions, original)
+    assert feature_counts == {
+        "consumo_kwh": 84,
+        "quantidade_equipamentos": 83,
+        "horas_alto_consumo": 83,
+    }
+    assert direction_counts == {
+        "ABAIXO": 126,
+        "ACIMA": 124,
+    }
+
+
+def test_atribuicoes_raros_aceitam_entrada_vazia() -> None:
+    assignments = dataset.build_rare_case_assignments(
+        np.array([], dtype=int)
+    )
+
+    assert assignments == []
+
+
+def test_atribuicoes_raros_rejeitam_matriz() -> None:
+    positions = np.array([[1, 2], [3, 4]], dtype=int)
+
+    with pytest.raises(
+        ValueError,
+        match="positions deve ser unidimensional",
+    ):
+        dataset.build_rare_case_assignments(positions)
+
+
+def test_atribuicoes_raros_rejeitam_valores_nao_inteiros() -> None:
+    positions = np.array([1.0, 2.0, 3.0])
+
+    with pytest.raises(
+        ValueError,
+        match="positions deve conter valores inteiros",
+    ):
+        dataset.build_rare_case_assignments(positions)
+
+
+def test_atribuicoes_raros_rejeitam_posicoes_duplicadas() -> None:
+    positions = np.array([1, 2, 2, 3], dtype=int)
+
+    with pytest.raises(
+        ValueError,
+        match="positions não pode conter valores duplicados",
+    ):
+        dataset.build_rare_case_assignments(positions)
+
+
+def test_atribuicoes_raros_rejeitam_features_vazias(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(scenarios, "RARE_CASE_FEATURES", ())
+
+    with pytest.raises(
+        ValueError,
+        match="RARE_CASE_FEATURES não pode estar vazio",
+    ):
+        dataset.build_rare_case_assignments(
+            np.array([1, 2], dtype=int)
+        )
+
+
+def test_atribuicoes_raros_rejeitam_direcoes_invalidas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        scenarios,
+        "RARE_CASE_DIRECTIONS",
+        ("ABAIXO",),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "RARE_CASE_DIRECTIONS deve possuir "
+            "exatamente duas direções"
+        ),
+    ):
+        dataset.build_rare_case_assignments(
+            np.array([1, 2], dtype=int)
+        )
