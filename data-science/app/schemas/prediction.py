@@ -42,7 +42,7 @@ class PredictionRequest(BaseModel):
         },
     )
 
-    consumo_kwh: Annotated[float, Field(gt=0, allow_inf_nan=False)]
+    consumo_kwh: Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
     uso_horario_pico: StrictBool
     quantidade_equipamentos: Annotated[StrictInt, Field(ge=1)]
     tipo_imovel: PropertyType
