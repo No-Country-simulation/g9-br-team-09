@@ -221,6 +221,48 @@ def select_boundary_case_positions(
     )
 
 
+def select_rare_case_positions(
+    sample: pd.DataFrame,
+    ratio: float = scenarios.RARE_CASE_RATIO,
+    seed: int = schema.RANDOM_SEED,
+) -> np.ndarray:
+    """Seleciona posições reproduzíveis para casos raros não fronteiriços."""
+    if "caso_fronteira" not in sample.columns:
+        raise ValueError("Coluna obrigatória ausente: caso_fronteira")
+
+    if not pd.api.types.is_bool_dtype(sample["caso_fronteira"]):
+        raise ValueError("caso_fronteira deve possuir tipo booleano")
+
+    if sample["caso_fronteira"].isna().any():
+        raise ValueError("caso_fronteira não pode conter valores nulos")
+
+    if not np.isfinite(ratio) or not 0.0 <= ratio <= 1.0:
+        raise ValueError("ratio deve estar entre 0 e 1")
+
+    boundary_flags = sample["caso_fronteira"].to_numpy()
+    candidate_positions = np.flatnonzero(~boundary_flags)
+    quota = int(round(len(sample) * ratio))
+
+    if quota > len(candidate_positions):
+        raise ValueError(
+            "Casos não fronteiriços insuficientes "
+            "para a proporção de raros solicitada"
+        )
+
+    if quota == 0:
+        return np.empty(0, dtype=int)
+
+    rng = np.random.default_rng(seed)
+
+    return np.sort(
+        rng.choice(
+            candidate_positions,
+            size=quota,
+            replace=False,
+        )
+    )
+
+
 def generate_typical_sample(
     sample_size: int,
     seed: int = schema.RANDOM_SEED,
