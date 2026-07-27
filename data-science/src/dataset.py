@@ -262,6 +262,67 @@ def select_rare_case_positions(
         )
     )
 
+def build_rare_case_assignments(
+    positions: np.ndarray,
+    seed: int = schema.RANDOM_SEED,
+) -> list[tuple[int, str, str]]:
+    """Distribui posições raras entre features e direções reproduzíveis."""
+    values = np.asarray(positions)
+
+    if values.ndim != 1:
+        raise ValueError("positions deve ser unidimensional")
+
+    if not np.issubdtype(values.dtype, np.integer):
+        raise ValueError("positions deve conter valores inteiros")
+
+    if len(np.unique(values)) != len(values):
+        raise ValueError("positions não pode conter valores duplicados")
+
+    if values.size == 0:
+        return []
+
+    features = scenarios.RARE_CASE_FEATURES
+    directions = scenarios.RARE_CASE_DIRECTIONS
+
+    if not features:
+        raise ValueError("RARE_CASE_FEATURES não pode estar vazio")
+
+    if len(directions) != 2:
+        raise ValueError(
+            "RARE_CASE_DIRECTIONS deve possuir exatamente duas direções"
+        )
+
+    base_count, remainder = divmod(values.size, len(features))
+    assignments: list[tuple[str, str]] = []
+
+    for feature_index, feature in enumerate(features):
+        feature_count = base_count + int(feature_index < remainder)
+        below_count = (feature_count + 1) // 2
+        above_count = feature_count - below_count
+
+        assignments.extend(
+            (feature, directions[0])
+            for _ in range(below_count)
+        )
+        assignments.extend(
+            (feature, directions[1])
+            for _ in range(above_count)
+        )
+
+    rng = np.random.default_rng(
+        seed + scenarios.RARE_CASE_RANDOM_SEED_OFFSET
+    )
+    rng.shuffle(assignments)
+
+    return [
+        (int(position), feature, direction)
+        for position, (feature, direction) in zip(
+            values,
+            assignments,
+            strict=True,
+        )
+    ]
+
 
 def generate_typical_sample(
     sample_size: int,
