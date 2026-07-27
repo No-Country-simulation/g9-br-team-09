@@ -597,3 +597,41 @@ def generate_audited_typical_sample(
     audited_sample.loc[boundary_index, "caso_fronteira"] = True
 
     return audited_sample.loc[:, list(schema.DATASET_COLUMNS)]
+
+def generate_audited_sample_with_rare_cases(
+    sample_size: int,
+    seed: int = schema.RANDOM_SEED,
+) -> pd.DataFrame:
+    """Integra casos raros à amostra auditada e recalcula os rótulos."""
+    audited_sample = generate_audited_typical_sample(
+        sample_size,
+        seed=seed,
+    )
+    rare_positions = select_rare_case_positions(
+        audited_sample,
+        seed=seed,
+    )
+    assignments = build_rare_case_assignments(
+        rare_positions,
+        seed=seed,
+    )
+    rare_sample = apply_rare_case_feature_mutations(
+        audited_sample,
+        assignments,
+        seed=seed,
+    )
+
+    recalculated_scores = calculate_reference_scores(rare_sample)
+    recalculated_categories = categorize_reference_scores(
+        recalculated_scores
+    )
+    rare_index = rare_sample.index[rare_positions]
+
+    rare_sample[schema.TARGET_COLUMN] = recalculated_categories
+    rare_sample["score_referencia"] = recalculated_scores
+
+    rare_sample.loc[rare_index, "tipo_cenario"] = "RARO_EXTREMO"
+    rare_sample.loc[rare_index, "caso_raro"] = True
+    rare_sample.loc[rare_index, "outlier_plausivel"] = False
+
+    return rare_sample.loc[:, list(schema.DATASET_COLUMNS)]
