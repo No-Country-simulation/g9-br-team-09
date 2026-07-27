@@ -61,6 +61,25 @@ BOUNDARY_CASE_RATIO: Final[float] = 0.03
 RARE_CASE_RATIO: Final[float] = 0.05
 PLAUSIBLE_OUTLIER_RATIO: Final[float] = 0.03
 
+RARE_CASE_FEATURES: Final[tuple[str, ...]] = (
+    "consumo_kwh",
+    "quantidade_equipamentos",
+    "horas_alto_consumo",
+)
+
+RARE_CASE_DIRECTIONS: Final[tuple[str, ...]] = (
+    "ABAIXO",
+    "ACIMA",
+)
+
+RARE_CASE_GENERATION_PARAMETERS: Final[dict[str, float]] = {
+    "consumption_minimum_step_ratio": 0.02,
+    "maximum_typical_width_ratio": 0.15,
+    "maximum_available_gap_ratio": 0.50,
+}
+
+RARE_CASE_RANDOM_SEED_OFFSET: Final[int] = 5
+
 TARGET_CATEGORY_DISTRIBUTION: Final[dict[str, float]] = {
     "EFICIENTE": 0.30,
     "MODERADO": 0.40,
