@@ -425,6 +425,74 @@ def _generate_rare_feature_value(
         )
     )
 
+def apply_rare_case_feature_mutations(
+    sample: pd.DataFrame,
+    assignments: list[tuple[int, str, str]],
+    seed: int = schema.RANDOM_SEED,
+) -> pd.DataFrame:
+    """Aplica mutações raras reproduzíveis em uma cópia da amostra."""
+    required_columns = {
+        "tipo_imovel",
+        *scenarios.RARE_CASE_FEATURES,
+    }
+    missing_columns = sorted(required_columns.difference(sample.columns))
+
+    if missing_columns:
+        raise ValueError(
+            "Colunas obrigatórias ausentes: "
+            + ", ".join(missing_columns)
+        )
+
+    if not sample.columns.is_unique:
+        raise ValueError("A amostra não pode possuir colunas duplicadas")
+
+    mutated_sample = sample.copy(deep=True)
+    random_generator = np.random.default_rng(
+        seed + scenarios.RARE_CASE_RANDOM_SEED_OFFSET
+    )
+    used_positions: set[int] = set()
+
+    for position, feature, direction in assignments:
+        if (
+            isinstance(position, (bool, np.bool_))
+            or not isinstance(position, (int, np.integer))
+        ):
+            raise ValueError(
+                "As posições das atribuições devem ser inteiras"
+            )
+
+        normalized_position = int(position)
+
+        if not 0 <= normalized_position < len(mutated_sample):
+            raise ValueError(
+                f"Posição rara fora da amostra: {normalized_position}"
+            )
+
+        if normalized_position in used_positions:
+            raise ValueError(
+                f"Posição rara duplicada: {normalized_position}"
+            )
+
+        property_type = str(
+            mutated_sample.iloc[normalized_position]["tipo_imovel"]
+        )
+        rare_value = _generate_rare_feature_value(
+            property_type,
+            feature,
+            direction,
+            random_generator,
+        )
+        feature_position = mutated_sample.columns.get_loc(feature)
+
+        mutated_sample.iat[
+            normalized_position,
+            feature_position,
+        ] = rare_value
+
+        used_positions.add(normalized_position)
+
+    return mutated_sample
+
 def generate_typical_sample(
     sample_size: int,
     seed: int = schema.RANDOM_SEED,
