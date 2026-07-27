@@ -682,3 +682,115 @@ def test_atribuicoes_raros_rejeitam_direcoes_invalidas(
         dataset.build_rare_case_assignments(
             np.array([1, 2], dtype=int)
         )
+
+@pytest.mark.parametrize(
+    ("property_type", "feature", "direction"),
+    [
+        (property_type, feature, direction)
+        for property_type in schema.PROPERTY_TYPES
+        for feature in scenarios.RARE_CASE_FEATURES
+        for direction in scenarios.RARE_CASE_DIRECTIONS
+    ],
+)
+def test_valor_raro_respeita_faixas_e_limites(
+    property_type: str,
+    feature: str,
+    direction: str,
+) -> None:
+    random_generator = np.random.default_rng(schema.RANDOM_SEED)
+
+    value = dataset._generate_rare_feature_value(
+        property_type,
+        feature,
+        direction,
+        random_generator,
+    )
+
+    typical_minimum, typical_maximum = (
+        scenarios.TYPICAL_RANGES[property_type][feature]
+    )
+    absolute_minimum, absolute_maximum = (
+        schema.NUMERIC_LIMITS[feature]
+    )
+
+    assert absolute_minimum <= value <= absolute_maximum
+
+    if direction == "ABAIXO":
+        assert value < typical_minimum
+    else:
+        assert value > typical_maximum
+
+    if feature == "consumo_kwh":
+        assert isinstance(value, float)
+        assert value == round(value, 2)
+    else:
+        assert isinstance(value, int)
+
+
+def test_valor_raro_e_reproduzivel() -> None:
+    first_generator = np.random.default_rng(schema.RANDOM_SEED)
+    second_generator = np.random.default_rng(schema.RANDOM_SEED)
+
+    first_values = [
+        dataset._generate_rare_feature_value(
+            property_type,
+            feature,
+            direction,
+            first_generator,
+        )
+        for property_type in schema.PROPERTY_TYPES
+        for feature in scenarios.RARE_CASE_FEATURES
+        for direction in scenarios.RARE_CASE_DIRECTIONS
+    ]
+    second_values = [
+        dataset._generate_rare_feature_value(
+            property_type,
+            feature,
+            direction,
+            second_generator,
+        )
+        for property_type in schema.PROPERTY_TYPES
+        for feature in scenarios.RARE_CASE_FEATURES
+        for direction in scenarios.RARE_CASE_DIRECTIONS
+    ]
+
+    assert first_values == second_values
+
+
+def test_valor_raro_rejeita_tipo_imovel_invalido() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Tipo de imóvel inválido",
+    ):
+        dataset._generate_rare_feature_value(
+            "INVALIDO",
+            "consumo_kwh",
+            "ABAIXO",
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_valor_raro_rejeita_feature_invalida() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Feature rara inválida",
+    ):
+        dataset._generate_rare_feature_value(
+            "CASA",
+            "feature_invalida",
+            "ABAIXO",
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
+
+
+def test_valor_raro_rejeita_direcao_invalida() -> None:
+    with pytest.raises(
+        ValueError,
+        match="Direção rara inválida",
+    ):
+        dataset._generate_rare_feature_value(
+            "CASA",
+            "consumo_kwh",
+            "INVALIDA",
+            np.random.default_rng(schema.RANDOM_SEED),
+        )
