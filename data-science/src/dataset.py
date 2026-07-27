@@ -323,6 +323,107 @@ def build_rare_case_assignments(
         )
     ]
 
+def _generate_rare_feature_value(
+    property_type: str,
+    feature: str,
+    direction: str,
+    random_generator: np.random.Generator,
+) -> float | int:
+    """Gera um valor raro válido para uma feature numérica."""
+    if property_type not in schema.PROPERTY_TYPES:
+        raise ValueError(f"Tipo de imóvel inválido: {property_type}")
+
+    if feature not in scenarios.RARE_CASE_FEATURES:
+        raise ValueError(f"Feature rara inválida: {feature}")
+
+    if direction not in scenarios.RARE_CASE_DIRECTIONS:
+        raise ValueError(f"Direção rara inválida: {direction}")
+
+    typical_minimum, typical_maximum = (
+        scenarios.TYPICAL_RANGES[property_type][feature]
+    )
+    absolute_minimum, absolute_maximum = schema.NUMERIC_LIMITS[feature]
+    typical_width = typical_maximum - typical_minimum
+
+    if typical_width <= 0:
+        raise ValueError(
+            f"A faixa típica de {feature} deve possuir amplitude positiva"
+        )
+
+    below_direction, above_direction = scenarios.RARE_CASE_DIRECTIONS
+
+    if direction == below_direction:
+        available_gap = typical_minimum - absolute_minimum
+    else:
+        available_gap = absolute_maximum - typical_maximum
+
+    if available_gap <= 0:
+        raise ValueError(
+            f"Não há espaço válido para gerar {feature} na direção {direction}"
+        )
+
+    parameters = scenarios.RARE_CASE_GENERATION_PARAMETERS
+    maximum_step = min(
+        typical_width * parameters["maximum_typical_width_ratio"],
+        available_gap * parameters["maximum_available_gap_ratio"],
+    )
+
+    if maximum_step <= 0:
+        raise ValueError(
+            f"O deslocamento máximo de {feature} deve ser positivo"
+        )
+
+    if feature == "consumo_kwh":
+        minimum_step = min(
+            maximum_step,
+            max(
+                1.0,
+                typical_width
+                * parameters["consumption_minimum_step_ratio"],
+            ),
+        )
+        step = (
+            random_generator.uniform(minimum_step, maximum_step)
+            if maximum_step > minimum_step
+            else maximum_step
+        )
+        value = (
+            typical_minimum - step
+            if direction == below_direction
+            else typical_maximum + step
+        )
+
+        return round(
+            float(np.clip(value, absolute_minimum, absolute_maximum)),
+            2,
+        )
+
+    maximum_integer_step = max(
+        1,
+        min(
+            int(np.ceil(maximum_step)),
+            max(1, int(available_gap) // 2),
+        ),
+    )
+    step = int(
+        random_generator.integers(
+            1,
+            maximum_integer_step + 1,
+        )
+    )
+    value = (
+        int(typical_minimum) - step
+        if direction == below_direction
+        else int(typical_maximum) + step
+    )
+
+    return int(
+        np.clip(
+            value,
+            int(absolute_minimum),
+            int(absolute_maximum),
+        )
+    )
 
 def generate_typical_sample(
     sample_size: int,
