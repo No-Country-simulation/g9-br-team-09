@@ -1,0 +1,22 @@
+# Copy this file to terraform.tfvars outside version control and replace placeholders locally.
+region           = "sa-saopaulo-1"
+tenancy_ocid     = "ocid1.tenancy.oc1..<TENANCY_OCID>"
+compartment_ocid = "ocid1.compartment.oc1..<COMPARTMENT_OCID>"
+
+instance_name           = "energiai-backend"
+shape                   = "VM.Standard.E2.1.Micro"
+boot_volume_size_in_gbs = 50
+
+ssh_public_key   = "ssh-ed25519 <PUBLIC_KEY_MATERIAL> user@workstation"
+ssh_allowed_cidr = "203.0.113.10/32"
+
+vcn_cidr    = "10.0.0.0/16"
+subnet_cidr = "10.0.1.0/24"
+
+operating_system         = "Canonical Ubuntu"
+operating_system_version = "24.04"
+
+freeform_tags = {
+  project     = "EnergiAI"
+  environment = "demo"
+}
