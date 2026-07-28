@@ -1,4 +1,4 @@
-﻿"""Testes da montagem das amostras sintéticas do Dataset EnergIAI V2."""
+"""Testes da montagem das amostras sintéticas do Dataset EnergIAI V2."""
 
 import sys
 from pathlib import Path
