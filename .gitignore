@@ -248,6 +248,20 @@ tempCodeRunnerFile.py
 **/keystore.jks
 **/truststore.jks
 
+# Terraform local state, plans, and local variable values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
 # Ruff stuff:
 .ruff_cache/
 
