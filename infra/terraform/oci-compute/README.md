@@ -70,8 +70,8 @@ terraform init
 terraform fmt -recursive
 terraform fmt -check -recursive
 terraform validate
-terraform plan -out=tfplan
-terraform show -no-color tfplan
+terraform plan -out=plan.tfplan
+terraform show -no-color plan.tfplan
 ```
 
 Review the plan before any apply. It must show one Compute instance with the
@@ -87,7 +87,7 @@ OCI Resource Manager compatibility.
 After the owner reviews the plan and authorizes creation:
 
 ```bash
-terraform apply tfplan
+terraform apply plan.tfplan
 terraform output
 ssh -i ~/.ssh/energiai_oci ubuntu@<public-ip>
 ```
