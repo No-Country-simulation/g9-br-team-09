@@ -1,4 +1,4 @@
-"""Testes da montagem das amostras sintéticas do Dataset EnergIAI V2."""
+﻿"""Testes da montagem das amostras sintéticas do Dataset EnergIAI V2."""
 
 import sys
 from pathlib import Path
@@ -1037,6 +1037,13 @@ def test_amostra_auditada_com_raros_integra_cenarios_e_rotulos() -> None:
 
     rare_flags = sample["caso_raro"]
     boundary_flags = sample["caso_fronteira"]
+    outlier_flags = sample["outlier_plausivel"]
+    expected_outlier_count = int(
+        round(
+            schema.DATASET_SIZE
+            * scenarios.PLAUSIBLE_OUTLIER_RATIO
+        )
+    )
     recalculated_scores = dataset.calculate_reference_scores(sample)
     recalculated_categories = dataset.categorize_reference_scores(
         recalculated_scores
@@ -1061,7 +1068,9 @@ def test_amostra_auditada_com_raros_integra_cenarios_e_rotulos() -> None:
     assert int(rare_flags.sum()) == 250
     assert int(boundary_flags.sum()) == 150
     assert not bool((rare_flags & boundary_flags).any())
-    assert int(sample["outlier_plausivel"].sum()) == 0
+    assert int(outlier_flags.sum()) == expected_outlier_count
+    assert not bool((outlier_flags & ~rare_flags).any())
+    assert not bool((outlier_flags & boundary_flags).any())
     assert sample.loc[
         rare_flags,
         "tipo_cenario",
@@ -1074,6 +1083,76 @@ def test_amostra_auditada_com_raros_integra_cenarios_e_rotulos() -> None:
         sample[schema.TARGET_COLUMN].to_numpy(),
         recalculated_categories,
     )
+
+
+def test_outliers_plausiveis_ultrapassam_iqr_e_respeitam_limites() -> None:
+    sample = dataset.generate_audited_sample_with_rare_cases(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+
+    reference_sample = sample.loc[
+        ~sample["caso_raro"]
+        & ~sample["caso_fronteira"]
+    ]
+    outlier_sample = sample.loc[
+        sample["outlier_plausivel"]
+    ]
+
+    expected_outlier_count = int(
+        round(
+            schema.DATASET_SIZE
+            * scenarios.PLAUSIBLE_OUTLIER_RATIO
+        )
+    )
+
+    assert len(outlier_sample) == expected_outlier_count
+
+    for _, row in outlier_sample.iterrows():
+        property_type = str(row["tipo_imovel"])
+
+        features_outside_typical_range = [
+            feature
+            for feature in scenarios.RARE_CASE_FEATURES
+            if (
+                row[feature]
+                < scenarios.TYPICAL_RANGES[
+                    property_type
+                ][feature][0]
+                or row[feature]
+                > scenarios.TYPICAL_RANGES[
+                    property_type
+                ][feature][1]
+            )
+        ]
+
+        assert len(features_outside_typical_range) == 1
+
+        feature = features_outside_typical_range[0]
+
+        reference_values = reference_sample.loc[
+            reference_sample["tipo_imovel"].eq(
+                property_type
+            ),
+            feature,
+        ].astype(float)
+
+        assert not reference_values.empty
+
+        q1 = float(reference_values.quantile(0.25))
+        q3 = float(reference_values.quantile(0.75))
+        iqr = q3 - q1
+
+        lower_fence = q1 - 1.5 * iqr
+        upper_fence = q3 + 1.5 * iqr
+
+        absolute_minimum, absolute_maximum = (
+            schema.NUMERIC_LIMITS[feature]
+        )
+        value = float(row[feature])
+
+        assert absolute_minimum < value < absolute_maximum
+        assert value < lower_fence or value > upper_fence
 
 
 def test_amostra_auditada_com_raros_tem_uma_feature_fora_da_faixa() -> None:

@@ -12,6 +12,9 @@ import generator
 import scenarios
 import schema
 
+_PLAUSIBLE_OUTLIER_IQR_MULTIPLIER = 1.5
+_PLAUSIBLE_OUTLIER_RANDOM_SEED_OFFSET = 11
+
 
 def _normalize_feature_by_property_type(
     sample: pd.DataFrame,
@@ -598,11 +601,247 @@ def generate_audited_typical_sample(
 
     return audited_sample.loc[:, list(schema.DATASET_COLUMNS)]
 
+
+def _value_beyond_iqr_fence(
+    feature: str,
+    direction: str,
+    lower_fence: float,
+    upper_fence: float,
+) -> float | int:
+    """Retorna o menor valor representável além da cerca do IQR."""
+    if feature == "consumo_kwh":
+        if direction == "ABAIXO":
+            return round(
+                np.floor(lower_fence * 100.0) / 100.0 - 0.01,
+                2,
+            )
+
+        return round(
+            np.ceil(upper_fence * 100.0) / 100.0 + 0.01,
+            2,
+        )
+
+    if direction == "ABAIXO":
+        return int(np.floor(lower_fence)) - 1
+
+    return int(np.ceil(upper_fence)) + 1
+
+
+def apply_plausible_outlier_mutations(
+    sample: pd.DataFrame,
+    assignments: list[tuple[int, str, str]],
+    ratio: float = scenarios.PLAUSIBLE_OUTLIER_RATIO,
+    seed: int = schema.RANDOM_SEED,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Seleciona e aplica outliers IQR como subconjunto dos casos raros."""
+    required_columns = {
+        "tipo_imovel",
+        "caso_fronteira",
+        *scenarios.RARE_CASE_FEATURES,
+    }
+    missing_columns = sorted(
+        required_columns.difference(sample.columns)
+    )
+
+    if missing_columns:
+        raise ValueError(
+            "Colunas obrigatórias ausentes: "
+            + ", ".join(missing_columns)
+        )
+
+    if not np.isfinite(ratio) or not 0.0 <= ratio <= 1.0:
+        raise ValueError("ratio deve estar entre 0 e 1")
+
+    quota = int(round(len(sample) * ratio))
+
+    if quota == 0:
+        return sample.copy(deep=True), np.empty(0, dtype=int)
+
+    if quota > len(assignments):
+        raise ValueError(
+            "Casos raros insuficientes para a proporção de outliers"
+        )
+
+    rare_positions = np.array(
+        [
+            position
+            for position, _, _ in assignments
+        ],
+        dtype=int,
+    )
+
+    reference_mask = (
+        ~sample["caso_fronteira"].to_numpy()
+    )
+    reference_mask[rare_positions] = False
+
+    candidates: list[
+        tuple[int, str, float | int, bool]
+    ] = []
+
+    for position, feature, direction in assignments:
+        row = sample.iloc[position]
+        property_type = str(row["tipo_imovel"])
+
+        property_mask = (
+            sample["tipo_imovel"]
+            .eq(property_type)
+            .to_numpy()
+        )
+
+        reference_values = sample.loc[
+            reference_mask & property_mask,
+            feature,
+        ].astype(float)
+
+        if reference_values.empty:
+            raise ValueError(
+                "Amostra de referência insuficiente para "
+                f"{property_type} e {feature}"
+            )
+
+        q1 = float(reference_values.quantile(0.25))
+        q3 = float(reference_values.quantile(0.75))
+        iqr = q3 - q1
+
+        lower_fence = (
+            q1
+            - _PLAUSIBLE_OUTLIER_IQR_MULTIPLIER
+            * iqr
+        )
+        upper_fence = (
+            q3
+            + _PLAUSIBLE_OUTLIER_IQR_MULTIPLIER
+            * iqr
+        )
+
+        candidate_value = _value_beyond_iqr_fence(
+            feature,
+            direction,
+            lower_fence,
+            upper_fence,
+        )
+
+        absolute_minimum, absolute_maximum = (
+            schema.NUMERIC_LIMITS[feature]
+        )
+
+        eligible = (
+            absolute_minimum
+            <= candidate_value
+            <= absolute_maximum
+            and (
+                candidate_value < lower_fence
+                or candidate_value > upper_fence
+            )
+        )
+
+        if not eligible:
+            continue
+
+        current_value = float(row[feature])
+        currently_detected = (
+            current_value < lower_fence
+            or current_value > upper_fence
+        )
+
+        candidates.append(
+            (
+                int(position),
+                feature,
+                candidate_value,
+                currently_detected,
+            )
+        )
+
+    mandatory_positions = {
+        position
+        for (
+            position,
+            _,
+            _,
+            currently_detected,
+        ) in candidates
+        if currently_detected
+    }
+
+    if len(mandatory_positions) > quota:
+        raise ValueError(
+            "Casos já detectados excedem a cota de outliers"
+        )
+
+    eligible_positions = {
+        position
+        for position, _, _, _ in candidates
+    }
+
+    available_positions = np.array(
+        sorted(
+            eligible_positions
+            - mandatory_positions
+        ),
+        dtype=int,
+    )
+
+    remaining_quota = (
+        quota - len(mandatory_positions)
+    )
+
+    if remaining_quota > len(available_positions):
+        raise ValueError(
+            "Candidatos detectáveis insuficientes "
+            "para a cota de outliers"
+        )
+
+    random_generator = np.random.default_rng(
+        seed
+        + _PLAUSIBLE_OUTLIER_RANDOM_SEED_OFFSET
+    )
+
+    additional_positions = set(
+        random_generator.choice(
+            available_positions,
+            size=remaining_quota,
+            replace=False,
+        )
+        .astype(int)
+        .tolist()
+    )
+
+    selected_positions = (
+        mandatory_positions
+        | additional_positions
+    )
+
+    mutated_sample = sample.copy(deep=True)
+
+    for position, feature, candidate_value, _ in candidates:
+        if position not in selected_positions:
+            continue
+
+        feature_position = (
+            mutated_sample.columns.get_loc(feature)
+        )
+
+        mutated_sample.iat[
+            position,
+            feature_position,
+        ] = candidate_value
+
+    return (
+        mutated_sample,
+        np.array(
+            sorted(selected_positions),
+            dtype=int,
+        ),
+    )
+
+
 def generate_audited_sample_with_rare_cases(
     sample_size: int,
     seed: int = schema.RANDOM_SEED,
 ) -> pd.DataFrame:
-    """Integra casos raros à amostra auditada e recalcula os rótulos."""
+    """Integra casos raros e outliers plausíveis à amostra auditada."""
     audited_sample = generate_audited_typical_sample(
         sample_size,
         seed=seed,
@@ -620,18 +859,49 @@ def generate_audited_sample_with_rare_cases(
         assignments,
         seed=seed,
     )
+    rare_sample, outlier_positions = (
+        apply_plausible_outlier_mutations(
+            rare_sample,
+            assignments,
+            seed=seed,
+        )
+    )
 
-    recalculated_scores = calculate_reference_scores(rare_sample)
-    recalculated_categories = categorize_reference_scores(
+    recalculated_scores = calculate_reference_scores(
+        rare_sample
+    )
+    recalculated_categories = (
+        categorize_reference_scores(
+            recalculated_scores
+        )
+    )
+
+    rare_index = rare_sample.index[rare_positions]
+    outlier_index = rare_sample.index[
+        outlier_positions
+    ]
+
+    rare_sample[schema.TARGET_COLUMN] = (
+        recalculated_categories
+    )
+    rare_sample["score_referencia"] = (
         recalculated_scores
     )
-    rare_index = rare_sample.index[rare_positions]
 
-    rare_sample[schema.TARGET_COLUMN] = recalculated_categories
-    rare_sample["score_referencia"] = recalculated_scores
+    rare_sample.loc[
+        rare_index,
+        "tipo_cenario",
+    ] = "RARO_EXTREMO"
+    rare_sample.loc[
+        rare_index,
+        "caso_raro",
+    ] = True
+    rare_sample.loc[
+        outlier_index,
+        "outlier_plausivel",
+    ] = True
 
-    rare_sample.loc[rare_index, "tipo_cenario"] = "RARO_EXTREMO"
-    rare_sample.loc[rare_index, "caso_raro"] = True
-    rare_sample.loc[rare_index, "outlier_plausivel"] = False
-
-    return rare_sample.loc[:, list(schema.DATASET_COLUMNS)]
+    return rare_sample.loc[
+        :,
+        list(schema.DATASET_COLUMNS),
+    ]
