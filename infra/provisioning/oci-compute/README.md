@@ -1,116 +1,66 @@
-# OCI Compute container-host provisioning — Issue #106
+# Provisionamento do container-host OCI Compute — Issue #106
 
-This directory prepares the OCI Compute instance provisioned by Issue #104 for
-future EnergiAI containers. It installs and configures Docker Engine only; it
-does not deploy, pull, build, or run an EnergiAI application service.
+Este diretório prepara a instância OCI Compute provisionada pela Issue #104 para futuros containers do EnergiAI. O objetivo é apenas instalar e configurar o Docker Engine; ele não faz deploy, pull, build ou execução de nenhum serviço de aplicação do EnergiAI.
 
-## Supported host and prerequisites
+## Host suportado e pré-requisitos
 
-Issue #104 is the dependency and architecture source of truth. Run this only
-on its Canonical Ubuntu 24.04 LTS instance with `x86_64` kernel architecture,
-`amd64` APT architecture, and `ubuntu` as the default administrative user. ARM
-and `aarch64` hosts are intentionally rejected.
+A Issue #104 é a fonte da verdade para a dependência e a arquitetura. Execute este script apenas na instância Canonical Ubuntu 24.04 LTS provisionada por ela, com arquitetura de kernel `x86_64`, arquitetura do APT `amd64` e o usuário administrativo padrão `ubuntu`. Hosts ARM e arquiteturas `aarch64` são rejeitados intencionalmente.
 
-Connect through the SSH access created by Issue #104, then copy this repository
-or this provisioning directory to the instance. The command requires root,
-network access to Ubuntu and Docker APT repositories, and a running systemd
-host. It does not reboot the instance; it reports if Ubuntu has marked a reboot
-as required.
+Conecte-se através do acesso SSH criado pela Issue #104 e copie este repositório ou este diretório de provisionamento para a instância. O comando exige privilégios de root, acesso à internet para alcançar os repositórios APT do Ubuntu e do Docker, e um host executando o systemd. O script não reinicia a instância; ele apenas reporta se o Ubuntu marcou uma reinicialização como necessária (reboot required).
 
 ```bash
 sudo bash infra/provisioning/oci-compute/install-docker.sh
 ```
 
-To use an already-existing administrative account other than `ubuntu`:
+Para usar uma conta administrativa já existente diferente de `ubuntu`:
 
 ```bash
 sudo ENERGIAI_ADMIN_USER=<existing-user> \
   bash infra/provisioning/oci-compute/install-docker.sh
 ```
 
-The override cannot be empty, `root`, or a nonexistent user. The script never
-creates users, passwords, registry logins, `.env` files, or application
-configuration.
+Este override não pode ser vazio, `root` ou um usuário inexistente. O script nunca cria usuários, senhas, logins de registry, arquivos `.env` ou configurações de aplicação.
 
-## What the script changes
+## O que o script altera
 
-It updates Ubuntu packages without an automatic reboot, installs
-`ca-certificates`, `curl`, `iproute2` (for listener validation), and `jq`, and
-removes only Docker's documented conflicting package names when they are
-installed. It does not remove
-`/var/lib/docker` or `/var/lib/containerd`.
+Ele atualiza os pacotes do Ubuntu sem reinicializar o sistema automaticamente, instala os pacotes `ca-certificates`, `curl`, `iproute2` (para validação de listeners) e `jq`, e remove apenas os pacotes conflitantes documentados pelo Docker se estiverem instalados. Ele não remove `/var/lib/docker` ou `/var/lib/containerd`.
 
-Docker is installed from Docker's official HTTPS Ubuntu APT repository:
+O Docker é instalado a partir do repositório oficial APT HTTPS do Docker para o Ubuntu:
 
 - key: `/etc/apt/keyrings/docker.asc`
 - source: `/etc/apt/sources.list.d/docker.sources`
-- repository: `https://download.docker.com/linux/ubuntu`, using the Ubuntu
-  suite and APT architecture detected on the host, with the `stable` component
+- repositório: `https://download.docker.com/linux/ubuntu`, usando a versão do Ubuntu (suite) e a arquitetura APT detectadas no host, no componente `stable`
 
-The installed packages are `docker-ce`, `docker-ce-cli`, `containerd.io`,
-`docker-buildx-plugin`, and `docker-compose-plugin`. It enables and starts the
-Docker systemd service.
+Os pacotes instalados são `docker-ce`, `docker-ce-cli`, `containerd.io`, `docker-buildx-plugin` e `docker-compose-plugin`. Ele habilita e inicia o serviço docker do systemd.
 
-The script adds the selected administrative user to the `docker` group only
-when needed. **The `docker` group grants root-equivalent privileges.** Log out
-and reconnect after the first run, or run `newgrp docker`, before testing
-Docker as that non-root user.
+O script adiciona o usuário administrativo selecionado ao grupo `docker` apenas se necessário. **O grupo `docker` concede privilégios equivalentes ao root.** Faça logout e reconecte-se após a primeira execução (ou execute `newgrp docker`) antes de testar o Docker como usuário não-root.
 
-Docker remains on its default Unix socket. This provisioning does not configure
-the remote Docker TCP API, does not open ports (including 80, 443, 8080, 2375,
-or 2376), and does not change OCI networking, UFW, AppArmor, iptables, SSH, or
-registry authentication.
+O Docker permanece configurado para o seu Unix socket padrão. Este provisionamento não configura a API TCP remota do Docker, não abre portas (incluindo 80, 443, 8080, 2375 ou 2376) e não altera a rede OCI, UFW, AppArmor, iptables, SSH ou autenticação de registry.
 
-## Logging and future directories
+## Logging e futuros diretórios
 
-`/etc/docker/daemon.json` is created or safely merged to use the `json-file`
-driver with `max-size` `10m` and `max-file` `3`. Valid unrelated top-level and
-`log-opts` settings are preserved. An existing non-`json-file` log driver, an
-invalid JSON file, invalid `log-opts`, or a TCP Docker API is rejected rather
-than overridden. A changed existing file is backed up beside it as
-`daemon.json.backup.<UTC timestamp>.<pid>`. The candidate configuration is
-validated with `dockerd --validate` before replacement; Docker restarts only
-when the effective daemon configuration changed. JSON is compared in normalized,
-sorted form, so harmless formatting or key-order differences preserve the
-existing file bytes and do not create a backup or restart Docker.
+O arquivo `/etc/docker/daemon.json` é criado ou mesclado (merged) de forma segura para utilizar o driver de log `json-file` com as opções `max-size` em `10m` e `max-file` em `3`. Configurações válidas preexistentes no nível superior e em `log-opts` são preservadas. Um driver de log existente diferente de `json-file`, um JSON inválido, opções de `log-opts` inválidas ou uma API Docker TCP serão rejeitados em vez de sobrescritos. Caso o arquivo preexistente seja alterado, um backup dele é criado no mesmo local com o padrão `daemon.json.backup.<timestamp UTC>.<pid>`. A configuração candidata é validada via `dockerd --validate` antes da substituição; o Docker só é reiniciado quando a configuração final do daemon for de fato alterada. Os objetos JSON são comparados de forma normalizada e ordenada, portanto, diferenças inofensivas de formatação ou ordem de chaves preservarão o conteúdo em bytes do arquivo existente e não gerarão backup nem reinicialização do Docker.
 
-The managed Docker directories `/etc/apt/keyrings`, `/etc/apt/sources.list.d`,
-and `/etc/docker` are enforced as `root:root` with mode `0755`. Their managed
-files are enforced as `root:root` with mode `0644`. Incorrect metadata is
-corrected in place without rewriting unchanged contents; a metadata-only
-`daemon.json` correction does not create a backup or restart Docker. No
-recursive ownership or permission operation is performed.
+Os diretórios gerenciados pelo Docker (`/etc/apt/keyrings`, `/etc/apt/sources.list.d` e `/etc/docker`) têm sua propriedade forçada como `root:root` e modo `0755`. Seus respectivos arquivos gerenciados são forçados como `root:root` e modo `0644`. Metadados incorretos são corrigidos diretamente (in place) sem a necessidade de reescrever conteúdos inalterados; uma correção que mude apenas metadados no `daemon.json` não cria backup nem reinicia o Docker. Nenhuma operação de propriedade ou permissão recursiva é executada.
 
-Daemon log settings apply automatically only to containers created after the
-change. Existing containers must be recreated by a later, explicitly authorized
-deployment operation to receive the new logging settings.
+As configurações de log do daemon se aplicam automaticamente apenas aos containers criados após a mudança. Containers existentes devem ser recriados através de uma operação posterior de deployment explicitamente autorizada para receber as novas configurações de log.
 
-The following empty future-use directories are created with owner and group of
-the selected administrative user and mode `0750`:
+Os seguintes diretórios vazios para uso futuro são criados com o proprietário e grupo do usuário administrativo selecionado e modo `0750`:
 
-| Directory | Future purpose |
+| Diretório | Objetivo futuro |
 | --- | --- |
-| `/opt/energiai` | restricted parent for future deployment resources |
-| `/opt/energiai/config` | non-secret runtime configuration supplied later |
-| `/opt/energiai/logs` | future host-managed application logs |
-| `/opt/energiai/data` | future persistent application data |
+| `/opt/energiai` | diretório pai restrito para futuros recursos de deployment |
+| `/opt/energiai/config` | configurações de runtime (não sensíveis) fornecidas posteriormente |
+| `/opt/energiai/logs` | logs de aplicação gerenciados pelo host |
+| `/opt/energiai/data` | dados persistentes futuros da aplicação |
 
-No configuration, secret, dataset, model, artifact, or placeholder credential
-is placed in these directories. A later deployment may refine ownership for
-container UIDs/GIDs. Existing non-empty directories with incompatible ownership
-or permissions are deliberately left untouched and cause the script to stop.
+Nenhuma configuração, segredo (secret), dataset, modelo, artefato ou credencial provisória (placeholder) é colocada nestes diretórios. Um deployment posterior pode refinar a propriedade dos diretórios para UIDs/GIDs específicos de containers. Diretórios existentes não vazios que possuam propriedade ou permissões incompatíveis são intencionalmente ignorados e fazem o script parar.
 
-## Validation
+## Validação
 
-The script validates the platform, the exact installed package versions against
-Docker's repository metadata, daemon configuration, service state, CLI,
-Compose, Buildx, TCP listener safety, directory state, and the root-run
-`hello-world` container. It rejects TCP hosts in `daemon.json`, legacy Docker
-defaults, Docker systemd unit/drop-in configuration, effective systemd
-properties, and the running `dockerd` command line. It also fails if a
-`dockerd` TCP listener is found, including one on a nonstandard port; ports
-2375 and 2376 are explicitly checked as prohibited Docker listener ports.
-On the instance, these are useful checks:
+O script valida a plataforma, as versões exatas de pacotes instalados contra os metadados do repositório Docker, a configuração do daemon, o estado do serviço, CLI, Compose, Buildx, a segurança dos listeners TCP, o estado dos diretórios e o container `hello-world` executado como root. Ele rejeita hosts TCP em `daemon.json`, padrões legados do Docker, configurações de drop-in/unit do systemd para o Docker, propriedades ativas do systemd e a linha de comando de execução do `dockerd`. Ele também falha se um listener TCP do `dockerd` for encontrado, incluindo listeners em portas não padrão; as portas 2375 e 2376 são verificadas explicitamente como portas proibidas para listeners do Docker.
+
+Na instância, estes comandos são úteis para verificação:
 
 ```bash
 cat /etc/os-release
@@ -126,21 +76,17 @@ sudo dockerd --validate --config-file=/etc/docker/daemon.json
 docker run --rm hello-world
 ```
 
-After reconnecting as the administrative user, perform the non-root smoke
-test:
+Após reconectar-se como usuário administrativo, realize o teste rápido (smoke test) sem root:
 
 ```bash
 docker run --rm hello-world
 ```
 
-Run the provisioning script a second time to verify idempotency. It maintains
-one APT source, does not duplicate group membership, retains valid unrelated
-daemon settings, does not change populated directories, and avoids a daemon
-rewrite or Docker restart when its effective configuration is unchanged.
+Execute o script de provisionamento uma segunda vez para verificar a idempotência. Ele deve manter apenas uma fonte APT, não duplicar a associação de grupos, manter configurações válidas preexistentes do daemon que não tenham relação com logs, não alterar diretórios que já contenham arquivos e evitar a regravação do daemon ou reinicialização do Docker quando a configuração efetiva estiver inalterada.
 
 ## Upgrade
 
-Review available package changes, then use normal APT maintenance on the host:
+Revise as alterações de pacotes disponíveis e utilize a manutenção padrão do APT no host:
 
 ```bash
 sudo apt-get update
@@ -148,36 +94,20 @@ apt-cache policy docker-ce docker-ce-cli containerd.io docker-buildx-plugin dock
 sudo apt-get upgrade
 ```
 
-Re-run the provisioning script afterwards to confirm the repository,
-configuration, permissions, and validation checks. Review the Ubuntu reboot
-marker and arrange a maintenance-window reboot when required; the script never
-reboots automatically.
+Execute novamente o script de provisionamento em seguida para confirmar o repositório, configuração, permissões e testes de validação. Revise o marcador de reinicialização do Ubuntu e agende um reboot na janela de manutenção se necessário; o script nunca reinicia o sistema de forma automática.
 
 ## Troubleshooting
 
-- **Unsupported OS or architecture:** use the Ubuntu 24.04 `x86_64/amd64`
-  instance from Issue #104. Do not change Terraform to select ARM.
-- **APT or repository error:** check DNS/HTTPS connectivity, clock, repository
-  key and source paths, then run `sudo apt-get update`. Do not use `curl | sh`
-  or fall back to Ubuntu's `docker.io` package.
-- **Docker fails to start:** inspect `systemctl status docker` and
-  `journalctl -u docker --no-pager`; validate the daemon file with the command
-  above and restore a known-good backup only after review.
-- **Permission denied as a non-root user:** reconnect after group membership
-  changes, or use `newgrp docker`; verify with `id -nG`.
-- **Invalid `daemon.json` or incompatible log driver:** correct the JSON or
-  explicitly decide how an existing non-`json-file` driver should be migrated.
-  The script will not replace it automatically.
-- **Reboot required:** inspect `/var/run/reboot-required` and schedule a
-  deliberate reboot. Do not assume Docker provisioning rebooted the host.
+- **SO ou arquitetura não suportada:** utilize a instância Ubuntu 24.04 `x86_64/amd64` da Issue #104. Não altere o Terraform para selecionar ARM.
+- **Erro de APT ou repositório:** verifique a conectividade de DNS/HTTPS, o relógio do sistema, os caminhos das chaves e fontes do repositório, e execute `sudo apt-get update`. Não utilize `curl | sh` ou o pacote legado `docker.io` do Ubuntu.
+- **Docker falha ao iniciar:** inspecione `systemctl status docker` e `journalctl -u docker --no-pager`; valide o arquivo do daemon com o comando citado anteriormente e restaure um backup conhecido apenas após revisão.
+- **Permissão negada (Permission denied) como usuário não-root:** reconecte-se após as alterações de associação de grupo ou utilize `newgrp docker`; verifique com `id -nG`.
+- **`daemon.json` inválido ou driver de log incompatível:** corrija o JSON ou decida explicitamente como um driver preexistente diferente de `json-file` deve ser migrado. O script não o substituirá de forma automática.
+- **Reboot necessário (Reboot required):** inspecione `/var/run/reboot-required` e agende uma reinicialização deliberada. Não presuma que o provisionamento do Docker reiniciou o host.
 
-## Rollback and uninstall
+## Rollback e desinstalação
 
-Review every command and backup before executing it. Set `admin_user` to the
-administrative user selected during provisioning. The following guarded,
-non-destructive package rollback retains Docker images, volumes, containers,
-containerd state, and all `/opt/energiai` content. Each guard skips only an
-expected absent resource; an attempted removal still reports unexpected errors.
+Revise cada comando e backup antes de executá-los. Defina `admin_user` com o nome do usuário administrativo selecionado durante o provisionamento. O rollback de pacotes seguro e não destrutivo a seguir preserva as imagens, volumes, containers do Docker, o estado do containerd e todo o conteúdo em `/opt/energiai`. Cada verificação condicional (guard) pula apenas recursos sabidamente ausentes; falhas inesperadas de remoção ainda serão reportadas.
 
 ```bash
 admin_user=ubuntu
@@ -192,7 +122,7 @@ sudo apt-get purge docker-ce docker-ce-cli containerd.io docker-buildx-plugin do
 
 for managed_file in /etc/apt/sources.list.d/docker.sources /etc/apt/keyrings/docker.asc; do
   if [[ -L "${managed_file}" || ( -e "${managed_file}" && ! -f "${managed_file}" ) ]]; then
-    printf 'Refusing to remove unexpected path type: %s\n' "${managed_file}" >&2
+    printf 'Recusando remover tipo de caminho inesperado: %s\n' "${managed_file}" >&2
     exit 1
   fi
   if [[ -f "${managed_file}" ]]; then
@@ -200,26 +130,15 @@ for managed_file in /etc/apt/sources.list.d/docker.sources /etc/apt/keyrings/doc
   fi
 done
 
-# If a reviewed regular backup exists, restore it deliberately, for example:
+# Se existir um backup regular revisado, restaure-o deliberadamente, por exemplo:
 # sudo install -o root -g root -m 0644 /etc/docker/daemon.json.backup.<timestamp>.<pid> /etc/docker/daemon.json
 sudo apt-get update
 ```
 
-If no daemon backup is available, leave the current daemon configuration in
-place and review it manually; do not invent or remove a configuration file.
-Removing the APT source/key and restoring a daemon backup are manual, reviewed
-operations because they alter host configuration.
+Se nenhum backup do daemon estiver disponível, mantenha a configuração atual do daemon em execução e revise-a manualmente; não crie ou remova um arquivo de configuração sem critério. A remoção da fonte/chave do APT e a restauração do backup do daemon são operações manuais revisadas, pois alteram a configuração do host.
 
-**Destructive data deletion (manual and normally unnecessary):** deleting
-`/var/lib/docker`, `/var/lib/containerd`, or `/opt/energiai` permanently removes
-images, containers, volumes, runtime state, or future application data. This
-issue never deletes them; perform any such deletion only after an explicit,
-separate backup and data-loss review.
+**Exclusão destrutiva de dados (manual e normalmente desnecessária):** deletar `/var/lib/docker`, `/var/lib/containerd` ou `/opt/energiai` remove permanentemente imagens, containers, volumes, estado de runtime ou futuros dados de aplicação. Esta issue nunca realiza essa deleção; execute qualquer ação desse tipo apenas após backup explícito e revisão de perda de dados.
 
-## Out of scope
+## Fora de escopo (Out of scope)
 
-This work does not modify Terraform, OCI Compute/VCN/subnet/NSG/security lists,
-routes, firewall rules, SSH authentication, application code, CI, databases,
-registries, DNS, TLS, reverse proxies, or observability. It does not deploy or
-run the backend, frontend, FastAPI, database, or any EnergiAI application
-container.
+Este trabalho não modifica o Terraform, OCI Compute/VCN/subnet/NSG/security lists, rotas, regras de firewall, autenticação SSH, código da aplicação, CI, bancos de dados, registries, DNS, TLS, proxies reversos ou observabilidade. Ele não faz deploy nem executa o backend, frontend, FastAPI, banco de dados ou qualquer container de aplicação do EnergiAI.
