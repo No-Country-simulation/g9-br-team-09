@@ -22,7 +22,7 @@ export function AnalysisForm() {
     if (currentStepIndex + 1 > totalSteps - 1) {
       const result = await submit(updatedFormData)
       if (result) {
-        void navigate('/resultado')
+        void navigate('/resultado', { state: { result } })
       }
       return
     }

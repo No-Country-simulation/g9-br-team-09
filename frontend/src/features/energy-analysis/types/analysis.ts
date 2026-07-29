@@ -1,9 +1,11 @@
+import type { Category, ClassificationSource } from '@/shared/types/analysis'
+
 export interface CreateAnalysisResponse {
   id: number
-  categoria: 'EFICIENTE' | 'MODERADO' | 'INEFICIENTE'
+  categoria: Category
   score: number
   probabilidade: number
   custo_estimado_mensal: number
   recomendacoes: string[]
-  fonte_classificacao: 'RULE_BASED' | 'ML_MODEL' | 'RULE_BASED_FALLBACK'
+  fonte_classificacao: ClassificationSource
 }
