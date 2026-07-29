@@ -20,6 +20,8 @@
     --inefficient-badge-bg: #fcebeb;
     --inefficient-badge-text: #791f1f;
     --inefficient-badge-border: #f09595;
+    --skeleton-base-color: #e2e8f0;
+    --skeleton-highlight-color: #f1f5f9;
   }
   [data-theme='dark'] {
     --background: #0b1220;
@@ -41,6 +43,8 @@
     --inefficient-badge-bg: #791f1f;
     --inefficient-badge-text: #f7c1c1;
     --inefficient-badge-border: #f09595;
+    --skeleton-base-color: #1e293b;
+    --skeleton-highlight-color: #334155;
   }
 }
 @theme {
@@ -60,6 +64,8 @@
   --color-moderate-badge-text: var(--moderate-badge-text);
   --color-inefficient-badge-border: var(--inefficient-badge-border);
   --color-inefficient-badge-text: var(--inefficient-badge-text);
+  --color-skeleton-base: var(--skeleton-base-color);
+  --color-skeleton-highlight: var(--skeleton-highlight-color);
   --shadow-card:
     0px 6px 18px 0px rgba(0, 0, 0, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;

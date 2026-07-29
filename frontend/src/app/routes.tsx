@@ -4,6 +4,7 @@ import { MainLayout } from '@/app/layout/MainLayout'
 import { AnalysisFormPage } from '@/features/energy-analysis/pages/EnergyAnalysisFormPage'
 import { EnergyAnalysisHomePage } from '@/features/energy-analysis/pages/EnergyAnalysisHomePage'
 import { AnalysisResultsPage } from '@/features/energy-analysis/pages/EnergyAnalysisResultsPage'
+import { SummaryDashboardPage } from '@/features/summary-dashboard/pages/DashboardPage'
 
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -26,7 +27,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'painel',
-        element: <h1>Painel</h1>,
+        element: <SummaryDashboardPage />,
       },
       {
         path: 'historico',

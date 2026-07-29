@@ -4,13 +4,17 @@ Frontend da aplicação EnergiAI, construído como SPA com React, TypeScript, Vi
 
 ## Stack
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- React Router Dom
-- Axios
-- Zod
+| Tecnologia             | Finalidade                               |
+| ---------------------- | ---------------------------------------- |
+| React                  | Biblioteca para construção da interface  |
+| TypeScript             | Tipagem estática                         |
+| Vite                   | Build tool e servidor de desenvolvimento |
+| Tailwind CSS           | Estilização                              |
+| React Router           | Roteamento da aplicação                  |
+| Axios                  | Cliente HTTP                             |
+| Zod                    | Validação de dados                       |
+| Recharts               | Gráficos                                 |
+| React Loading Skeleton | Componentes de carregamento (skeletons)  |
 
 ## Pré-requisitos
 
