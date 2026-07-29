@@ -11,7 +11,7 @@ CREATE TABLE energy_analysis (
     custo_estimado_mensal     DECIMAL(10,2) NOT NULL,
     fonte_classificacao       VARCHAR2(50) NOT NULL,
     recomendacoes             CLOB NOT NULL,
-    created_at                TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
     CONSTRAINT chk_uso_horario_pico
         CHECK (uso_horario_pico IN (0, 1)),

@@ -54,5 +54,13 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-secondary-button: var(--secondary-button);
   --color-input: var(--input);
+  --color-efficient-badge-border: var(--efficient-badge-border);
+  --color-efficient-badge-text: var(--efficient-badge-text);
+  --color-moderate-badge-border: var(--moderate-badge-border);
+  --color-moderate-badge-text: var(--moderate-badge-text);
+  --color-inefficient-badge-border: var(--inefficient-badge-border);
+  --color-inefficient-badge-text: var(--inefficient-badge-text);
+  --shadow-card:
+    0px 6px 18px 0px rgba(0, 0, 0, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.04);
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }

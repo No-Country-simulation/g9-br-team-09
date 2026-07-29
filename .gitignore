@@ -180,6 +180,10 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+!data-science/.env.api.example
+data-science/models/*.joblib
 .envrc
 .venv
 env/
@@ -233,6 +237,30 @@ cython_debug/
 # .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
+
+# Oracle Autonomous Database credentials and wallets
+**/Wallet_*/
+**/wallet/
+**/wallets/
+**/Wallet_*.zip
+**/cwallet.sso
+**/ewallet.p12
+**/keystore.jks
+**/truststore.jks
+
+# Terraform local state, plans, and local variable values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
 # Ruff stuff:
 .ruff_cache/
