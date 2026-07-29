@@ -45,7 +45,7 @@ export function CategoryDonut({ total, data }: CategoryDonutProps) {
             {total}
           </span>
           <span className="text-muted-foreground text-xs uppercase">
-            análises
+            {`${total === 1 ? 'análise' : 'análises'}`}
           </span>
         </div>
       </div>

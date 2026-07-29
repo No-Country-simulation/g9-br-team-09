@@ -3,7 +3,7 @@ import { ChartPie, Receipt, TrendingUp, Zap } from 'lucide-react'
 import { Card } from '@/shared/components/Card'
 import { formatCurrencyBRL, formatKWh } from '@/shared/utils/format'
 
-import type { AnalysisSummaryResponse } from '../types/analysisSummary'
+import type { AnalysisSummaryResponse } from '../schemas/analysisSummary'
 import { CategoryDonut } from './CategoryDonut'
 
 interface SummaryCardsProps {

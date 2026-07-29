@@ -1,3 +1,4 @@
+import { CircleX, SearchX } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { EmptyState } from '@/shared/components/EmptyState'
@@ -23,12 +24,14 @@ export function SummaryDashboardPage() {
 
       {!isLoading && (error || !data) && (
         <EmptyState
+          icon={CircleX}
           title={error ?? 'Nenhum dado de resumo disponível.'}
           action={{ label: 'Tentar novamente', onClick: refetch }}
         />
       )}
       {!isLoading && !error && data && totalAnalyses === 0 && (
         <EmptyState
+          icon={SearchX}
           title="Nenhuma análise realizada ainda"
           description="Comece sua primeira análise energética para acompanhar o resumo aqui"
           action={{
