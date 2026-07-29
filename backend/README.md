@@ -99,7 +99,9 @@ Não versione esse arquivo nem credenciais. Para Windows PowerShell, Docker, cri
 | `GET /api/v1/analise-energetica` | Lista análises paginadas. Aceita `page`, `size` e `sort`; o padrão é página 0, 20 itens, `createdAt,DESC`. |
 | `GET /api/v1/analise-energetica/{id}` | Obtém os detalhes de uma análise. |
 | `GET /api/v1/analise-energetica/resumo` | Retorna indicadores agregados para o dashboard. |
-| `GET /api/v1/actuator/health` | Verificação operacional da aplicação. |
+| `GET /api/v1/actuator/health` | Estado geral da aplicação. |
+| `GET /api/v1/actuator/health/liveness` | Estado do processo; não depende do banco ou da API de ML. |
+| `GET /api/v1/actuator/health/readiness` | Prontidão para atender tráfego; inclui o banco obrigatório. |
 
 ### Exemplo de análise
 
@@ -129,16 +131,22 @@ O backend chama `POST /predict` na API Python. A URL-base padrão é `http://loc
 
 O repositório contém o cliente dessa integração; este documento não pressupõe que uma API Python esteja em execução.
 
-## Swagger, OpenAPI e health check
+## Swagger, OpenAPI e health checks
 
 - Swagger UI: `http://localhost:8080/api/v1/swagger-ui/index.html`
 - OpenAPI: `http://localhost:8080/api/v1/v3/api-docs`
-- Health: `http://localhost:8080/api/v1/actuator/health`
+- Health geral: `http://localhost:8080/api/v1/actuator/health`
+- Liveness: `http://localhost:8080/api/v1/actuator/health/liveness`
+- Readiness: `http://localhost:8080/api/v1/actuator/health/readiness`
 
-Somente o endpoint `health` do Actuator é exposto; detalhes internos permanecem ocultos.
+Somente o endpoint `health` do Actuator é exposto, incluindo seus grupos de health. Detalhes e componentes internos permanecem ocultos em todas as respostas, portanto URLs JDBC, credenciais, stack traces e outros dados sensíveis não são retornados.
+
+No profile `oci`, o liveness contém somente o estado de liveness do processo e não consulta Oracle, FastAPI ou outro serviço externo. O readiness contém o estado de readiness e o indicador `db`, pois Oracle é obrigatório para persistência. A FastAPI não integra a readiness: a indisponibilidade dela mantém o fallback local `RULE_BASED_FALLBACK` disponível.
 
 ```bash
 curl --fail http://localhost:8080/api/v1/actuator/health
+curl --fail http://localhost:8080/api/v1/actuator/health/liveness
+curl --fail http://localhost:8080/api/v1/actuator/health/readiness
 ```
 
 Resposta saudável:
