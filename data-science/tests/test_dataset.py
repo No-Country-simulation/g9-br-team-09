@@ -167,6 +167,121 @@ def test_score_referencia_rejeita_colunas_obrigatorias_ausentes() -> None:
         dataset.calculate_reference_scores(sample)
 
 
+def test_score_referencia_rejeita_tipo_imovel_invalido() -> None:
+    sample = dataset.generate_typical_sample(6)
+    sample.loc[0, "tipo_imovel"] = "INVALIDO"
+
+    with pytest.raises(
+        ValueError,
+        match="tipo_imovel contém valores inválidos: INVALIDO",
+    ):
+        dataset.calculate_reference_scores(sample)
+
+
+@pytest.mark.parametrize("column", schema.FEATURE_COLUMNS)
+def test_score_referencia_rejeita_valores_nulos(
+    column: str,
+) -> None:
+    sample = dataset.generate_typical_sample(6)
+
+    if column == "uso_horario_pico":
+        sample[column] = sample[column].astype(object)
+
+    sample.loc[0, column] = None
+
+    with pytest.raises(
+        ValueError,
+        match=rf"{column} não pode conter valores nulos",
+    ):
+        dataset.calculate_reference_scores(sample)
+
+
+@pytest.mark.parametrize(
+    "column",
+    (
+        "consumo_kwh",
+        "quantidade_equipamentos",
+        "horas_alto_consumo",
+    ),
+)
+def test_score_referencia_rejeita_nan_em_feature_numerica(
+    column: str,
+) -> None:
+    sample = dataset.generate_typical_sample(6)
+    sample[column] = sample[column].astype(float)
+    sample.loc[0, column] = np.nan
+
+    with pytest.raises(
+        ValueError,
+        match=rf"{column} não pode conter valores nulos",
+    ):
+        dataset.calculate_reference_scores(sample)
+
+
+@pytest.mark.parametrize(
+    ("column", "invalid_value"),
+    (
+        ("consumo_kwh", np.inf),
+        ("consumo_kwh", -np.inf),
+        ("quantidade_equipamentos", np.inf),
+        ("quantidade_equipamentos", -np.inf),
+        ("horas_alto_consumo", np.inf),
+        ("horas_alto_consumo", -np.inf),
+    ),
+)
+def test_score_referencia_rejeita_valores_numericos_nao_finitos(
+    column: str,
+    invalid_value: float,
+) -> None:
+    sample = dataset.generate_typical_sample(6)
+    sample[column] = sample[column].astype(float)
+    sample.loc[0, column] = invalid_value
+
+    with pytest.raises(
+        ValueError,
+        match=rf"{column} deve conter valores numéricos finitos",
+    ):
+        dataset.calculate_reference_scores(sample)
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    (
+        0,
+        1,
+        "true",
+    ),
+)
+def test_score_referencia_rejeita_uso_horario_pico_nao_booleano(
+    invalid_value: object,
+) -> None:
+    sample = dataset.generate_typical_sample(6)
+    sample["uso_horario_pico"] = (
+        sample["uso_horario_pico"].astype(object)
+    )
+    sample.loc[0, "uso_horario_pico"] = invalid_value
+
+    with pytest.raises(
+        ValueError,
+        match="uso_horario_pico deve conter apenas valores booleanos",
+    ):
+        dataset.calculate_reference_scores(sample)
+
+
+def test_normalizacao_rejeita_posicoes_nao_processadas() -> None:
+    sample = dataset.generate_typical_sample(6)
+    sample.loc[0, "tipo_imovel"] = "INVALIDO"
+
+    with pytest.raises(
+        ValueError,
+        match="Nem todas as posições foram normalizadas",
+    ):
+        dataset._normalize_feature_by_property_type(
+            sample,
+            "consumo_kwh",
+        )
+
+
 def test_categorias_respeitam_limites_do_score_de_referencia() -> None:
     scores = np.array([0, 30, 31, 60, 61, 100])
 

@@ -16,12 +16,89 @@ _PLAUSIBLE_OUTLIER_IQR_MULTIPLIER = 1.5
 _PLAUSIBLE_OUTLIER_RANDOM_SEED_OFFSET = 11
 
 
+def _validate_reference_score_sample(
+    sample: pd.DataFrame,
+) -> None:
+    """Valida as features utilizadas no cálculo do score de referência."""
+    missing_columns = [
+        column
+        for column in schema.FEATURE_COLUMNS
+        if column not in sample.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            "Colunas obrigatórias ausentes: "
+            + ", ".join(missing_columns)
+        )
+
+    for column in schema.FEATURE_COLUMNS:
+        if sample[column].isna().any():
+            raise ValueError(
+                f"{column} não pode conter valores nulos"
+            )
+
+    invalid_property_types = sorted(
+        str(value)
+        for value in sample.loc[
+            ~sample["tipo_imovel"].isin(schema.PROPERTY_TYPES),
+            "tipo_imovel",
+        ].unique()
+    )
+
+    if invalid_property_types:
+        raise ValueError(
+            "tipo_imovel contém valores inválidos: "
+            + ", ".join(invalid_property_types)
+        )
+
+    numeric_features = (
+        "consumo_kwh",
+        "quantidade_equipamentos",
+        "horas_alto_consumo",
+    )
+
+    for feature in numeric_features:
+        values = sample[feature]
+
+        if (
+            not pd.api.types.is_numeric_dtype(values)
+            or pd.api.types.is_bool_dtype(values)
+        ):
+            raise ValueError(
+                f"{feature} deve conter valores numéricos finitos"
+            )
+
+        numeric_values = values.to_numpy(dtype=float)
+
+        if not np.isfinite(numeric_values).all():
+            raise ValueError(
+                f"{feature} deve conter valores numéricos finitos"
+            )
+
+    peak_usage = sample["uso_horario_pico"]
+
+    contains_only_booleans = peak_usage.map(
+        lambda value: isinstance(value, (bool, np.bool_))
+    ).all()
+
+    if not contains_only_booleans:
+        raise ValueError(
+            "uso_horario_pico deve conter apenas valores booleanos"
+        )
+
+
 def _normalize_feature_by_property_type(
     sample: pd.DataFrame,
     feature: str,
 ) -> np.ndarray:
     """Normaliza uma feature conforme a faixa típica de cada imóvel."""
-    normalized_values = np.empty(len(sample), dtype=float)
+    normalized_values = np.full(
+        len(sample),
+        np.nan,
+        dtype=float,
+    )
+    normalized_positions = np.zeros(len(sample), dtype=bool)
 
     for property_type in schema.PROPERTY_TYPES:
         mask = sample["tipo_imovel"].eq(property_type).to_numpy()
@@ -47,6 +124,12 @@ def _normalize_feature_by_property_type(
             0.0,
             1.0,
         )
+        normalized_positions[mask] = True
+
+    if not normalized_positions.all():
+        raise ValueError(
+            "Nem todas as posições foram normalizadas"
+        )
 
     return normalized_values
 
@@ -55,16 +138,7 @@ def calculate_reference_scores(
     sample: pd.DataFrame,
 ) -> np.ndarray:
     """Calcula o score sintético de referência entre 0 e 100."""
-    missing_columns = [
-        column
-        for column in schema.FEATURE_COLUMNS
-        if column not in sample.columns
-    ]
-    if missing_columns:
-        raise ValueError(
-            "Colunas obrigatórias ausentes: "
-            + ", ".join(missing_columns)
-        )
+    _validate_reference_score_sample(sample)
 
     normalized_consumption = _normalize_feature_by_property_type(
         sample,
