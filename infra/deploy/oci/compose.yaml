@@ -1,0 +1,30 @@
+name: energiai-oci
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?Defina BACKEND_IMAGE com uma tag imutavel}
+    platform: linux/amd64
+    container_name: energiai-backend
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ${BACKEND_ENV_FILE:-/opt/energiai/config/backend.env}
+    environment:
+      SPRING_PROFILES_ACTIVE: oci
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - energiai
+    mem_limit: 640m
+    cpus: "0.75"
+    pids_limit: 128
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+
+networks:
+  energiai:
+    name: energiai-oci
+    driver: bridge
