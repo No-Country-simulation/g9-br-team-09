@@ -1,9 +1,11 @@
 """Testes do benchmark diagnóstico da baseline determinística."""
 
 import sys
+from math import isfinite
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 SRC_PATH = Path(__file__).parents[1] / "src"
@@ -353,3 +355,69 @@ def test_ablation_define_subconjuntos_validos_e_metricas_reprodutiveis() -> None
         assert 0.0 <= score <= 1.0
 
     pd.testing.assert_frame_equal(sample, original_sample)
+
+
+def test_permutation_importance_retorna_metricas_reprodutiveis() -> None:
+    sample = dataset.generate_audited_sample_with_rare_cases(
+        1_000,
+        seed=schema.RANDOM_SEED,
+    )
+    original_sample = sample.copy(deep=True)
+
+    first_results = (
+        baseline_benchmark.run_permutation_importance_logistic_benchmark(
+            sample,
+            seed=schema.RANDOM_SEED,
+            n_repeats=5,
+        )
+    )
+    second_results = (
+        baseline_benchmark.run_permutation_importance_logistic_benchmark(
+            sample,
+            seed=schema.RANDOM_SEED,
+            n_repeats=5,
+        )
+    )
+
+    assert tuple(first_results) == schema.FEATURE_COLUMNS
+    assert first_results == second_results
+
+    for metrics in first_results.values():
+        assert set(metrics) == {
+            "importance_mean",
+            "importance_std",
+        }
+        assert isinstance(metrics["importance_mean"], float)
+        assert isinstance(metrics["importance_std"], float)
+        assert isfinite(metrics["importance_mean"])
+        assert isfinite(metrics["importance_std"])
+        assert metrics["importance_std"] >= 0.0
+    pd.testing.assert_frame_equal(sample, original_sample)
+
+
+@pytest.mark.parametrize(
+    "invalid_n_repeats",
+    (
+        0,
+        -1,
+        True,
+        1.5,
+    ),
+)
+def test_permutation_importance_rejeita_n_repeats_invalido(
+    invalid_n_repeats: object,
+) -> None:
+    sample = dataset.generate_audited_sample_with_rare_cases(
+        200,
+        seed=schema.RANDOM_SEED,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="n_repeats deve ser um inteiro maior que zero",
+    ):
+        baseline_benchmark.run_permutation_importance_logistic_benchmark(
+            sample,
+            seed=schema.RANDOM_SEED,
+            n_repeats=invalid_n_repeats,
+        )

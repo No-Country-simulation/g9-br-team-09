@@ -7,8 +7,9 @@ serializa modelos. Ele utiliza apenas as cinco features de produção.
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyClassifier
+from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, make_scorer
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -417,3 +418,82 @@ def run_leave_one_feature_out_logistic_benchmark(
         )
 
     return results
+
+
+def run_permutation_importance_logistic_benchmark(
+    sample: pd.DataFrame,
+    seed: int = schema.RANDOM_SEED,
+    n_repeats: int = 10,
+) -> dict[str, dict[str, float]]:
+    """Calcula a importância por permutação das features originais."""
+    if (
+        isinstance(n_repeats, bool)
+        or not isinstance(n_repeats, int)
+        or n_repeats <= 0
+    ):
+        raise ValueError(
+            "n_repeats deve ser um inteiro maior que zero"
+        )
+
+    features, target = prepare_benchmark_data(sample)
+
+    (
+        x_train,
+        x_validation,
+        _,
+        y_train,
+        y_validation,
+        _,
+    ) = split_benchmark_data(
+        features,
+        target,
+        seed=seed,
+    )
+
+    model = Pipeline(
+        steps=[
+            (
+                "preprocessor",
+                build_preprocessor(schema.FEATURE_COLUMNS),
+            ),
+            (
+                "classifier",
+                LogisticRegression(
+                    max_iter=2_000,
+                    random_state=seed,
+                ),
+            ),
+        ]
+    )
+
+    model.fit(x_train, y_train)
+
+    f1_macro_scorer = make_scorer(
+        f1_score,
+        labels=list(schema.ENERGY_CATEGORIES),
+        average="macro",
+        zero_division=0,
+    )
+
+    permutation_results = permutation_importance(
+        model,
+        x_validation,
+        y_validation,
+        scoring=f1_macro_scorer,
+        n_repeats=n_repeats,
+        random_state=seed,
+        n_jobs=1,
+    )
+
+    return {
+        feature: {
+            "importance_mean": float(importance_mean),
+            "importance_std": float(importance_std),
+        }
+        for feature, importance_mean, importance_std in zip(
+            schema.FEATURE_COLUMNS,
+            permutation_results.importances_mean,
+            permutation_results.importances_std,
+            strict=True,
+        )
+    }
