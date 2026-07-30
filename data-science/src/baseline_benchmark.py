@@ -342,3 +342,78 @@ def run_single_feature_logistic_benchmark(
         )
 
     return results
+
+
+def build_leave_one_feature_out_feature_sets() -> dict[str, tuple[str, ...]]:
+    """Cria os subconjuntos usados na ablação de uma feature por vez."""
+    return {
+        removed_feature: tuple(
+            feature
+            for feature in schema.FEATURE_COLUMNS
+            if feature != removed_feature
+        )
+        for removed_feature in schema.FEATURE_COLUMNS
+    }
+
+
+def run_leave_one_feature_out_logistic_benchmark(
+    sample: pd.DataFrame,
+    seed: int = schema.RANDOM_SEED,
+) -> dict[str, float]:
+    """Avalia a Regressão Logística removendo uma feature por execução."""
+    features, target = prepare_benchmark_data(sample)
+
+    (
+        x_train,
+        x_validation,
+        _,
+        y_train,
+        y_validation,
+        _,
+    ) = split_benchmark_data(
+        features,
+        target,
+        seed=seed,
+    )
+
+    feature_sets = build_leave_one_feature_out_feature_sets()
+    results: dict[str, float] = {}
+
+    for removed_feature, selected_features in feature_sets.items():
+        selected_columns = list(selected_features)
+
+        model = Pipeline(
+            steps=[
+                (
+                    "preprocessor",
+                    build_preprocessor(selected_features),
+                ),
+                (
+                    "classifier",
+                    LogisticRegression(
+                        max_iter=2_000,
+                        random_state=seed,
+                    ),
+                ),
+            ]
+        )
+
+        model.fit(
+            x_train.loc[:, selected_columns],
+            y_train,
+        )
+        predictions = model.predict(
+            x_validation.loc[:, selected_columns]
+        )
+
+        results[removed_feature] = float(
+            f1_score(
+                y_validation,
+                predictions,
+                labels=list(schema.ENERGY_CATEGORIES),
+                average="macro",
+                zero_division=0,
+            )
+        )
+
+    return results

@@ -310,3 +310,46 @@ def test_regressao_logistica_por_feature_retorna_metricas_reprodutiveis() -> Non
     for score in first_results.values():
         assert isinstance(score, float)
         assert 0.0 <= score <= 1.0
+
+
+def test_ablation_define_subconjuntos_validos_e_metricas_reprodutiveis() -> None:
+    sample = dataset.generate_audited_sample_with_rare_cases(
+        schema.DATASET_SIZE,
+        seed=schema.RANDOM_SEED,
+    )
+    original_sample = sample.copy(deep=True)
+
+    feature_sets = (
+        baseline_benchmark.build_leave_one_feature_out_feature_sets()
+    )
+
+    assert tuple(feature_sets) == schema.FEATURE_COLUMNS
+
+    for removed_feature, selected_features in feature_sets.items():
+        assert removed_feature not in selected_features
+        assert len(selected_features) == len(schema.FEATURE_COLUMNS) - 1
+        assert set(selected_features) == (
+            set(schema.FEATURE_COLUMNS) - {removed_feature}
+        )
+
+    first_results = (
+        baseline_benchmark.run_leave_one_feature_out_logistic_benchmark(
+            sample,
+            seed=schema.RANDOM_SEED,
+        )
+    )
+    second_results = (
+        baseline_benchmark.run_leave_one_feature_out_logistic_benchmark(
+            sample,
+            seed=schema.RANDOM_SEED,
+        )
+    )
+
+    assert tuple(first_results) == schema.FEATURE_COLUMNS
+    assert first_results == second_results
+
+    for score in first_results.values():
+        assert isinstance(score, float)
+        assert 0.0 <= score <= 1.0
+
+    pd.testing.assert_frame_equal(sample, original_sample)
