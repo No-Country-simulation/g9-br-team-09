@@ -1,13 +1,12 @@
-"""Gerador sintético do Dataset EnergIAI V2.
+"""Funções de geração sintética das features do Dataset EnergiAI V2.
 
-Nesta etapa, o módulo implementa:
+O módulo implementa operações reproduzíveis utilizadas na construção das
+amostras sintéticas, incluindo tipos de imóvel, equipamentos, horas de alto
+consumo, uso em horário de pico e consumo energético.
 
-- alocação reproduzível dos tipos de imóvel;
-- geração embaralhada dos tipos de imóvel;
-- geração da quantidade de equipamentos nas faixas típicas.
-
-As demais features, score, target e casos especiais serão adicionados e
-validados em etapas posteriores.
+As regras de montagem da amostra, cálculo do score, geração do target e campos
+de auditoria permanecem centralizadas nos módulos responsáveis por essas
+etapas.
 """
 
 from collections.abc import Mapping

@@ -1,8 +1,11 @@
-"""Montagem das amostras sintéticas do Dataset EnergIAI V2.
+"""Montagem e validação das amostras sintéticas do Dataset EnergiAI V2.
 
-O módulo reúne as cinco features observáveis em uma amostra típica
-reproduzível e permite acrescentar score de referência e categoria.
-Campos de auditoria e casos especiais serão adicionados em etapas posteriores.
+O módulo reúne as cinco features observáveis, calcula o score sintético de
+referência, gera a categoria e organiza casos de fronteira, casos raros,
+outliers plausíveis e campos de auditoria.
+
+As funções deste módulo preservam o contrato programático definido em
+``schema.py`` e a reprodutibilidade estabelecida pela seed do projeto.
 """
 
 import numpy as np
