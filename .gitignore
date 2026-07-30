@@ -183,6 +183,7 @@ activemq-data/
 .env.*
 !.env.example
 !data-science/.env.api.example
+infra/deploy/oci/backend.env
 data-science/models/*.joblib
 .envrc
 .venv
