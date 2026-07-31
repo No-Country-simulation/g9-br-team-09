@@ -1,6 +1,6 @@
-# Deploy manual do backend na OCI Compute — Issue #107
+# Deploy do backend na OCI Compute — Issues #107 e #109
 
-Este runbook descreve o deploy manual, reproduzível e reversível do backend Spring Boot do EnergiAI. Ele não provisiona infraestrutura, não instala Docker, não publica portas na internet e não implanta a FastAPI.
+Este runbook descreve o deploy manual, reproduzível e reversível do backend Spring Boot do EnergiAI e a automação manual equivalente da Issue #109. Ele não provisiona infraestrutura, não instala Docker, não publica portas na internet e não implanta a FastAPI.
 
 ## Escopo, dependências e arquitetura
 
@@ -9,8 +9,9 @@ O fluxo depende das entregas anteriores:
 - Issue #104: instância `VM.Standard.E2.1.Micro`, Canonical Ubuntu 24.04 LTS, `x86_64/amd64`, rede e acesso SSH;
 - Issue #105: health geral, liveness de processo e readiness com Oracle obrigatório;
 - Issue #106: Docker Engine, Compose, Buildx, rotação de logs e diretórios `/opt/energiai`.
+- Issue #108: smoke tests de contrato reutilizados após cada atualização.
 
-A imagem é construída fora da VM para `linux/amd64`, identificada por uma tag imutável, transferida com `scp` e carregada com `docker load`. Como alternativa, a mesma tag imutável pode ser obtida do Docker Hub. Na OCI o Compose apenas inicia a imagem com `--no-build`.
+A imagem é construída fora da VM para `linux/amd64`, identificada por uma tag imutável completa e publicada no GHCR. A alternativa manual de transferir um TAR permanece disponível para recuperação controlada. Na OCI o Compose apenas inicia a imagem com `--no-build`; a `VM.Standard.E2.1.Micro` não faz build de imagens.
 
 O único serviço é `backend`, no profile `oci`, ligado a `127.0.0.1:8080`. O acesso remoto ocorre por túnel SSH. Oracle Autonomous Database é obrigatório; a FastAPI permanece opcional e sua indisponibilidade aciona `RULE_BASED_FALLBACK`.
 
@@ -108,8 +109,8 @@ Os percentuais e o limite do container devem ser confirmados sob carga na instâ
 Na raiz do checkout local validado, identifique o commit e use-o na tag:
 
 ```bash
-commit_curto="$(git rev-parse --short=7 HEAD)"
-image="energiai-backend:issue-107-${commit_curto}"
+commit_completo="$(git rev-parse HEAD)"
+image="ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-${commit_completo}"
 
 docker build \
   --platform linux/amd64 \
@@ -121,7 +122,7 @@ docker image inspect \
   --format '{{.Os}}/{{.Architecture}}'
 
 docker save \
-  -o "energiai-backend-issue-107-${commit_curto}.tar" \
+  -o "energiai-backend-${commit_completo}.tar" \
   "${image}"
 ```
 
@@ -139,7 +140,7 @@ Transfira sem registrar IP ou caminho de chave reais na documentação ou no she
 
 ```bash
 scp \
-  "energiai-backend-issue-107-<commit-curto>.tar" \
+  "energiai-backend-<commit-completo>.tar" \
   ubuntu@<IP_PUBLICO>:/opt/energiai/images/
 ```
 
@@ -148,33 +149,68 @@ Quando uma chave específica for necessária:
 ```bash
 scp \
   -i <CAMINHO_DA_CHAVE_PRIVADA> \
-  "energiai-backend-issue-107-<commit-curto>.tar" \
+  "energiai-backend-<commit-completo>.tar" \
   ubuntu@<IP_PUBLICO>:/opt/energiai/images/
 ```
 
 Na OCI:
 
 ```bash
-docker load -i /opt/energiai/images/energiai-backend-issue-107-<commit-curto>.tar
+docker load -i /opt/energiai/images/energiai-backend-<commit-completo>.tar
 docker image inspect \
-  energiai-backend:issue-107-<commit-curto> \
+  ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-<commit-completo> \
   --format '{{.Os}}/{{.Architecture}}'
 ```
 
 Selecione essa tag em `BACKEND_IMAGE` usando `sudoedit`. Não altere as credenciais durante uma troca de imagem.
 
-### Imagem imutável publicada
+### Imagem imutável publicada no GHCR
 
 Se o commit já tiver sido publicado pelo workflow existente, use somente a tag imutável:
 
 ```bash
-docker pull pxs00/energiai-backend:sha-<commit-curto>
+docker pull ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-<commit-completo>
 docker image inspect \
-  pxs00/energiai-backend:sha-<commit-curto> \
+  ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-<commit-completo> \
   --format '{{.Os}}/{{.Architecture}}'
 ```
 
-Defina `BACKEND_IMAGE=pxs00/energiai-backend:sha-<commit-curto>`. A tag `develop` é móvel e não deve ser usada neste deploy.
+Defina `BACKEND_IMAGE=ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-<commit-completo>`. A tag contém os 40 caracteres do commit; `latest`, `develop` e SHAs curtos não são aceitos pelo fluxo automatizado.
+
+## Automação manual pelo GitHub Actions — Issue #109
+
+O workflow [`.github/workflows/backend-oci-deploy.yml`](../../../.github/workflows/backend-oci-deploy.yml) usa somente `workflow_dispatch`: pull requests e pushes não implantam. Ele aceita `operation=validate` ou `operation=deploy`, uma `ref` (branch, tag ou SHA), `expected_classification_source` opcional (`ML_MODEL` ou `RULE_BASED_FALLBACK`) e exige `confirmation=DEPLOY` exatamente para a segunda opção. A execução é serializada no grupo `backend-oci-deploy`, sem cancelar uma implantação em andamento.
+
+O fluxo é:
+
+1. busca a `ref` validada, faz checkout detached do SHA completo e executa `cd backend && ./mvnw --batch-mode verify`, sintaxe Bash, ShellCheck `v0.10.0`, actionlint `1.7.7`, fixtures, Compose com valores fictícios, `git diff --check` e um build do Dockerfile existente para `linux/amd64`, sem publicação;
+2. em `deploy`, constrói e publica exclusivamente `linux/amd64` em `ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-<commit-completo>`, com labels OCI e digest no resumo;
+3. no GitHub Environment `oci-production`, transfere apenas o helper temporário por SSH com `known_hosts` obrigatório, atualiza atomicamente apenas `BACKEND_IMAGE`, faz `docker compose pull backend` e `up -d --no-build backend`;
+4. aguarda o readiness local com tentativas limitadas e executa o único smoke test existente, `infra/tests/smoke/backend-oci-smoke.sh`, com `BASE_URL=http://127.0.0.1:8080/api/v1`;
+5. se uma etapa posterior à troca da imagem falhar, restaura a imagem imutável anterior e o checkout que corresponde ao SHA dessa imagem, recria o backend sem build e aguarda o readiness anterior. A execução continua falhando mesmo após rollback aprovado.
+
+O helper recusa iniciar caso a imagem em execução, `BACKEND_IMAGE` e o checkout OCI não formem o mesmo estado GHCR `sha-<40-hex>`, o arquivo externo não seja regular com permissões restritivas ou o checkout tenha alterações locais. Isso evita substituir uma versão não identificável ou sobrescrever trabalho operacional; faça a migração inicial pelo procedimento manual antes de ativar a automação.
+
+### Configuração obrigatória do GitHub Environment
+
+Crie o Environment `oci-production`, aplique aprovadores/regras de proteção adequados e configure nele os secrets abaixo. Não os crie no repositório se a política exigir segregação por ambiente.
+
+- `OCI_COMPUTE_HOST`, `OCI_COMPUTE_USER` e `OCI_COMPUTE_SSH_PORT` (normalmente `22`);
+- `OCI_COMPUTE_SSH_PRIVATE_KEY`, a chave privada exclusiva para o deploy;
+- `OCI_COMPUTE_KNOWN_HOSTS`, a entrada completa e previamente verificada do host SSH, incluindo host e porta quando necessário;
+- `GHCR_DEPLOY_USERNAME` e `GHCR_DEPLOY_TOKEN`, somente se o pacote GHCR for privado. O token deve ter exclusivamente `read:packages`.
+
+Obtenha a impressão digital SSH por um canal confiável durante o provisionamento e armazene a linha resultante em `OCI_COMPUTE_KNOWN_HOSTS`. Não aceite a primeira conexão automaticamente e não use `StrictHostKeyChecking=no`. A workflow usa `BatchMode`, `IdentitiesOnly`, `StrictHostKeyChecking=yes`, `UserKnownHostsFile` controlado e timeout de conexão; cria chave, `known_hosts`, diretório remoto e, quando necessário, credenciais temporárias com permissões restritas e os remove ao fim. O token GHCR é enviado por canal SSH somente para `docker login --password-stdin`, não como argumento de linha de comando.
+
+As credenciais Oracle continuam exclusivamente em `/opt/energiai/config/backend.env`. A workflow não copia, lista, imprime, renderiza com Compose sem `--quiet` nem usa esse arquivo como secret do GitHub.
+
+### Operação, resumo e diagnóstico
+
+Use primeiro `operation=validate` para uma ref. Para deploy, confirme o SHA e envie `operation=deploy`, a mesma ref e `confirmation=DEPLOY`; se necessário, selecione a fonte esperada para o smoke test. O Job Summary registra ref, SHA completo, imagem e digest imutáveis, plataforma, ambiente, resultado da validação, timestamps, readiness, smoke test, rollback e versões anterior/nova quando seguras; não contém host, JDBC, ambiente externo, chave ou token.
+
+Uma falha antes da troca de `BACKEND_IMAGE` não requer rollback. Em falhas de pull, Compose, readiness ou smoke após a troca, o helper tenta rollback. Se o rollback também falhar, a job permanece falha e o resumo indica `failed-rollback-failed`; investigue através do acesso SSH aprovado e das verificações seguras de logs abaixo. O rollback da aplicação não reverte migrations compatíveis de Oracle.
+
+Para rotação ou revogação, retire primeiro a credencial do Environment ou substitua a chave pública autorizada na VM, atualize o secret correspondente, execute apenas `validate` e faça uma implantação aprovada. Revogue tokens GHCR comprometidos no GitHub; nunca os adicione a `backend.env` ou ao repositório.
 
 ## Validação do Compose
 
@@ -195,7 +231,7 @@ env_ficticio="$(mktemp)"
 trap 'rm -f -- "${env_ficticio}"' EXIT
 cp infra/deploy/oci/.env.example "${env_ficticio}"
 sed -i \
-  -e 's|^BACKEND_IMAGE=.*|BACKEND_IMAGE=energiai-backend:validacao-ficticia|' \
+  -e 's|^BACKEND_IMAGE=.*|BACKEND_IMAGE=ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-0000000000000000000000000000000000000000|' \
   -e "s|^BACKEND_ENV_FILE=.*|BACKEND_ENV_FILE=${env_ficticio}|" \
   "${env_ficticio}"
 
@@ -423,7 +459,7 @@ Não use `docker inspect` no container como diagnóstico comum: o ambiente do pr
 ## Atualização
 
 1. Valide outro commit e construa externamente uma nova tag imutável `linux/amd64`.
-2. Transfira/carregue a imagem ou faça pull da tag `sha-<commit-curto>`.
+2. Transfira/carregue a imagem ou faça pull da tag GHCR `sha-<commit-completo>`.
 3. Confirme a arquitetura com `docker image inspect`.
 4. Preserve `/opt/energiai/config/backend.env` e altere apenas `BACKEND_IMAGE` com `sudoedit`.
 5. Valide e recrie sem build:
@@ -502,6 +538,6 @@ Depois da janela de rollback, remova manualmente apenas um TAR identificado em `
 
 ## Fora de escopo e validação pendente
 
-Permanecem fora desta entrega: Terraform/rede OCI, provisionamento do Docker, abertura de portas públicas, Nginx, HTTPS, domínio/DNS, Load Balancer, FastAPI, deploy por GitHub Actions, wallet Oracle, mudança de migrations ou regras de classificação, frontend e observabilidade externa.
+Permanecem fora desta entrega: Terraform/rede OCI, provisionamento do Docker, abertura de portas públicas, Nginx, HTTPS, domínio/DNS, Load Balancer, FastAPI, wallet Oracle, mudança de migrations ou regras de classificação, frontend, observabilidade externa e deploy automático por pull request ou push.
 
 Build/load, execução do Compose, conexão TLS com Oracle, Flyway, health real, fallback, persistência após restart e medição dos limites precisam ser executados na instância Ubuntu 24.04 `x86_64/amd64` autorizada. Este runbook não contém credenciais e não autoriza acesso à OCI por si só.
