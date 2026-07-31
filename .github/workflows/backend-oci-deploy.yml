@@ -33,7 +33,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: backend-oci-deploy
@@ -132,7 +131,7 @@ jobs:
           trap 'rm -f -- "${fictitious_env}"' EXIT
           cp infra/deploy/oci/.env.example "${fictitious_env}"
           sed -i \
-            -e 's|^BACKEND_IMAGE=.*|BACKEND_IMAGE=ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-0000000000000000000000000000000000000000|' \
+            -e 's|^BACKEND_IMAGE=.*|BACKEND_IMAGE=docker.io/pxs00/energiai-backend:sha-0000000000000000000000000000000000000000|' \
             -e "s|^BACKEND_ENV_FILE=.*|BACKEND_ENV_FILE=${fictitious_env}|" \
             "${fictitious_env}"
           docker compose \
@@ -189,7 +188,7 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
     env:
       COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
-      IMAGE_REPOSITORY: ghcr.io/no-country-simulation/g9-br-team-09/backend
+      IMAGE_REPOSITORY: docker.io/pxs00/energiai-backend
     steps:
       - name: Checkout exact commit
         uses: actions/checkout@v7
@@ -213,12 +212,12 @@ jobs:
           image="${IMAGE_REPOSITORY}:sha-${COMMIT_SHA}"
           printf 'image=%s\n' "${image}" >> "${GITHUB_OUTPUT}"
 
-      - name: Log in to GHCR
+      - name: Log in to Docker Hub
         uses: docker/login-action@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -275,8 +274,8 @@ jobs:
       OCI_COMPUTE_USER: ${{ secrets.OCI_COMPUTE_USER }}
       OCI_COMPUTE_PRIVATE_KEY: ${{ secrets.OCI_COMPUTE_SSH_PRIVATE_KEY }}
       OCI_COMPUTE_KNOWN_HOSTS: ${{ secrets.OCI_COMPUTE_KNOWN_HOSTS }}
-      GHCR_DEPLOY_USERNAME: ${{ secrets.GHCR_DEPLOY_USERNAME }}
-      GHCR_DEPLOY_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_DEPLOY_TOKEN: ${{ secrets.DOCKERHUB_DEPLOY_TOKEN }}
     steps:
       - name: Checkout deployment helper
         uses: actions/checkout@v7
@@ -365,22 +364,21 @@ jobs:
           fi
           printf 'remote_path=%s\n' "${remote_path}" >> "${GITHUB_ENV}"
 
-      - name: Provide optional GHCR read credentials securely
-        if: env.GHCR_DEPLOY_USERNAME != '' || env.GHCR_DEPLOY_TOKEN != ''
+      - name: Provide Docker Hub read credentials securely
         env:
           SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
           REMOTE_DIR: ${{ steps.remote.outputs.remote_dir }}
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "${GHCR_DEPLOY_USERNAME}" && -n "${GHCR_DEPLOY_TOKEN}" ]] \
-            || { printf '%s\n' 'Both optional GHCR deployment secrets are required together.' >&2; exit 1; }
+          [[ -n "${DOCKERHUB_USERNAME}" && -n "${DOCKERHUB_DEPLOY_TOKEN}" ]] \
+            || { printf '%s\n' 'Both Docker Hub deployment secrets are required.' >&2; exit 1; }
           umask 077
           auth_file="$(mktemp)"
-          remote_auth_path="${REMOTE_DIR}/ghcr-auth.env"
+          remote_auth_path="${REMOTE_DIR}/dockerhub-auth.env"
           trap 'rm -f -- "${auth_file}"' EXIT
-          printf 'GHCR_DEPLOY_USERNAME=%q\nGHCR_DEPLOY_TOKEN=%q\n' \
-            "${GHCR_DEPLOY_USERNAME}" "${GHCR_DEPLOY_TOKEN}" > "${auth_file}"
+          printf 'DOCKERHUB_USERNAME=%q\nDOCKERHUB_DEPLOY_TOKEN=%q\n' \
+            "${DOCKERHUB_USERNAME}" "${DOCKERHUB_DEPLOY_TOKEN}" > "${auth_file}"
           if ! scp \
             -i "${SSH_DIR}/id_ed25519" \
             -o BatchMode=yes \
@@ -391,7 +389,7 @@ jobs:
             -P "${OCI_COMPUTE_PORT}" \
             "${auth_file}" \
             "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}:${remote_auth_path}" 2>/dev/null; then
-            printf '%s\n' 'Unable to transfer temporary GHCR credentials.' >&2
+            printf '%s\n' 'Unable to transfer temporary Docker Hub credentials.' >&2
             exit 1
           fi
           if ! ssh \
@@ -404,10 +402,10 @@ jobs:
             -p "${OCI_COMPUTE_PORT}" \
             "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
             "chmod 600 '${remote_auth_path}'" 2>/dev/null; then
-            printf '%s\n' 'Unable to protect temporary GHCR credentials.' >&2
+            printf '%s\n' 'Unable to protect temporary Docker Hub credentials.' >&2
             exit 1
           fi
-          printf 'GHCR_AUTH_FILE=%s\n' "${remote_auth_path}" >> "${GITHUB_ENV}"
+          printf 'DOCKERHUB_AUTH_FILE=%s\n' "${remote_auth_path}" >> "${GITHUB_ENV}"
 
       - name: Deploy, validate, and roll back on failure
         id: remote_deploy
@@ -416,7 +414,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ "${IMAGE}" =~ ^ghcr\.io/no-country-simulation/g9-br-team-09/backend:sha-[0-9a-f]{40}$ ]]
+          [[ "${IMAGE}" =~ ^docker\.io/pxs00/energiai-backend:sha-[0-9a-f]{40}$ ]]
           [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
           [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
           case "${EXPECTED_CLASSIFICATION_SOURCE}" in
@@ -437,7 +435,7 @@ jobs:
             -o ConnectTimeout=20 \
             -p "${OCI_COMPUTE_PORT}" \
             "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
-            "TARGET_IMAGE='${IMAGE}' TARGET_COMMIT='${COMMIT_SHA}' IMAGE_DIGEST='${IMAGE_DIGEST}' EXPECTED_CLASSIFICATION_SOURCE='${EXPECTED_CLASSIFICATION_SOURCE}' GHCR_AUTH_FILE='${GHCR_AUTH_FILE:-}' bash '${remote_path}'" \
+            "TARGET_IMAGE='${IMAGE}' TARGET_COMMIT='${COMMIT_SHA}' IMAGE_DIGEST='${IMAGE_DIGEST}' EXPECTED_CLASSIFICATION_SOURCE='${EXPECTED_CLASSIFICATION_SOURCE}' DOCKERHUB_AUTH_FILE='${DOCKERHUB_AUTH_FILE:-}' bash '${remote_path}'" \
             >"${remote_output}" 2>&1
           deployment_status=$?
           set -e
@@ -489,7 +487,7 @@ jobs:
             echo "- Rollback attempted: \`${ROLLBACK_ATTEMPTED:-no}\`"
             echo "- Rollback result: \`${ROLLBACK_RESULT:-not-required}\`"
             echo "- Final workflow result: \`${DEPLOY_RESULT:-unknown}\`"
-            if [[ "${PREVIOUS_IMAGE}" =~ ^ghcr\.io/no-country-simulation/g9-br-team-09/backend:sha-[0-9a-f]{40}$ ]]; then
+            if [[ "${PREVIOUS_IMAGE}" =~ ^docker\.io/pxs00/energiai-backend:sha-[0-9a-f]{40}$ ]]; then
               echo "- Previous immutable image: \`${PREVIOUS_IMAGE}\`"
             fi
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -512,7 +510,7 @@ jobs:
               -o ConnectTimeout=20 \
               -p "${OCI_COMPUTE_PORT}" \
               "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
-              "rm -f -- '${REMOTE_DIR}/deploy-backend.sh' '${REMOTE_DIR}/ghcr-auth.env'; rmdir -- '${REMOTE_DIR}'" \
+              "rm -f -- '${REMOTE_DIR}/deploy-backend.sh' '${REMOTE_DIR}/dockerhub-auth.env'; rmdir -- '${REMOTE_DIR}'" \
               >/dev/null 2>&1
           fi
 

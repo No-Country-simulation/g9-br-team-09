@@ -4,8 +4,8 @@
 # backend.env: ele altera atomicamente apenas BACKEND_IMAGE.
 set -Eeuo pipefail
 
-readonly IMAGE_PREFIX="ghcr.io/no-country-simulation/g9-br-team-09/backend:sha-"
-readonly IMAGE_PATTERN='^ghcr\.io/no-country-simulation/g9-br-team-09/backend:sha-[0-9a-f]{40}$'
+readonly IMAGE_PREFIX="docker.io/pxs00/energiai-backend:sha-"
+readonly IMAGE_PATTERN='^docker\.io/pxs00/energiai-backend:sha-[0-9a-f]{40}$'
 readonly DIGEST_PATTERN='^sha256:[0-9a-f]{64}$'
 readonly READINESS_URL="http://127.0.0.1:8080/api/v1/actuator/health/readiness"
 readonly READINESS_ATTEMPTS="${READINESS_ATTEMPTS:-30}"
@@ -16,7 +16,7 @@ readonly BACKEND_ENV_FILE="${BACKEND_ENV_FILE:-/opt/energiai/config/backend.env}
 readonly TARGET_IMAGE="${TARGET_IMAGE:-}"
 readonly TARGET_COMMIT="${TARGET_COMMIT:-}"
 readonly IMAGE_DIGEST="${IMAGE_DIGEST:-}"
-readonly GHCR_AUTH_FILE="${GHCR_AUTH_FILE:-}"
+readonly DOCKERHUB_AUTH_FILE="${DOCKERHUB_AUTH_FILE:-}"
 readonly EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE:-}"
 
 previous_image=""
@@ -38,7 +38,7 @@ require_immutable_image() {
     local image="$1"
 
     [[ "${image}" =~ ${IMAGE_PATTERN} ]] \
-        || fail "A imagem deve usar a tag GHCR sha-<commit-completo>."
+        || fail "A imagem deve usar a tag Docker Hub sha-<commit-completo>."
 }
 
 require_commit() {
@@ -191,26 +191,27 @@ wait_for_readiness() {
     return 1
 }
 
-login_to_ghcr_if_configured() {
-    local ghcr_username
-    local ghcr_token
+login_to_dockerhub() {
+    local dockerhub_username
+    local dockerhub_token
 
-    [[ -n "${GHCR_AUTH_FILE}" ]] || return 0
-    require_restricted_file "${GHCR_AUTH_FILE}"
+    [[ -n "${DOCKERHUB_AUTH_FILE}" ]] \
+        || fail "O arquivo temporário de credenciais do Docker Hub é obrigatório."
+    require_restricted_file "${DOCKERHUB_AUTH_FILE}"
 
     # O arquivo vem de um diretório remoto 0700 criado pela workflow e contém
     # somente atribuições escapadas com %q; nunca é exibido ou usado em argv.
     # shellcheck disable=SC1090
-    source "${GHCR_AUTH_FILE}"
-    ghcr_username="${GHCR_DEPLOY_USERNAME:-}"
-    ghcr_token="${GHCR_DEPLOY_TOKEN:-}"
-    [[ -n "${ghcr_username}" && -n "${ghcr_token}" ]] \
-        || fail "As credenciais GHCR temporárias estão incompletas."
+    source "${DOCKERHUB_AUTH_FILE}"
+    dockerhub_username="${DOCKERHUB_USERNAME:-}"
+    dockerhub_token="${DOCKERHUB_DEPLOY_TOKEN:-}"
+    [[ -n "${dockerhub_username}" && -n "${dockerhub_token}" ]] \
+        || fail "As credenciais temporárias do Docker Hub estão incompletas."
 
-    printf '%s' "${ghcr_token}" | docker login ghcr.io \
-        --username "${ghcr_username}" \
+    printf '%s' "${dockerhub_token}" | docker login docker.io \
+        --username "${dockerhub_username}" \
         --password-stdin >/dev/null
-    unset ghcr_username ghcr_token GHCR_DEPLOY_USERNAME GHCR_DEPLOY_TOKEN
+    unset dockerhub_username dockerhub_token DOCKERHUB_USERNAME DOCKERHUB_DEPLOY_TOKEN
 }
 
 rollback() {
@@ -269,8 +270,8 @@ cleanup() {
     if [[ -n "${environment_temp_file}" ]]; then
         rm -f -- "${environment_temp_file}"
     fi
-    if [[ -n "${GHCR_AUTH_FILE}" ]]; then
-        rm -f -- "${GHCR_AUTH_FILE}"
+    if [[ -n "${DOCKERHUB_AUTH_FILE}" ]]; then
+        rm -f -- "${DOCKERHUB_AUTH_FILE}"
     fi
 }
 
@@ -314,7 +315,7 @@ main() {
 
     trap on_error ERR
 
-    login_to_ghcr_if_configured
+    login_to_dockerhub
     checkout_commit "${TARGET_COMMIT}"
     [[ "${TARGET_COMMIT}" == "${previous_repository_commit}" ]] || repository_changed=true
     replace_backend_image "${TARGET_IMAGE}"
