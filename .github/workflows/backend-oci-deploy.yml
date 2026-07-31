@@ -75,6 +75,8 @@ jobs:
           git fetch --no-tags --quiet origin "${REQUESTED_REF}"
           commit_sha="$(git rev-parse --verify 'FETCH_HEAD^{commit}')"
           [[ "${commit_sha}" =~ ^[0-9a-f]{40}$ ]]
+          git fetch --no-tags --quiet origin \
+            '+refs/heads/develop:refs/remotes/origin/develop'
           git checkout --detach --quiet "${commit_sha}"
           [[ "$(git rev-parse --verify 'HEAD^{commit}')" == "${commit_sha}" ]]
           printf 'commit_sha=%s\n' "${commit_sha}" >> "${GITHUB_OUTPUT}"
@@ -157,7 +159,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --check
+          resolved_commit="$(git rev-parse --verify 'HEAD^{commit}')"
+          [[ "${resolved_commit}" =~ ^[0-9a-f]{40}$ ]]
+          if merge_base="$(git merge-base origin/develop "${resolved_commit}" 2>/dev/null)"; then
+            [[ "${merge_base}" =~ ^[0-9a-f]{40}$ ]]
+            git diff --check "${merge_base}..${resolved_commit}"
+          else
+            git diff-tree --root --check -r "${resolved_commit}"
+          fi
 
       - name: Write validation summary
         if: success()

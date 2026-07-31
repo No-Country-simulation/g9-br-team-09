@@ -19,6 +19,7 @@ readonly IMAGE_DIGEST="${IMAGE_DIGEST:-}"
 readonly DOCKERHUB_AUTH_FILE="${DOCKERHUB_AUTH_FILE:-}"
 readonly EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE:-}"
 
+docker_config_directory=""
 previous_image=""
 previous_repository_commit=""
 repository_changed=false
@@ -214,6 +215,64 @@ login_to_dockerhub() {
     unset dockerhub_username dockerhub_token DOCKERHUB_USERNAME DOCKERHUB_DEPLOY_TOKEN
 }
 
+configure_temporary_docker_config() {
+    docker_config_directory="$(mktemp -d /tmp/energiai-docker-config.XXXXXX)" \
+        || fail "Não foi possível criar a configuração temporária do Docker."
+    chmod 700 -- "${docker_config_directory}"
+    export DOCKER_CONFIG="${docker_config_directory}"
+}
+
+verify_pulled_image() {
+    local image="$1"
+    local expected_digest="${2:-}"
+    local repository_digests
+    local repository_digest
+    local expected_bare_digest
+    local expected_full_digest
+    local digest_found=false
+    local platform
+
+    require_immutable_image "${image}"
+    repository_digests="$(docker image inspect \
+        --format '{{range .RepoDigests}}{{println .}}{{end}}' \
+        "${image}")" \
+        || fail "A imagem baixada não pode ser inspecionada."
+    platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "${image}")" \
+        || fail "A plataforma da imagem baixada não pode ser inspecionada."
+    [[ "${platform}" == linux/amd64 ]] \
+        || fail "A imagem baixada não é linux/amd64."
+
+    if [[ -n "${expected_digest}" ]]; then
+        [[ "${expected_digest}" =~ ${DIGEST_PATTERN} ]] \
+            || fail "O digest esperado da imagem é inválido."
+        expected_bare_digest="pxs00/energiai-backend@${expected_digest}"
+        expected_full_digest="docker.io/${expected_bare_digest}"
+        while IFS= read -r repository_digest; do
+            if [[ "${repository_digest}" == "${expected_bare_digest}" \
+                || "${repository_digest}" == "${expected_full_digest}" ]]; then
+                digest_found=true
+                break
+            fi
+        done <<<"${repository_digests}"
+        [[ "${digest_found}" == true ]] \
+            || fail "A imagem baixada não corresponde ao digest publicado."
+    fi
+}
+
+pull_and_verify_target_image() {
+    compose pull backend
+    verify_pulled_image "${TARGET_IMAGE}" "${IMAGE_DIGEST}"
+}
+
+pull_and_verify_previous_image() {
+    compose pull backend
+    if [[ "${previous_image}" == "${TARGET_IMAGE}" ]]; then
+        verify_pulled_image "${previous_image}" "${IMAGE_DIGEST}"
+    else
+        verify_pulled_image "${previous_image}"
+    fi
+}
+
 rollback() {
     printf '[INFO] Iniciando rollback para imagem imutável anterior.\n'
 
@@ -223,7 +282,7 @@ rollback() {
     if ! replace_backend_image "${previous_image}"; then
         return 1
     fi
-    if ! compose pull backend; then
+    if ! pull_and_verify_previous_image; then
         return 1
     fi
     if ! compose up -d --no-build backend; then
@@ -270,6 +329,11 @@ cleanup() {
     if [[ -n "${environment_temp_file}" ]]; then
         rm -f -- "${environment_temp_file}"
     fi
+    if [[ -n "${docker_config_directory}" ]]; then
+        docker logout docker.io >/dev/null 2>&1 || true
+        rm -rf -- "${docker_config_directory}"
+        unset DOCKER_CONFIG
+    fi
     if [[ -n "${DOCKERHUB_AUTH_FILE}" ]]; then
         rm -f -- "${DOCKERHUB_AUTH_FILE}"
     fi
@@ -311,6 +375,7 @@ main() {
     require_commit "${previous_repository_commit}"
     [[ "${previous_image}" == "${IMAGE_PREFIX}${previous_repository_commit}" ]] \
         || fail "A imagem atual e o checkout OCI não formam um estado seguro de rollback."
+    configure_temporary_docker_config
     compose config --quiet
 
     trap on_error ERR
@@ -320,7 +385,7 @@ main() {
     [[ "${TARGET_COMMIT}" == "${previous_repository_commit}" ]] || repository_changed=true
     replace_backend_image "${TARGET_IMAGE}"
     deployment_changed=true
-    compose pull backend
+    pull_and_verify_target_image
     compose up -d --no-build backend
     wait_for_readiness
 

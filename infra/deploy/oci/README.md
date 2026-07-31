@@ -187,7 +187,7 @@ O workflow [`.github/workflows/backend-oci-deploy.yml`](../../../.github/workflo
 
 O fluxo é:
 
-1. busca a `ref` validada, faz checkout detached do SHA completo e executa `cd backend && ./mvnw --batch-mode verify`, sintaxe Bash, ShellCheck `v0.10.0`, actionlint `1.7.7`, fixtures, Compose com valores fictícios, `git diff --check` e um build do Dockerfile existente para `linux/amd64`, sem publicação;
+1. busca a `ref` validada, faz checkout detached do SHA completo e executa `cd backend && ./mvnw --batch-mode verify`, sintaxe Bash, ShellCheck `v0.10.0`, actionlint `1.7.7`, fixtures, Compose com valores fictícios, `git diff --check <merge-base>..<SHA-resolvido>` contra `origin/develop` (ou `git diff-tree --root --check` no caso excepcional sem merge base) e um build do Dockerfile existente para `linux/amd64`, sem publicação;
 2. em `deploy`, constrói e publica exclusivamente `linux/amd64` em `docker.io/pxs00/energiai-backend:sha-<commit-completo>`, com labels OCI e digest no resumo;
 3. no GitHub Environment `oci-production`, transfere apenas o helper temporário por SSH com `known_hosts` obrigatório, atualiza atomicamente apenas `BACKEND_IMAGE`, faz `docker compose pull backend` e `up -d --no-build backend`;
 4. aguarda o readiness local com tentativas limitadas e executa o único smoke test existente, `infra/tests/smoke/backend-oci-smoke.sh`, com `BASE_URL=http://127.0.0.1:8080/api/v1`;
@@ -209,11 +209,11 @@ Os três secrets Docker Hub abaixo já existem no repositório e não exigem ace
 - `DOCKERHUB_TOKEN`, usado somente para publicar;
 - `DOCKERHUB_DEPLOY_TOKEN`, token separado somente de leitura para pull na OCI.
 
-O job de publicação não declara `oci-production`; ele usa os repository secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` em `docker/login-action`. Somente o job de deploy declara `oci-production` e recebe `DOCKERHUB_DEPLOY_TOKEN`, transmitindo-o temporariamente para `docker login docker.io --password-stdin` na VM. Nunca envie `DOCKERHUB_TOKEN` para a OCI.
+O job de publicação não declara `oci-production`; ele usa os repository secrets `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` em `docker/login-action`. Somente o job de deploy declara `oci-production` e recebe `DOCKERHUB_DEPLOY_TOKEN`, transmitindo-o temporariamente para `docker login docker.io --password-stdin` na VM. Nunca envie `DOCKERHUB_TOKEN` para a OCI. O helper cria um `DOCKER_CONFIG` temporário com permissões `0700`, usado pelo login, pull, Compose e rollback; ao encerrar, faz logout silencioso, remove esse diretório e o arquivo de autenticação transferido, e desfaz `DOCKER_CONFIG`.
 
 Obtenha a impressão digital SSH por um canal confiável durante o provisionamento e armazene a linha resultante em `OCI_COMPUTE_KNOWN_HOSTS`. Não aceite a primeira conexão automaticamente e não use `StrictHostKeyChecking=no`. A workflow usa `BatchMode`, `IdentitiesOnly`, `StrictHostKeyChecking=yes`, `UserKnownHostsFile` controlado e timeout de conexão; cria chave, `known_hosts`, diretório remoto e as credenciais temporárias com permissões restritas e os remove ao fim. O token de deploy é enviado por canal SSH somente para `docker login --password-stdin`, não como argumento de linha de comando.
 
-As credenciais Oracle continuam exclusivamente em `/opt/energiai/config/backend.env`. A workflow não copia, lista, imprime, renderiza com Compose sem `--quiet` nem usa esse arquivo como secret do GitHub. Nenhuma credencial Docker Hub pertence a `backend.env` ou ao repositório.
+As credenciais Oracle continuam exclusivamente em `/opt/energiai/config/backend.env`. A workflow não copia, lista, imprime, renderiza com Compose sem `--quiet` nem usa esse arquivo como secret do GitHub. Nenhuma credencial Docker Hub pertence a `backend.env` ou ao repositório. Depois de cada pull da nova imagem, o helper confirma `linux/amd64` e que os `RepoDigests` locais incluem `pxs00/energiai-backend@<digest-publicado>` antes de executar `docker compose up`; o rollback verifica a arquitetura e continua usando somente a imagem anterior com SHA imutável quando o digest histórico não está disponível.
 
 ### Operação, resumo e diagnóstico
 
