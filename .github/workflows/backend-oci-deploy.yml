@@ -110,6 +110,7 @@ jobs:
             --volume "${GITHUB_WORKSPACE}:/work:ro" \
             --workdir /work \
             koalaman/shellcheck-alpine:v0.10.0 \
+            shellcheck \
             infra/deploy/oci/deploy-backend.sh \
             infra/tests/smoke/backend-oci-smoke.sh
 
