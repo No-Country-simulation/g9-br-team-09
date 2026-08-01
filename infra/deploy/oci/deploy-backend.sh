@@ -32,7 +32,7 @@ rollback_result="not-required"
 
 fail() {
     printf '[FAIL] %s\n' "$1" >&2
-    exit 1
+    return 1
 }
 
 require_immutable_image() {
@@ -341,6 +341,7 @@ cleanup() {
 
 main() {
     trap cleanup EXIT
+    trap on_error ERR
 
     require_immutable_image "${TARGET_IMAGE}"
     require_commit "${TARGET_COMMIT}"
@@ -378,13 +379,13 @@ main() {
     configure_temporary_docker_config
     compose config --quiet
 
-    trap on_error ERR
-
     login_to_dockerhub
+    if [[ "${TARGET_COMMIT}" != "${previous_repository_commit}" ]]; then
+        repository_changed=true
+    fi
     checkout_commit "${TARGET_COMMIT}"
-    [[ "${TARGET_COMMIT}" == "${previous_repository_commit}" ]] || repository_changed=true
-    replace_backend_image "${TARGET_IMAGE}"
     deployment_changed=true
+    replace_backend_image "${TARGET_IMAGE}"
     pull_and_verify_target_image
     compose up -d --no-build backend
     wait_for_readiness
@@ -402,4 +403,6 @@ main() {
     emit_status success
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

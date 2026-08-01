@@ -94,7 +94,12 @@ jobs:
         run: |
           set -euo pipefail
           bash -n infra/deploy/oci/deploy-backend.sh
+          bash -n infra/deploy/oci/inspect-immutable-image.sh
+          bash -n infra/deploy/oci/tests/test-deploy-backend.sh
+          bash -n infra/deploy/oci/tests/test-inspect-immutable-image.sh
           bash -n infra/tests/smoke/backend-oci-smoke.sh
+          bash infra/deploy/oci/tests/test-deploy-backend.sh
+          bash infra/deploy/oci/tests/test-inspect-immutable-image.sh
           jq empty infra/tests/smoke/payload-valid.json
           jq empty infra/tests/smoke/payload-invalid.json
 
@@ -108,6 +113,7 @@ jobs:
             koalaman/shellcheck-alpine:v0.10.0 \
             shellcheck \
             infra/deploy/oci/deploy-backend.sh \
+            infra/deploy/oci/inspect-immutable-image.sh \
             infra/tests/smoke/backend-oci-smoke.sh
 
       - name: Run actionlint
@@ -190,7 +196,7 @@ jobs:
     if: inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     outputs:
-      digest: ${{ steps.build.outputs.digest }}
+      digest: ${{ steps.image_digest.outputs.digest }}
     env:
       COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
       IMAGE_REPOSITORY: docker.io/pxs00/energiai-backend
@@ -227,8 +233,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Inspect existing immutable image
+        id: existing_image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash infra/deploy/oci/inspect-immutable-image.sh \
+            "${IMAGE}" \
+            "${COMMIT_SHA}" >> "${GITHUB_OUTPUT}"
+
       - name: Build and publish immutable linux/amd64 image
         id: build
+        if: steps.existing_image.outputs.exists != 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./backend
@@ -243,10 +261,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Set final immutable image digest
+        id: image_digest
+        env:
+          EXISTING_DIGEST: ${{ steps.existing_image.outputs.digest }}
+          BUILT_DIGEST: ${{ steps.build.outputs.digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest="${EXISTING_DIGEST:-${BUILT_DIGEST:-}}"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'digest=%s\n' "${digest}" >> "${GITHUB_OUTPUT}"
+
       - name: Publish sanitized build summary
         env:
           IMAGE: ${{ steps.image.outputs.image }}
-          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST: ${{ steps.image_digest.outputs.digest }}
           COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
         shell: bash
         run: |
@@ -444,6 +474,13 @@ jobs:
             >"${remote_output}" 2>&1
           deployment_status=$?
           set -e
+
+          if [[ "${deployment_status}" -ne 0 ]]; then
+            printf '%s\n' 'Remote deployment failed; sanitized diagnostics follow.' >&2
+            sed -n -E \
+              '/^\[(INFO|PASS|FAIL)\] /p; /^DEPLOY_RESULT=/p; /^READINESS_RESULT=/p; /^SMOKE_TEST_RESULT=/p; /^ROLLBACK_ATTEMPTED=/p; /^ROLLBACK_RESULT=/p' \
+              "${remote_output}" >&2
+          fi
 
           deploy_result="$(sed -n 's/^DEPLOY_RESULT=//p' "${remote_output}" | tail -n 1)"
           previous_image="$(sed -n 's/^PREVIOUS_IMAGE=//p' "${remote_output}" | tail -n 1)"
