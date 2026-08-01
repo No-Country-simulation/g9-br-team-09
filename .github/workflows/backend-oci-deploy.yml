@@ -25,11 +25,7 @@ on:
         description: Optional expected source for the OCI smoke test
         required: false
         default: ""
-        type: choice
-        options:
-          - ""
-          - ML_MODEL
-          - RULE_BASED_FALLBACK
+        type: string
 
 permissions:
   contents: read
@@ -183,9 +179,9 @@ jobs:
             echo "- Operation: \`${OPERATION}\`"
             echo "- Requested ref: \`${REQUESTED_REF}\`"
             echo "- Resolved commit: \`${COMMIT_SHA}\`"
-            echo '- Platform: `linux/amd64`'
-            echo '- Maven, Bash syntax, ShellCheck, actionlint, fixtures, Compose, Docker build, and whitespace: `passed`'
-            echo '- Publication, OCI deployment, readiness, smoke tests, and rollback: `not run`'
+            echo "- Platform: \`linux/amd64\`"
+            echo "- Maven, Bash syntax, ShellCheck, actionlint, fixtures, Compose, Docker build, and whitespace: \`passed\`"
+            echo "- Publication, OCI deployment, readiness, smoke tests, and rollback: \`not run\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   publish:
@@ -263,7 +259,7 @@ jobs:
             echo "- Resolved commit: \`${COMMIT_SHA}\`"
             echo "- Immutable image: \`${IMAGE}\`"
             echo "- Digest: \`${DIGEST}\`"
-            echo '- Platform: `linux/amd64`'
+            echo "- Platform: \`linux/amd64\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   deploy:
@@ -434,7 +430,7 @@ jobs:
 
           remote_output="$(mktemp)"
           trap 'rm -f -- "${remote_output}"' EXIT
-          printf 'started_at=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+          deployment_started_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           set +e
           ssh \
             -i "${SSH_DIR}/id_ed25519" \
@@ -456,13 +452,16 @@ jobs:
           smoke_result="$(sed -n 's/^SMOKE_TEST_RESULT=//p' "${remote_output}" | tail -n 1)"
           rollback_attempted="$(sed -n 's/^ROLLBACK_ATTEMPTED=//p' "${remote_output}" | tail -n 1)"
           rollback_result="$(sed -n 's/^ROLLBACK_RESULT=//p' "${remote_output}" | tail -n 1)"
-          printf 'deploy_result=%s\n' "${deploy_result:-unknown}" >> "${GITHUB_OUTPUT}"
-          printf 'previous_image=%s\n' "${previous_image}" >> "${GITHUB_OUTPUT}"
-          printf 'readiness_result=%s\n' "${readiness_result:-not-run}" >> "${GITHUB_OUTPUT}"
-          printf 'smoke_result=%s\n' "${smoke_result:-not-run}" >> "${GITHUB_OUTPUT}"
-          printf 'rollback_attempted=%s\n' "${rollback_attempted:-no}" >> "${GITHUB_OUTPUT}"
-          printf 'rollback_result=%s\n' "${rollback_result:-not-required}" >> "${GITHUB_OUTPUT}"
-          printf 'ended_at=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "${GITHUB_OUTPUT}"
+          {
+            printf 'started_at=%s\n' "${deployment_started_at}"
+            printf 'deploy_result=%s\n' "${deploy_result:-unknown}"
+            printf 'previous_image=%s\n' "${previous_image}"
+            printf 'readiness_result=%s\n' "${readiness_result:-not-run}"
+            printf 'smoke_result=%s\n' "${smoke_result:-not-run}"
+            printf 'rollback_attempted=%s\n' "${rollback_attempted:-no}"
+            printf 'rollback_result=%s\n' "${rollback_result:-not-required}"
+            printf 'ended_at=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "${GITHUB_OUTPUT}"
 
           [[ "${deployment_status}" -eq 0 && "${deploy_result}" == success ]]
 
@@ -487,9 +486,9 @@ jobs:
             echo "- Resolved commit: \`${COMMIT_SHA}\`"
             echo "- Immutable image: \`${IMAGE}\`"
             echo "- Digest: \`${IMAGE_DIGEST}\`"
-            echo '- Platform: `linux/amd64`'
-            echo '- Environment: `oci-production`'
-            echo '- Validation: `passed`'
+            echo "- Platform: \`linux/amd64\`"
+            echo "- Environment: \`oci-production\`"
+            echo "- Validation: \`passed\`"
             echo "- Deployment started: \`${DEPLOY_STARTED_AT:-not-started}\`"
             echo "- Deployment ended: \`${DEPLOY_ENDED_AT:-not-finished}\`"
             echo "- Readiness: \`${READINESS_RESULT:-not-run}\`"
