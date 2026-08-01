@@ -190,7 +190,6 @@ jobs:
     if: inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     outputs:
-      image: ${{ steps.image.outputs.image }}
       digest: ${{ steps.build.outputs.digest }}
     env:
       COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
@@ -271,7 +270,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: oci-production
     env:
-      IMAGE: ${{ needs.publish.outputs.image }}
+      IMAGE: docker.io/pxs00/energiai-backend:sha-${{ needs.validate.outputs.commit_sha }}
       IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
       COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
       EXPECTED_CLASSIFICATION_SOURCE: ${{ inputs.expected_classification_source }}
