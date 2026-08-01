@@ -2,7 +2,8 @@
 
 set -Eeuo pipefail
 
-readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 readonly VALID_PAYLOAD="${SCRIPT_DIR}/payload-valid.json"
 readonly INVALID_PAYLOAD="${SCRIPT_DIR}/payload-invalid.json"
 
