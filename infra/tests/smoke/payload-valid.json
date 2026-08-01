@@ -1,0 +1,7 @@
+{
+  "consumo_kwh": 420,
+  "uso_horario_pico": true,
+  "quantidade_equipamentos": 10,
+  "tipo_imovel": "CASA",
+  "horas_alto_consumo": 8
+}
