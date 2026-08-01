@@ -65,7 +65,7 @@ test_missing_image_allows_build_path() {
 
     output="$(run_inspector missing)"
     assert_contains "${output}" 'exists=false'
-    rg -Fq "if: steps.existing_image.outputs.exists != 'true'" \
+    grep -Fq -- "if: steps.existing_image.outputs.exists != 'true'" \
         "${SCRIPT_DIR}/../../../../.github/workflows/backend-oci-deploy.yml"
 }
 
