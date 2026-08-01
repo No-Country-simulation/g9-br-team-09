@@ -5,6 +5,16 @@ set -Eeuo pipefail
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly DEPLOY_HELPER="${SCRIPT_DIR}/../deploy-backend.sh"
 
+if [[ "${SMOKE_PROBE_MODE:-}" == 1 ]]; then
+    [[ "${EXPECTED_CLASSIFICATION_SOURCE:-}" == ML_MODEL ]]
+    [[ "${BASE_URL:-}" == http://127.0.0.1:8080/api/v1 ]]
+    [[ "${REQUEST_TIMEOUT:-}" == 15 ]]
+    [[ "${VALIDATED_ARTIFACT:-}" == \
+        docker.io/pxs00/energiai-backend:sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc ]]
+    printf '[TEST] smoke environment received\n'
+    exit "${SMOKE_STATUS:-0}"
+fi
+
 assert_contains() {
     local output="$1"
     local expected="$2"
@@ -49,8 +59,11 @@ run_smoke_main_case() {
         "${fixture_dir}/infra/tests/smoke"
     touch \
         "${fixture_dir}/backend.env" \
-        "${fixture_dir}/infra/deploy/oci/compose.yaml" \
+        "${fixture_dir}/infra/deploy/oci/compose.yaml"
+    cp -- \
+        "${SCRIPT_DIR}/test-deploy-backend.sh" \
         "${fixture_dir}/infra/tests/smoke/backend-oci-smoke.sh"
+    chmod 700 -- "${fixture_dir}/infra/tests/smoke/backend-oci-smoke.sh"
 
     set +e
     output="$(
@@ -59,6 +72,8 @@ run_smoke_main_case() {
         TARGET_COMMIT='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
         TARGET_IMAGE='docker.io/pxs00/energiai-backend:sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
         IMAGE_DIGEST='sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' \
+        EXPECTED_CLASSIFICATION_SOURCE=ML_MODEL \
+        SMOKE_PROBE_MODE=1 \
         SMOKE_STATUS="${smoke_status}" \
         bash -c '
             source "$1"
@@ -90,7 +105,6 @@ run_smoke_main_case() {
                     printf "%s\\n" "docker.io/pxs00/energiai-backend:sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 fi
             }
-            run_smoke_tests() { return "${SMOKE_STATUS}"; }
             rollback() {
                 printf "[TEST] rollback invoked\\n"
                 return 0
@@ -160,6 +174,7 @@ test_successful_smoke_does_not_roll_back() {
     local output
 
     output="$(run_smoke_main_case 0 0)"
+    assert_contains "${output}" '[TEST] smoke environment received'
     assert_contains "${output}" 'DEPLOY_RESULT=success'
     assert_contains "${output}" 'SMOKE_TEST_RESULT=passed'
     assert_contains "${output}" 'ROLLBACK_ATTEMPTED=no'
@@ -170,11 +185,13 @@ test_failed_smoke_rolls_back_and_preserves_status() {
     local output
 
     output="$(run_smoke_main_case 1 1)"
+    assert_contains "${output}" '[TEST] smoke environment received'
     assert_contains "${output}" '[TEST] rollback invoked'
     assert_contains "${output}" 'DEPLOY_RESULT=failed-rolled-back'
     assert_contains "${output}" 'SMOKE_TEST_RESULT=failed'
     assert_contains "${output}" 'ROLLBACK_ATTEMPTED=yes'
     assert_contains "${output}" 'ROLLBACK_RESULT=succeeded'
+    assert_not_contains "${output}" 'readonly variable'
 }
 
 test_on_error_delegates_to_handle_failure() {
