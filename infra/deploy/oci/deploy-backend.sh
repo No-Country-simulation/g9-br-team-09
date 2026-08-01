@@ -332,7 +332,8 @@ on_error() {
 }
 
 run_smoke_tests() {
-    BASE_URL=http://127.0.0.1:8080/api/v1 \
+    env \
+        BASE_URL=http://127.0.0.1:8080/api/v1 \
         REQUEST_TIMEOUT=15 \
         EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE}" \
         VALIDATED_ARTIFACT="${TARGET_IMAGE}@${IMAGE_DIGEST}" \
