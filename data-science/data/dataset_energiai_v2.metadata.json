@@ -1,0 +1,129 @@
+{
+  "artifact_status": "CANDIDATE",
+  "class_distribution": {
+    "EFICIENTE": 1543,
+    "INEFICIENTE": 1481,
+    "MODERADO": 1976
+  },
+  "classes": [
+    "EFICIENTE",
+    "MODERADO",
+    "INEFICIENTE"
+  ],
+  "column_count": 12,
+  "commit_or_tag": "5aba82b",
+  "dataset_name": "EnergIAI Dataset V2",
+  "dataset_version": "2.0.0-candidate",
+  "duplicate_count": 0,
+  "duplicate_repair": {
+    "feature": "consumo_kwh",
+    "preserves_score_and_category": true,
+    "step": 0.01,
+    "strategy": "deterministic_inward_adjustment"
+  },
+  "feature_duplicate_count": 0,
+  "features": [
+    "consumo_kwh",
+    "uso_horario_pico",
+    "quantidade_equipamentos",
+    "tipo_imovel",
+    "horas_alto_consumo"
+  ],
+  "generated_at_utc": "2026-08-01T00:01:43.910061+00:00",
+  "generation_formula": {
+    "baseline_type": "deterministic_synthetic_oracle",
+    "category_source": "reference_score_ranges",
+    "reference_score_category_ranges": {
+      "EFICIENTE": {
+        "maximum": 30,
+        "minimum": 0
+      },
+      "INEFICIENTE": {
+        "maximum": 100,
+        "minimum": 61
+      },
+      "MODERADO": {
+        "maximum": 60,
+        "minimum": 31
+      }
+    },
+    "score_source": "five_observable_features"
+  },
+  "library_versions": {
+    "numpy": "2.5.1",
+    "pandas": "3.0.5"
+  },
+  "limitations": [
+    "Dataset integralmente sintético, sem validação com dados reais.",
+    "A categoria e o score de referência são derivados deterministicamente das cinco features observáveis.",
+    "A baseline funciona como oráculo sintético para o MVP e não comprova capacidade de generalização externa.",
+    "O resultado mede a capacidade do modelo de reproduzir padrões da base sintética sob as condições testadas."
+  ],
+  "non_finite_count": 0,
+  "null_count": 0,
+  "numeric_limits": {
+    "consumo_kwh": {
+      "maximum": 2500.0,
+      "minimum": 60.0
+    },
+    "horas_alto_consumo": {
+      "maximum": 24,
+      "minimum": 0
+    },
+    "quantidade_equipamentos": {
+      "maximum": 60,
+      "minimum": 1
+    },
+    "score_referencia": {
+      "maximum": 100,
+      "minimum": 0
+    }
+  },
+  "property_distribution": {
+    "APARTAMENTO": 1600,
+    "CASA": 1600,
+    "COMERCIO": 800,
+    "ESCRITORIO": 500,
+    "INDUSTRIA": 250,
+    "OUTRO": 250
+  },
+  "property_types": [
+    "CASA",
+    "APARTAMENTO",
+    "COMERCIO",
+    "ESCRITORIO",
+    "INDUSTRIA",
+    "OUTRO"
+  ],
+  "python_version": "3.14.4",
+  "record_count": 5000,
+  "rejections": 0,
+  "repairs": 24,
+  "scenario_distribution": {
+    "FRONTEIRA": 150,
+    "RARO_EXTREMO": 250,
+    "TIPICO": 4600
+  },
+  "scenario_quotas": {
+    "boundary_ratio": 0.03,
+    "plausible_outlier_ratio": 0.03,
+    "rare_ratio": 0.05
+  },
+  "schema": [
+    "consumo_kwh",
+    "uso_horario_pico",
+    "quantidade_equipamentos",
+    "tipo_imovel",
+    "horas_alto_consumo",
+    "categoria",
+    "score_referencia",
+    "tipo_cenario",
+    "caso_fronteira",
+    "caso_raro",
+    "outlier_plausivel",
+    "lote_geracao"
+  ],
+  "seed": 42,
+  "sha256": "6c147517fce6108f0f663d72c41428736325e248db171a8357050ab02c8a73a3",
+  "target": "categoria"
+}
