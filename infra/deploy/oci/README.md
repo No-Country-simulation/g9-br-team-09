@@ -1,6 +1,10 @@
-# Deploy do backend na OCI Compute — Issues #107 e #109
+# OCI Compute backend deployment — Issues #107, #109, and #110
 
-Este runbook descreve o deploy manual, reproduzível e reversível do backend Spring Boot do EnergiAI e a automação manual equivalente da Issue #109. Ele não provisiona infraestrutura, não instala Docker, não publica portas na internet e não implanta a FastAPI.
+This runbook covers the manual, reproducible, and reversible EnergiAI Spring
+Boot deployment, the manually dispatched automation from Issue #109, and the
+public HTTPS reverse proxy from Issue #110. Terraform provisions the OCI
+network separately. This deployment does not install Docker, deploy FastAPI,
+or expose backend port `8080` to the internet.
 
 ## Escopo, dependências e arquitetura
 
@@ -13,7 +17,17 @@ O fluxo depende das entregas anteriores:
 
 A imagem é construída fora da VM para `linux/amd64`, identificada por uma tag imutável completa e publicada no repositório Docker Hub existente `docker.io/pxs00/energiai-backend`. A alternativa manual de transferir um TAR permanece disponível para recuperação controlada. Na OCI o Compose apenas inicia a imagem com `--no-build`; a `VM.Standard.E2.1.Micro` não faz build de imagens.
 
-O único serviço é `backend`, no profile `oci`, ligado a `127.0.0.1:8080`. O acesso remoto ocorre por túnel SSH. Oracle Autonomous Database é obrigatório; a FastAPI permanece opcional e sua indisponibilidade aciona `RULE_BASED_FALLBACK`.
+Compose runs two services on the existing `energiai-oci` bridge network:
+
+- `backend` keeps the host binding `127.0.0.1:8080:8080`, so local smoke tests
+  and the SSH tunnel continue to work without making port `8080` public;
+- `caddy` uses the pinned `caddy:2.11.4-alpine` image, publishes only TCP ports
+  `80` and `443`, and proxies to `backend:8080` over the Docker network.
+
+Caddy stores certificate and runtime state in the named `caddy_data` and
+`caddy_config` volumes. Oracle Autonomous Database remains mandatory for
+backend readiness. FastAPI remains optional, and its absence activates
+`RULE_BASED_FALLBACK`.
 
 ## Pré-requisitos e diretórios
 
@@ -85,6 +99,8 @@ O resultado final deve indicar o proprietário administrativo, seu grupo primár
 Use [`.env.example`](.env.example) apenas como referência de nomes e formatos. O arquivo real deve definir:
 
 - `BACKEND_IMAGE` com uma tag imutável, nunca `latest` ou a tag móvel `develop`;
+- `API_PUBLIC_HOSTNAME` with the public hostname only, without a scheme, port,
+  path, or real IP stored in a versioned file;
 - `SPRING_PROFILES_ACTIVE=oci`, coerente com o valor `oci` imposto pelo Compose;
 - `JAVA_TOOL_OPTIONS` com limites adequados à VM;
 - `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` recebidos por canal autorizado;
@@ -103,6 +119,95 @@ O valor inicial recomendado da JVM é:
 ```
 
 Os percentuais e o limite do container devem ser confirmados sob carga na instância real.
+
+## Public HTTPS with Caddy
+
+### Zero-cost sslip.io hostname
+
+The OCI instance uses an ephemeral public IP, so this project does not require
+a purchased domain. Obtain the current address from the OCI Console or from the
+Terraform output in an authorized environment, then derive a hostname using
+sslip.io:
+
+```text
+<CURRENT_OCI_PUBLIC_IP>.sslip.io
+```
+
+For example, the documentation-only TEST-NET address `203.0.113.10` would map
+to `203.0.113.10.sslip.io`. Do not copy the real OCI address into `.env.example`,
+the Caddyfile, Terraform source, commits, tickets, or shared command output.
+Because the instance address is ephemeral, stopping or recreating the instance
+may require updating `API_PUBLIC_HOSTNAME` and issuing a new certificate.
+
+In the external `/opt/energiai/config/backend.env`, set:
+
+```text
+API_PUBLIC_HOSTNAME=<CURRENT_OCI_PUBLIC_IP>.sslip.io
+```
+
+The [Caddyfile](Caddyfile) reads this value through Caddy environment
+substitution and sends traffic to `backend:8080`. Caddy automatically manages
+HTTP-to-HTTPS redirects and publicly trusted certificates when the hostname
+resolves to the instance, TCP ports 80 and 443 are reachable, and the ACME
+provider can complete validation.
+
+### CORS and Vercel
+
+After the final Vercel production URL is known, set its exact origin in the
+external backend environment file. Use the scheme and hostname only, with no
+path, and keep multiple exact origins comma-separated:
+
+```text
+CORS_ALLOWED_ORIGINS=https://<FINAL_VERCEL_HOSTNAME>
+```
+
+Never use `*` for the production browser origin. Restart only the backend after
+changing this value, then validate the browser preflight against the deployed
+HTTPS endpoint.
+
+In the Vercel project settings, configure this production environment variable:
+
+```text
+VITE_API_BASE_URL=https://<API_PUBLIC_HOSTNAME>/api/v1
+```
+
+Redeploy the frontend after changing a Vite build-time variable. Do not commit
+the live OCI hostname to the frontend source or its example environment file.
+
+### Validate and start Caddy
+
+Validate the Compose model silently with the external environment file, then
+validate the Caddyfile using the exact pinned image:
+
+```bash
+docker compose \
+  --env-file /opt/energiai/config/backend.env \
+  -f infra/deploy/oci/compose.yaml \
+  config --quiet
+
+docker run --rm \
+  --env-file /opt/energiai/config/backend.env \
+  --volume "${PWD}/infra/deploy/oci/Caddyfile:/etc/caddy/Caddyfile:ro" \
+  caddy:2.11.4-alpine \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+docker compose \
+  --env-file /opt/energiai/config/backend.env \
+  -f infra/deploy/oci/compose.yaml \
+  up -d --no-build caddy
+```
+
+The backend deploy helper still pulls, recreates, verifies, and rolls back only
+the `backend` service. It does not replace Caddy state or remove its named
+volumes. Start Caddy once after configuring the hostname; reload or recreate it
+deliberately after a future Caddyfile or hostname change.
+
+Before calling the endpoint public, verify in the deployed environment that
+DNS resolution points to the current instance, HTTP redirects to HTTPS, the
+certificate is trusted, ports 80/443 are reachable, port 8080 is not publicly
+reachable, and health/readiness, CORS, and an energy-analysis flow work through
+the HTTPS URL. Local Compose and Caddyfile validation do not prove any of those
+runtime conditions.
 
 ## Build externo para linux/amd64
 
@@ -272,9 +377,20 @@ docker compose \
   ps
 ```
 
-Faça a verificação silenciosa da seção de segurança antes de executar o comando documentado de logs. Não use `up --build` na OCI. O Compose publica somente `127.0.0.1:8080:8080`; não há porta Oracle, FastAPI, Actuator ou Docker adicional. A rede `energiai-oci` é bridge, sem `network_mode: host`.
+Before using the documented log command, run the silent security check. Do not
+use `up --build` on OCI. Compose publishes backend port `8080` only on
+`127.0.0.1`; Caddy is the sole public entry point on TCP ports `80` and `443`.
+No Oracle, FastAPI, Actuator-specific, Docker API, or other application port is
+published. The `energiai-oci` network is a bridge and does not use
+`network_mode: host`.
 
 O serviço usa `restart: unless-stopped`, `init: true`, `no-new-privileges`, remove todas as capabilities Linux, aguarda até 30 segundos ao parar e limita o container a `640m`, `0.75` CPU e 128 processos. Não há mount de Docker socket ou de diretórios sensíveis. A rotação `json-file` (`10m`, três arquivos) vem do daemon configurado pela Issue #106 e não é duplicada neste Compose.
+
+Caddy has a separate conservative ceiling of `96m`, `0.20` CPU, and 64
+processes. It drops all Linux capabilities and adds back only
+`NET_BIND_SERVICE` for ports 80 and 443. Together, the declared service limits
+leave capacity for Ubuntu, Docker, SSH, and short operational tasks on the
+1 GB VM; confirm the limits under real traffic before increasing them.
 
 ## Health, liveness, readiness e túnel SSH
 
@@ -547,8 +663,18 @@ Depois da janela de rollback, remova manualmente apenas um TAR identificado em `
 - **Túnel falha:** confirme SSH e o bind local do container. Não abra 8080 publicamente.
 - **CORS nega o frontend:** configure origens exatas separadas por vírgula; não use `*`.
 
-## Fora de escopo e validação pendente
+## Out of scope and pending deployed-environment validation
 
-Permanecem fora desta entrega: Terraform/rede OCI, provisionamento do Docker, abertura de portas públicas, Nginx, HTTPS, domínio/DNS, Load Balancer, FastAPI, wallet Oracle, mudança de migrations ou regras de classificação, frontend, observabilidade externa e deploy automático por pull request ou push.
+This change does not install Docker, reserve an OCI public IP, purchase a
+domain, create OCI DNS records or a Load Balancer, deploy FastAPI or the
+frontend, modify the Oracle wallet/schema/migrations or classification rules,
+add external observability, or deploy automatically from a pull request or
+push.
 
-Build/load, execução do Compose, conexão TLS com Oracle, Flyway, health real, fallback, persistência após restart e medição dos limites precisam ser executados na instância Ubuntu 24.04 `x86_64/amd64` autorizada. Este runbook não contém credenciais e não autoriza acesso à OCI por si só.
+Image build/load, Compose execution, Caddy startup, public DNS resolution,
+certificate issuance and browser trust, HTTP-to-HTTPS redirect, public listener
+reachability, TCP/8080 isolation, browser CORS, Vercel integration, Oracle TLS,
+Flyway, live health/readiness, fallback behavior, persistence after restart,
+and resource-limit measurements still require an authorized Ubuntu 24.04
+`x86_64/amd64` OCI environment. This runbook contains no credentials and does
+not itself authorize OCI access.

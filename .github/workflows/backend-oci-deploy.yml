@@ -170,6 +170,16 @@ jobs:
             -f infra/deploy/oci/compose.yaml \
             config --quiet
 
+      - name: Validate Caddyfile with pinned Caddy image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --env API_PUBLIC_HOSTNAME=api.example.invalid \
+            --volume "${GITHUB_WORKSPACE}/infra/deploy/oci/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -214,7 +224,7 @@ jobs:
             echo "- Resolved commit: \`${COMMIT_SHA}\`"
             echo "- Production source policy: \`${PRODUCTION_SOURCE_POLICY}\`"
             echo "- Platform: \`linux/amd64\`"
-            echo "- Maven, Bash syntax, ShellCheck, actionlint, fixtures, Compose, Docker build, and whitespace: \`passed\`"
+            echo "- Maven, Bash syntax, ShellCheck, actionlint, fixtures, Compose, Caddyfile, Docker build, and whitespace: \`passed\`"
             echo "- Publication, OCI deployment, readiness, smoke tests, and rollback: \`not run\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 

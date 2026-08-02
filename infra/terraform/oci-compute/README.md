@@ -14,13 +14,13 @@ deploy application software.
 | Boot volume | 50 GB by default |
 | Public IP | one ephemeral address on one VNIC |
 | SSH user | `ubuntu` |
-| Public ingress | TCP/22 only, from `ssh_allowed_cidr` |
+| Public ingress | TCP/80 and TCP/443 globally; TCP/22 only from `ssh_allowed_cidr` |
 
 It creates a VCN, managed default security list with no ingress rules, one
 public subnet, Internet Gateway, route table, Network Security Group, restricted
-SSH rule, egress rule, and one Compute instance. It does not create a Load
-Balancer, NAT Gateway, extra volumes, Object Storage, database, domain, DNS
-record, HTTPS endpoint, Docker, or application deployment.
+SSH rule, public HTTP/HTTPS rules, egress rule, and one Compute instance. It
+does not create a Load Balancer, NAT Gateway, extra volumes, Object Storage,
+database, domain, DNS record, HTTPS endpoint, Docker, or application deployment.
 
 The shape is deliberately fixed. If OCI has no capacity for
 `VM.Standard.E2.1.Micro`, provisioning fails; Terraform will not select a paid
@@ -75,9 +75,11 @@ terraform show -no-color plan.tfplan
 ```
 
 Review the plan before any apply. It must show one Compute instance with the
-fixed shape, one VNIC with an ephemeral public IP, and TCP/22 ingress only from
-the configured CIDR. It must not show a flexible shape configuration, an
-alternative shape, extra volume, Load Balancer, or NAT Gateway.
+fixed shape, one VNIC with an ephemeral public IP, TCP/22 ingress only from
+the configured CIDR, and public TCP/80 and TCP/443 ingress for Caddy. It must
+not contain an ingress rule for TCP/8080 or show a flexible shape
+configuration, an alternative shape, extra volume, Load Balancer, or NAT
+Gateway.
 
 Terraform state, plans, `.terraform/`, and real `terraform.tfvars` are
 ignored. Keep local state secure because it can contain infrastructure metadata.
@@ -122,5 +124,8 @@ Do not run `apply` or `destroy` from automation for this issue.
   change the shape or architecture.
 - **SSH unavailable:** confirm the public CIDR, NSG rule, and `ubuntu` user;
   do not open global SSH access.
+- **HTTP or HTTPS unavailable:** confirm the NSG rules for TCP/80 and TCP/443,
+  the host firewall, Caddy container, and current ephemeral public IP. Do not
+  open TCP/8080; Caddy reaches `backend:8080` only through the Docker network.
 - **Authentication failure:** repair external OCI authentication; do not save
   credentials in `.tf` or example files.
