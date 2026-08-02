@@ -1,6 +1,7 @@
 package br.com.g9.energiai.backend.exception;
 
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import br.com.g9.energiai.backend.service.UserAlreadyExistsException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
@@ -40,6 +42,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final String METHOD_NOT_ALLOWED_ERROR = "METHOD_NOT_ALLOWED_ERROR";
     private static final String UNSUPPORTED_MEDIA_TYPE_ERROR = "UNSUPPORTED_MEDIA_TYPE_ERROR";
     private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+    private static final String CONFLICT_ERROR = "CONFLICT_ERROR";
+    private static final String UNAUTHORIZED_ERROR = "UNAUTHORIZED_ERROR";
 
     private static final String GENERIC_VALIDATION_MESSAGE = "Dados de entrada inválidos";
     private static final String GENERIC_INVALID_BODY_TYPE_MESSAGE = "Um campo do corpo da requisição possui tipo inválido";
@@ -52,6 +56,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         "tipoImovel", "tipo_imovel",
         "horasAltoConsumo", "horas_alto_consumo"
     );
+
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException exception,
@@ -149,6 +154,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(buildBody(HttpStatus.NOT_FOUND, NOT_FOUND_ERROR, exception.getMessage()));
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(buildBody(HttpStatus.CONFLICT, CONFLICT_ERROR, exception.getMessage()));
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(buildBody(HttpStatus.UNAUTHORIZED, UNAUTHORIZED_ERROR, exception.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
