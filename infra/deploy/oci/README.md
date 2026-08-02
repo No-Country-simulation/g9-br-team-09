@@ -286,17 +286,58 @@ Defina `BACKEND_IMAGE=docker.io/pxs00/energiai-backend:sha-<commit-completo>`. A
 
 O workflow usa `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` para publicar. A OCI recebe somente o token de deploy, `DOCKERHUB_DEPLOY_TOKEN`, com permissão de leitura: o token de publicação nunca sai do runner e nenhum dos dois é armazenado em `backend.env`.
 
-## Automação manual pelo GitHub Actions — Issue #109
+## Manual GitHub Actions deployment — Issues #109 and #139
 
-O workflow [`.github/workflows/backend-oci-deploy.yml`](../../../.github/workflows/backend-oci-deploy.yml) usa somente `workflow_dispatch`: pull requests e pushes não implantam. Ele aceita `operation=validate` ou `operation=deploy`, uma `ref` (branch, tag ou SHA), `expected_classification_source` opcional (`ML_MODEL` ou `RULE_BASED_FALLBACK`) e exige `confirmation=DEPLOY` exatamente para a segunda opção. A execução é serializada no grupo `backend-oci-deploy`, sem cancelar uma implantação em andamento.
+The [backend OCI workflow](../../../.github/workflows/backend-oci-deploy.yml)
+remains manual and is triggered only with `workflow_dispatch`. Pull requests and
+pushes never deploy. Runs are serialized in the `backend-oci-deploy` concurrency
+group without cancelling an active deployment.
 
-O fluxo é:
+Choose exactly one operation:
 
-1. busca a `ref` validada, faz checkout detached do SHA completo e executa `cd backend && ./mvnw --batch-mode verify`, sintaxe Bash, ShellCheck `v0.10.0`, actionlint `1.7.7`, fixtures, Compose com valores fictícios, `git diff --check <merge-base>..<SHA-resolvido>` contra `origin/develop` (ou `git diff-tree --root --check` no caso excepcional sem merge base) e um build do Dockerfile existente para `linux/amd64`, sem publicação;
-2. em `deploy`, constrói e publica exclusivamente `linux/amd64` em `docker.io/pxs00/energiai-backend:sha-<commit-completo>`, com labels OCI e digest no resumo;
-3. no GitHub Environment `oci-production`, transfere apenas o helper temporário por SSH com `known_hosts` obrigatório, atualiza atomicamente apenas `BACKEND_IMAGE`, faz `docker compose pull backend` e `up -d --no-build backend`;
-4. aguarda o readiness local com tentativas limitadas e executa o único smoke test existente, `infra/tests/smoke/backend-oci-smoke.sh`, com `BASE_URL=http://127.0.0.1:8080/api/v1`;
-5. se uma etapa posterior à troca da imagem falhar, restaura a imagem imutável anterior e o checkout que corresponde ao SHA dessa imagem, recria o backend sem build e aguarda o readiness anterior. A execução continua falhando mesmo após rollback aprovado.
+- `validate` accepts a branch, tag, or commit, resolves it to one immutable
+  40-character SHA, checks out that SHA in detached HEAD state, and runs all
+  validation without publishing or deploying. It does not require confirmation.
+- `deploy-preview` is an integration deployment, not a production release. Its
+  `ref` must be the full lowercase 40-character SHA of a commit reachable from
+  the current `origin/develop`. Branch names, tags, abbreviated SHAs, uppercase
+  values, and commits outside `develop` are rejected. It requires
+  `confirmation=DEPLOY` and still uses the protected `oci-production`
+  environment.
+- `deploy` is the production operation. It requires literal `ref=main`, verifies
+  that the resolved commit is exactly the current `origin/main` HEAD, and
+  requires `confirmation=DEPLOY`. Preview support does not weaken this
+  production guardrail.
+
+For both deployment operations, the validation job's resolved SHA is the only
+source used for the detached publish checkout, Docker tag
+`docker.io/pxs00/energiai-backend:sha-<full-sha>`, OCI repository checkout,
+digest verification, readiness checks, smoke tests, and rollback. The workflow
+never deploys `develop`, `latest`, a branch name, or an abbreviated SHA.
+
+The flow is:
+
+1. authorize the selected operation, resolve and check out the immutable SHA,
+   then run Maven verification, behavioral source-policy tests, Bash syntax,
+   ShellCheck `v0.10.0`, actionlint `1.7.7`, fixtures, fictitious Compose
+   validation, Caddyfile validation, whitespace checks, and an external
+   `linux/amd64` Docker build without publication;
+2. for `deploy-preview` or `deploy`, publish only the immutable full-SHA
+   `linux/amd64` image, preserving its OCI labels and verified digest;
+3. through the protected `oci-production` environment, transfer only the
+   temporary helper over strict SSH, atomically update only `BACKEND_IMAGE`, and
+   run `docker compose pull backend` plus `up -d --no-build backend`;
+4. wait for local readiness and run
+   `infra/tests/smoke/backend-oci-smoke.sh` against
+   `http://127.0.0.1:8080/api/v1`;
+5. after any post-update failure, restore the previous immutable image and the
+   checkout matching that image, recreate the backend without a build, and wait
+   for previous readiness. The workflow remains failed even after a successful
+   rollback.
+
+This backend workflow deploys neither the frontend nor Data Science/FastAPI.
+A preview only permits integration validation of the selected backend commit;
+it does not promote `develop` or represent a production release.
 
 O helper recusa iniciar caso a imagem em execução, `BACKEND_IMAGE` e o checkout OCI não formem o mesmo estado Docker Hub `sha-<40-hex>`, o arquivo externo não seja regular com permissões restritivas ou o checkout tenha alterações locais. Isso evita substituir uma versão não identificável ou sobrescrever trabalho operacional; faça a migração inicial pelo procedimento manual antes de ativar a automação.
 
@@ -320,9 +361,19 @@ Obtenha a impressão digital SSH por um canal confiável durante o provisionamen
 
 As credenciais Oracle continuam exclusivamente em `/opt/energiai/config/backend.env`. A workflow não copia, lista, imprime, renderiza com Compose sem `--quiet` nem usa esse arquivo como secret do GitHub. Nenhuma credencial Docker Hub pertence a `backend.env` ou ao repositório. Depois de cada pull da nova imagem, o helper confirma `linux/amd64` e que os `RepoDigests` locais incluem `pxs00/energiai-backend@<digest-publicado>` antes de executar `docker compose up`; o rollback verifica a arquitetura e continua usando somente a imagem anterior com SHA imutável quando o digest histórico não está disponível.
 
-### Operação, resumo e diagnóstico
+### Operation, summary, and diagnostics
 
-Use primeiro `operation=validate` para uma ref. Para deploy, confirme o SHA e envie `operation=deploy`, a mesma ref e `confirmation=DEPLOY`; se necessário, selecione a fonte esperada para o smoke test. O Job Summary registra ref, SHA completo, imagem e digest imutáveis, plataforma, ambiente, resultado da validação, timestamps, readiness, smoke test, rollback e versões anterior/nova quando seguras; não contém host, JDBC, ambiente externo, chave ou token.
+Run `operation=validate` first. For an integration deployment, copy the full SHA
+that belongs to `develop`, select `operation=deploy-preview`, put that SHA in
+`ref`, and enter `confirmation=DEPLOY`. For production, select
+`operation=deploy`, use literal `ref=main`, and enter the same confirmation. If
+needed, select the expected classification source for the smoke test.
+
+The Job Summary records the operation, requested ref, resolved full SHA, source
+policy, immutable image and digest, platform, environment, validation result,
+timestamps, readiness, smoke tests, rollback, and safe previous/new versions.
+It does not contain the host, JDBC configuration, external environment, key, or
+token.
 
 Uma falha antes da troca de `BACKEND_IMAGE` não requer rollback. Em falhas de pull, Compose, readiness ou smoke após a troca, o helper tenta rollback. Se o rollback também falhar, a job permanece falha e o resumo indica `failed-rollback-failed`; investigue através do acesso SSH aprovado e das verificações seguras de logs abaixo. O rollback da aplicação não reverte migrations compatíveis de Oracle.
 
