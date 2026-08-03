@@ -179,11 +179,37 @@ Detalhes internos permanecem ocultos e os demais endpoints do Actuator não são
 curl --fail http://localhost:8080/api/v1/actuator/health
 ```
 
-### Swagger
+### API pública, Swagger e OpenAPI
 
-```text
-http://localhost:8080/api/v1/swagger-ui/index.html
-```
+O backend está disponível em um ambiente público de integração na OCI:
+
+| Recurso | Endereço |
+| --- | --- |
+| Prefixo utilizado pelos clientes | `https://147.15.30.0.sslip.io/api/v1` |
+| Swagger UI | [https://147.15.30.0.sslip.io/api/v1/swagger-ui/index.html](https://147.15.30.0.sslip.io/api/v1/swagger-ui/index.html) |
+| Contrato OpenAPI | [https://147.15.30.0.sslip.io/api/v1/v3/api-docs](https://147.15.30.0.sslip.io/api/v1/v3/api-docs) |
+| Health | [https://147.15.30.0.sslip.io/api/v1/actuator/health](https://147.15.30.0.sslip.io/api/v1/actuator/health) |
+| Readiness | [https://147.15.30.0.sslip.io/api/v1/actuator/health/readiness](https://147.15.30.0.sslip.io/api/v1/actuator/health/readiness) |
+
+O prefixo é utilizado pelos clientes para compor as rotas da API; ele não é
+uma rota navegável. Uma requisição `GET /api/v1/` retorna `404` porque não
+existe uma rota raiz nesse caminho.
+
+O acesso público utiliza HTTPS com certificado confiável e redirecionamento
+automático de HTTP para HTTPS. A porta 8080 permanece restrita ao loopback da
+instância, enquanto o Caddy publica somente as portas 80 e 443.
+
+O hostname usa o IP público efêmero da instância por meio do sslip.io. Caso a
+instância seja recriada ou receba outro endereço, estes links precisam ser
+atualizados.
+
+Consulte o [runbook de implantação na OCI](infra/deploy/oci/README.md) para
+detalhes operacionais, validações e rollback.
+
+Para execução local:
+
+Swagger UI: [http://localhost:8080/api/v1/swagger-ui/index.html](http://localhost:8080/api/v1/swagger-ui/index.html)
+Contrato OpenAPI: [http://localhost:8080/api/v1/v3/api-docs](http://localhost:8080/api/v1/v3/api-docs)
 
 ### H2 Console
 
