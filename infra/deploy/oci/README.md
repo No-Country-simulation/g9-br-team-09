@@ -1,10 +1,10 @@
-# OCI Compute backend deployment — Issues #107, #109, and #110
+# Implantação do backend na OCI — Issues #107, #109 e #110
 
-This runbook covers the manual, reproducible, and reversible EnergiAI Spring
-Boot deployment, the manually dispatched automation from Issue #109, and the
-public HTTPS reverse proxy from Issue #110. Terraform provisions the OCI
-network separately. This deployment does not install Docker, deploy FastAPI,
-or expose backend port `8080` to the internet.
+Este runbook abrange a implantação manual, reproduzível e reversível do Spring
+Boot do EnergiAI, a automação acionada manualmente da Issue #109 e o proxy
+reverso HTTPS público da Issue #110. O Terraform provisiona a rede da OCI
+separadamente. Esta implantação não instala Docker, não implanta a FastAPI nem
+expõe a porta `8080` do backend à internet.
 
 ## Escopo, dependências e arquitetura
 
@@ -17,16 +17,18 @@ O fluxo depende das entregas anteriores:
 
 A imagem é construída fora da VM para `linux/amd64`, identificada por uma tag imutável completa e publicada no repositório Docker Hub existente `docker.io/pxs00/energiai-backend`. A alternativa manual de transferir um TAR permanece disponível para recuperação controlada. Na OCI o Compose apenas inicia a imagem com `--no-build`; a `VM.Standard.E2.1.Micro` não faz build de imagens.
 
-Compose runs two services on the existing `energiai-oci` bridge network:
+O Compose executa dois serviços na rede bridge `energiai-oci` existente:
 
-- `backend` keeps the host binding `127.0.0.1:8080:8080`, so local smoke tests
-  and the SSH tunnel continue to work without making port `8080` public;
-- `caddy` uses the pinned `caddy:2.11.4-alpine` image, publishes only TCP ports
-  `80` and `443`, and proxies to `backend:8080` over the Docker network.
+- `backend` mantém o bind do host `127.0.0.1:8080:8080`, para que os smoke
+  tests locais e o túnel SSH continuem funcionando sem tornar a porta `8080`
+  pública;
+- `caddy` usa a imagem fixada `caddy:2.11.4-alpine`, publica somente as portas
+  TCP `80` e `443` e faz proxy para `backend:8080` pela rede Docker.
 
-Caddy stores certificate and runtime state in the named `caddy_data` and
-`caddy_config` volumes. Oracle Autonomous Database remains mandatory for
-backend readiness. FastAPI remains optional, and its absence activates
+O Caddy armazena o certificado e o estado de execução nos volumes nomeados
+`caddy_data` e `caddy_config`. O Oracle Autonomous Database continua
+obrigatório para a readiness do backend. A FastAPI continua opcional, e sua
+ausência ativa
 `RULE_BASED_FALLBACK`.
 
 ## Pré-requisitos e diretórios
@@ -99,8 +101,8 @@ O resultado final deve indicar o proprietário administrativo, seu grupo primár
 Use [`.env.example`](.env.example) apenas como referência de nomes e formatos. O arquivo real deve definir:
 
 - `BACKEND_IMAGE` com uma tag imutável, nunca `latest` ou a tag móvel `develop`;
-- `API_PUBLIC_HOSTNAME` with the public hostname only, without a scheme, port,
-  path, or real IP stored in a versioned file;
+- `API_PUBLIC_HOSTNAME` somente com o hostname público, sem esquema, porta,
+  caminho ou IP real em arquivo versionado;
 - `SPRING_PROFILES_ACTIVE=oci`, coerente com o valor `oci` imposto pelo Compose;
 - `JAVA_TOOL_OPTIONS` com limites adequados à VM;
 - `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` recebidos por canal autorizado;
@@ -120,71 +122,90 @@ O valor inicial recomendado da JVM é:
 
 Os percentuais e o limite do container devem ser confirmados sob carga na instância real.
 
-## Public HTTPS with Caddy
+## HTTPS público com Caddy
 
-### Zero-cost sslip.io hostname
+### Hostname sslip.io sem custo
 
-The OCI instance uses an ephemeral public IP, so this project does not require
-a purchased domain. Obtain the current address from the OCI Console or from the
-Terraform output in an authorized environment, then derive a hostname using
-sslip.io:
+A instância da OCI usa um IP público efêmero; portanto, este projeto não exige
+um domínio adquirido. Obtenha o endereço atual no Console da OCI ou na saída do
+Terraform em ambiente autorizado e derive um hostname usando sslip.io:
 
 ```text
 <CURRENT_OCI_PUBLIC_IP>.sslip.io
 ```
 
-For example, the documentation-only TEST-NET address `203.0.113.10` would map
-to `203.0.113.10.sslip.io`. Do not copy the real OCI address into `.env.example`,
-the Caddyfile, Terraform source, commits, tickets, or shared command output.
-Because the instance address is ephemeral, stopping or recreating the instance
-may require updating `API_PUBLIC_HOSTNAME` and issuing a new certificate.
+O hostname público pode ser documentado no README principal do projeto e nas
+evidências de implantação, pois ele é intencionalmente exposto à internet. Não
+coloque o endereço ativo em `.env.example`, no Caddyfile, no código do
+Terraform ou em modelos de configuração reutilizáveis. Nunca publique IPs
+privados, OCIDs, credenciais ou detalhes de conexão do banco de dados.
 
-In the external `/opt/energiai/config/backend.env`, set:
+Como o endereço da instância é efêmero, parar ou recriar a instância pode exigir
+a atualização de `API_PUBLIC_HOSTNAME`, dos links públicos documentados e do
+certificado emitido.
+
+No arquivo externo `/opt/energiai/config/backend.env`, defina:
 
 ```text
 API_PUBLIC_HOSTNAME=<CURRENT_OCI_PUBLIC_IP>.sslip.io
 ```
 
-The [Caddyfile](Caddyfile) reads this value through Caddy environment
-substitution and sends traffic to `backend:8080`. Caddy automatically manages
-HTTP-to-HTTPS redirects and publicly trusted certificates when the hostname
-resolves to the instance, TCP ports 80 and 443 are reachable, and the ACME
-provider can complete validation.
+O [Caddyfile](Caddyfile) lê esse valor pela substituição de ambiente do Caddy e
+envia o tráfego para `backend:8080`. O Caddy gerencia automaticamente os
+redirecionamentos de HTTP para HTTPS e certificados publicamente confiáveis
+quando o hostname resolve para a instância, as portas TCP 80 e 443 estão
+acessíveis e o provedor ACME consegue concluir a validação.
 
-### CORS and Vercel
+O Caddy termina HTTPS e encaminha os cabeçalhos padrão de proxy reverso. No
+profile `oci`, o backend usa esses cabeçalhos para que Swagger/OpenAPI gere a
+origem HTTPS pública. O hostname não é fixado na aplicação.
 
-After the final Vercel production URL is known, set its exact origin in the
-external backend environment file. Use the scheme and hostname only, with no
-path, and keep multiple exact origins comma-separated:
+### CORS e Vercel
+
+Depois de conhecer a URL final de produção da Vercel, defina sua origem exata
+no arquivo de ambiente externo do backend. Use somente o esquema e o hostname,
+sem caminho, e mantenha múltiplas origens exatas separadas por vírgula:
 
 ```text
 CORS_ALLOWED_ORIGINS=https://<FINAL_VERCEL_HOSTNAME>
 ```
 
-Never use `*` for the production browser origin. Restart only the backend after
-changing this value, then validate the browser preflight against the deployed
-HTTPS endpoint.
+Nunca use `*` para a origem do navegador em produção. Reinicie somente o
+backend depois de alterar esse valor e valide o preflight do navegador no
+endpoint HTTPS implantado.
 
-In the Vercel project settings, configure this production environment variable:
+Nas configurações do projeto Vercel, configure esta variável de ambiente de
+produção:
 
 ```text
 VITE_API_BASE_URL=https://<API_PUBLIC_HOSTNAME>/api/v1
 ```
 
-Redeploy the frontend after changing a Vite build-time variable. Do not commit
-the live OCI hostname to the frontend source or its example environment file.
+Reimplante o frontend depois de alterar uma variável de build do Vite. Não faça
+commit do hostname ativo da OCI no código do frontend nem em seu arquivo de
+ambiente de exemplo.
 
-### Validate and start Caddy
+### Validar e iniciar o Caddy
 
-Validate the Compose model silently with the external environment file, then
-validate the Caddyfile using the exact pinned image:
+Valide silenciosamente o modelo do Compose com o arquivo de ambiente externo e,
+em seguida, valide o Caddyfile usando a imagem exata fixada:
+
+O container executa sem privilégios para ignorar permissões do host. O
+Caddyfile não contém credenciais e precisa ser legível dentro do container.
 
 ```bash
 docker compose \
   --env-file /opt/energiai/config/backend.env \
   -f infra/deploy/oci/compose.yaml \
   config --quiet
+```
 
+```bash
+chmod 0644 infra/deploy/oci/Caddyfile
+stat --format='owner=%U group=%G mode=%a' infra/deploy/oci/Caddyfile
+```
+
+```bash
 docker run --rm \
   --env-file /opt/energiai/config/backend.env \
   --volume "${PWD}/infra/deploy/oci/Caddyfile:/etc/caddy/Caddyfile:ro" \
@@ -197,19 +218,20 @@ docker compose \
   up -d --no-build caddy
 ```
 
-The backend deploy helper still pulls, recreates, verifies, and rolls back only
-the `backend` service. It does not replace Caddy state or remove its named
-volumes. Start Caddy once after configuring the hostname; reload or recreate it
-deliberately after a future Caddyfile or hostname change.
+O helper de deploy do backend continua fazendo pull, recriando, verificando e
+executando rollback somente do serviço `backend`. Ele não substitui o estado do
+Caddy nem remove seus volumes nomeados. Inicie o Caddy uma vez após configurar
+o hostname; recarregue-o ou recrie-o deliberadamente após uma futura alteração
+do Caddyfile ou do hostname.
 
-Before calling the endpoint public, verify in the deployed environment that
-DNS resolution points to the current instance, HTTP redirects to HTTPS, the
-certificate is trusted, ports 80/443 are reachable, port 8080 is not publicly
-reachable, and health/readiness, CORS, and an energy-analysis flow work through
-the HTTPS URL. Local Compose and Caddyfile validation do not prove any of those
-runtime conditions.
+Antes de considerar o endpoint público, verifique no ambiente implantado que a
+resolução DNS aponta para a instância atual, HTTP redireciona para HTTPS, o
+certificado é confiável, as portas 80/443 estão acessíveis, a porta 8080 não
+está publicamente acessível e health/readiness, CORS e um fluxo de análise
+energética funcionam pela URL HTTPS. A validação local do Compose e do
+Caddyfile não comprova nenhuma dessas condições de execução.
 
-## Build externo para linux/amd64
+## Construção externa para linux/amd64
 
 Na raiz do checkout local validado, identifique o commit e use-o na tag:
 
@@ -286,17 +308,60 @@ Defina `BACKEND_IMAGE=docker.io/pxs00/energiai-backend:sha-<commit-completo>`. A
 
 O workflow usa `DOCKERHUB_USERNAME` e `DOCKERHUB_TOKEN` para publicar. A OCI recebe somente o token de deploy, `DOCKERHUB_DEPLOY_TOKEN`, com permissão de leitura: o token de publicação nunca sai do runner e nenhum dos dois é armazenado em `backend.env`.
 
-## Automação manual pelo GitHub Actions — Issue #109
+## Implantação manual via GitHub Actions — Issues #109 e #139
 
-O workflow [`.github/workflows/backend-oci-deploy.yml`](../../../.github/workflows/backend-oci-deploy.yml) usa somente `workflow_dispatch`: pull requests e pushes não implantam. Ele aceita `operation=validate` ou `operation=deploy`, uma `ref` (branch, tag ou SHA), `expected_classification_source` opcional (`ML_MODEL` ou `RULE_BASED_FALLBACK`) e exige `confirmation=DEPLOY` exatamente para a segunda opção. A execução é serializada no grupo `backend-oci-deploy`, sem cancelar uma implantação em andamento.
+A [workflow do backend na OCI](../../../.github/workflows/backend-oci-deploy.yml)
+permanece manual e é acionada somente por `workflow_dispatch`. Pull requests e
+pushes nunca implantam. As execuções são serializadas no grupo de concorrência
+`backend-oci-deploy`, sem cancelar uma implantação ativa.
+
+Escolha exatamente uma operação:
+
+- `validate` aceita uma branch, tag ou commit, resolve-o para um SHA imutável de
+  40 caracteres, faz checkout desse SHA em estado HEAD destacado e executa toda
+  a validação sem publicar nem implantar. Não exige confirmação.
+- `deploy-preview` é uma implantação de integração, não uma release de
+  produção. Seu `ref` deve ser o SHA completo em minúsculas, com 40 caracteres,
+  de um commit alcançável a partir do `origin/develop` atual. Nomes de branches,
+  tags, SHAs abreviados, valores em maiúsculas e commits fora de `develop` são
+  rejeitados. Exige `confirmation=DEPLOY` e continua usando o ambiente
+  protegido `oci-production`.
+- `deploy` é a operação de produção. Exige o literal `ref=main`, verifica se o
+  commit resolvido é exatamente o HEAD atual de `origin/main` e exige
+  `confirmation=DEPLOY`. O suporte a preview não enfraquece essa proteção de
+  produção.
+
+Para ambas as operações de implantação, o SHA resolvido pelo job de validação é
+a única fonte usada para o checkout destacado de publicação, a tag Docker
+`docker.io/pxs00/energiai-backend:sha-<full-sha>`, o checkout do repositório na
+OCI, a verificação de digest, as checagens de readiness, os smoke tests e o
+rollback. A workflow nunca implanta `develop`, `latest`, um nome de branch ou
+um SHA abreviado.
 
 O fluxo é:
 
-1. busca a `ref` validada, faz checkout detached do SHA completo e executa `cd backend && ./mvnw --batch-mode verify`, sintaxe Bash, ShellCheck `v0.10.0`, actionlint `1.7.7`, fixtures, Compose com valores fictícios, `git diff --check <merge-base>..<SHA-resolvido>` contra `origin/develop` (ou `git diff-tree --root --check` no caso excepcional sem merge base) e um build do Dockerfile existente para `linux/amd64`, sem publicação;
-2. em `deploy`, constrói e publica exclusivamente `linux/amd64` em `docker.io/pxs00/energiai-backend:sha-<commit-completo>`, com labels OCI e digest no resumo;
-3. no GitHub Environment `oci-production`, transfere apenas o helper temporário por SSH com `known_hosts` obrigatório, atualiza atomicamente apenas `BACKEND_IMAGE`, faz `docker compose pull backend` e `up -d --no-build backend`;
-4. aguarda o readiness local com tentativas limitadas e executa o único smoke test existente, `infra/tests/smoke/backend-oci-smoke.sh`, com `BASE_URL=http://127.0.0.1:8080/api/v1`;
-5. se uma etapa posterior à troca da imagem falhar, restaura a imagem imutável anterior e o checkout que corresponde ao SHA dessa imagem, recria o backend sem build e aguarda o readiness anterior. A execução continua falhando mesmo após rollback aprovado.
+1. autorize a operação selecionada, resolva e faça checkout do SHA imutável e,
+   então, execute a verificação Maven, testes de política de código
+   comportamental, sintaxe Bash, ShellCheck `v0.10.0`, actionlint `1.7.7`,
+   fixtures, validação fictícia do Compose, validação do Caddyfile, checagens de
+   whitespace e um build Docker externo `linux/amd64` sem publicação;
+2. para `deploy-preview` ou `deploy`, publique somente a imagem imutável
+   `linux/amd64` com SHA completo, preservando seus labels OCI e o digest
+   verificado;
+3. pelo ambiente protegido `oci-production`, transfira somente o helper
+   temporário por SSH estrito, atualize atomicamente apenas `BACKEND_IMAGE` e
+   execute `docker compose pull backend` junto de `up -d --no-build backend`;
+4. aguarde a readiness local e execute
+   `infra/tests/smoke/backend-oci-smoke.sh` contra
+   `http://127.0.0.1:8080/api/v1`;
+5. após qualquer falha pós-atualização, restaure a imagem imutável anterior e
+   o checkout correspondente a ela, recrie o backend sem build e aguarde a
+   readiness anterior. A workflow permanece falha mesmo após um rollback bem-
+   sucedido.
+
+Essa workflow de backend não implanta nem o frontend nem Data Science/FastAPI.
+Um preview permite somente a validação de integração do commit de backend
+selecionado; ele não promove `develop` nem representa uma release de produção.
 
 O helper recusa iniciar caso a imagem em execução, `BACKEND_IMAGE` e o checkout OCI não formem o mesmo estado Docker Hub `sha-<40-hex>`, o arquivo externo não seja regular com permissões restritivas ou o checkout tenha alterações locais. Isso evita substituir uma versão não identificável ou sobrescrever trabalho operacional; faça a migração inicial pelo procedimento manual antes de ativar a automação.
 
@@ -320,9 +385,20 @@ Obtenha a impressão digital SSH por um canal confiável durante o provisionamen
 
 As credenciais Oracle continuam exclusivamente em `/opt/energiai/config/backend.env`. A workflow não copia, lista, imprime, renderiza com Compose sem `--quiet` nem usa esse arquivo como secret do GitHub. Nenhuma credencial Docker Hub pertence a `backend.env` ou ao repositório. Depois de cada pull da nova imagem, o helper confirma `linux/amd64` e que os `RepoDigests` locais incluem `pxs00/energiai-backend@<digest-publicado>` antes de executar `docker compose up`; o rollback verifica a arquitetura e continua usando somente a imagem anterior com SHA imutável quando o digest histórico não está disponível.
 
-### Operação, resumo e diagnóstico
+### Operação, resumo e diagnósticos
 
-Use primeiro `operation=validate` para uma ref. Para deploy, confirme o SHA e envie `operation=deploy`, a mesma ref e `confirmation=DEPLOY`; se necessário, selecione a fonte esperada para o smoke test. O Job Summary registra ref, SHA completo, imagem e digest imutáveis, plataforma, ambiente, resultado da validação, timestamps, readiness, smoke test, rollback e versões anterior/nova quando seguras; não contém host, JDBC, ambiente externo, chave ou token.
+Execute `operation=validate` primeiro. Para uma implantação de integração,
+copie o SHA completo que pertence a `develop`, selecione
+`operation=deploy-preview`, informe esse SHA em `ref` e insira
+`confirmation=DEPLOY`. Para produção, selecione `operation=deploy`, use o
+literal `ref=main` e insira a mesma confirmação. Se necessário, selecione a
+fonte de classificação esperada para o smoke test.
+
+O Job Summary registra a operação, o ref solicitado, o SHA completo resolvido,
+a política de código, a imagem imutável e o digest, a plataforma, o ambiente,
+o resultado da validação, timestamps, readiness, smoke tests, rollback e as
+versões anterior/nova seguras. Ele não contém o host, a configuração JDBC, o
+ambiente externo, a chave ou o token.
 
 Uma falha antes da troca de `BACKEND_IMAGE` não requer rollback. Em falhas de pull, Compose, readiness ou smoke após a troca, o helper tenta rollback. Se o rollback também falhar, a job permanece falha e o resumo indica `failed-rollback-failed`; investigue através do acesso SSH aprovado e das verificações seguras de logs abaixo. O rollback da aplicação não reverte migrations compatíveis de Oracle.
 
@@ -377,22 +453,23 @@ docker compose \
   ps
 ```
 
-Before using the documented log command, run the silent security check. Do not
-use `up --build` on OCI. Compose publishes backend port `8080` only on
-`127.0.0.1`; Caddy is the sole public entry point on TCP ports `80` and `443`.
-No Oracle, FastAPI, Actuator-specific, Docker API, or other application port is
-published. The `energiai-oci` network is a bridge and does not use
-`network_mode: host`.
+Antes de usar o comando de logs documentado, execute a checagem silenciosa de
+segurança. Não use `up --build` na OCI. O Compose publica a porta `8080` do
+backend somente em `127.0.0.1`; o Caddy é o único ponto de entrada público nas
+portas TCP `80` e `443`. Nenhuma porta do Oracle, FastAPI, específica do
+Actuator, da API Docker ou de outra aplicação é publicada. A rede
+`energiai-oci` é uma bridge e não usa `network_mode: host`.
 
 O serviço usa `restart: unless-stopped`, `init: true`, `no-new-privileges`, remove todas as capabilities Linux, aguarda até 30 segundos ao parar e limita o container a `640m`, `0.75` CPU e 128 processos. Não há mount de Docker socket ou de diretórios sensíveis. A rotação `json-file` (`10m`, três arquivos) vem do daemon configurado pela Issue #106 e não é duplicada neste Compose.
 
-Caddy has a separate conservative ceiling of `96m`, `0.20` CPU, and 64
-processes. It drops all Linux capabilities and adds back only
-`NET_BIND_SERVICE` for ports 80 and 443. Together, the declared service limits
-leave capacity for Ubuntu, Docker, SSH, and short operational tasks on the
-1 GB VM; confirm the limits under real traffic before increasing them.
+O Caddy tem um limite conservador separado de `96m`, `0.20` CPU e 64 processos.
+Ele remove todas as capabilities Linux e adiciona de volta somente
+`NET_BIND_SERVICE` para as portas 80 e 443. Juntos, os limites declarados dos
+serviços deixam capacidade para Ubuntu, Docker, SSH e tarefas operacionais
+curtas na VM de 1 GB; confirme os limites sob tráfego real antes de aumentá-
+los.
 
-## Health, liveness, readiness e túnel SSH
+## Verificações de saúde, liveness, readiness e túnel SSH
 
 No próprio host, valide os três endpoints sem exibir detalhes internos:
 
@@ -605,7 +682,7 @@ docker compose \
 
 Repita health, readiness, análise, persistência, logs e recursos. Não exclua a imagem anterior antes de encerrar a janela de rollback.
 
-## Rollback
+## Reversão (rollback)
 
 1. Registre a imagem atual com `docker compose ... images backend` e recupere a tag imutável anterior do histórico da implantação.
 2. Não remova nem substitua `/opt/energiai/config/backend.env`.
@@ -651,7 +728,7 @@ docker compose \
 
 Depois da janela de rollback, remova manualmente apenas um TAR identificado em `/opt/energiai/images` ou uma imagem antiga sem containers dependentes. Revise o alvo antes de `rm` ou `docker image rm`. Nunca remova `/opt/energiai/config/backend.env`, `/var/lib/docker`, `/var/lib/containerd`, volumes de forma ampla ou dados do Oracle como parte da limpeza comum.
 
-## Troubleshooting
+## Solução de problemas
 
 - **`BACKEND_IMAGE` ausente:** preencha uma tag imutável; o Compose falha deliberadamente quando ela está vazia.
 - **Imagem com arquitetura errada:** refaça o build com `--platform linux/amd64`; não adicione ARM64.
@@ -663,18 +740,19 @@ Depois da janela de rollback, remova manualmente apenas um TAR identificado em `
 - **Túnel falha:** confirme SSH e o bind local do container. Não abra 8080 publicamente.
 - **CORS nega o frontend:** configure origens exatas separadas por vírgula; não use `*`.
 
-## Out of scope and pending deployed-environment validation
+## Fora de escopo e validação pendente no ambiente implantado
 
-This change does not install Docker, reserve an OCI public IP, purchase a
-domain, create OCI DNS records or a Load Balancer, deploy FastAPI or the
-frontend, modify the Oracle wallet/schema/migrations or classification rules,
-add external observability, or deploy automatically from a pull request or
-push.
+Esta alteração não instala Docker, não reserva um IP público da OCI, não adquire
+um domínio, não cria registros DNS da OCI ou um Load Balancer, não implanta a
+FastAPI ou o frontend, não modifica a wallet/o schema/as migrations do Oracle
+ou as regras de classificação, não adiciona observabilidade externa nem
+implanta automaticamente a partir de uma pull request ou push.
 
-Image build/load, Compose execution, Caddy startup, public DNS resolution,
-certificate issuance and browser trust, HTTP-to-HTTPS redirect, public listener
-reachability, TCP/8080 isolation, browser CORS, Vercel integration, Oracle TLS,
-Flyway, live health/readiness, fallback behavior, persistence after restart,
-and resource-limit measurements still require an authorized Ubuntu 24.04
-`x86_64/amd64` OCI environment. This runbook contains no credentials and does
-not itself authorize OCI access.
+O build/load da imagem, a execução do Compose, a inicialização do Caddy, a
+resolução DNS pública, a emissão do certificado e a confiança do navegador, o
+redirecionamento de HTTP para HTTPS, a acessibilidade do listener público, o
+isolamento TCP/8080, o CORS do navegador, a integração com a Vercel, o TLS do
+Oracle, o Flyway, health/readiness em execução, o comportamento de fallback, a
+persistência após restart e as medições dos limites de recursos ainda exigem um
+ambiente OCI autorizado com Ubuntu 24.04 `x86_64/amd64`. Este runbook não contém
+credenciais e não autoriza, por si só, o acesso à OCI.
