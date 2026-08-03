@@ -302,10 +302,10 @@ emit_status() {
     fi
 }
 
-on_error() {
-    local exit_code="$?"
-
+handle_failure() {
     trap - ERR
+    local exit_code="$1"
+
     set +e
     if [[ "${deployment_changed}" == true ]]; then
         rollback_attempted="yes"
@@ -323,6 +323,21 @@ on_error() {
         emit_status failed-before-update
     fi
     exit "${exit_code}"
+}
+
+on_error() {
+    local exit_code="$?"
+
+    handle_failure "${exit_code}"
+}
+
+run_smoke_tests() {
+    env \
+        BASE_URL=http://127.0.0.1:8080/api/v1 \
+        REQUEST_TIMEOUT=15 \
+        EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE}" \
+        VALIDATED_ARTIFACT="${TARGET_IMAGE}@${IMAGE_DIGEST}" \
+        "${REPOSITORY_DIR}/infra/tests/smoke/backend-oci-smoke.sh"
 }
 
 cleanup() {
@@ -391,12 +406,13 @@ main() {
     wait_for_readiness
 
     smoke_test_result="running"
-    BASE_URL=http://127.0.0.1:8080/api/v1 \
-        REQUEST_TIMEOUT=15 \
-        EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE}" \
-        VALIDATED_ARTIFACT="${TARGET_IMAGE}@${IMAGE_DIGEST}" \
-        "${REPOSITORY_DIR}/infra/tests/smoke/backend-oci-smoke.sh"
-    smoke_test_result="passed"
+    if run_smoke_tests; then
+        smoke_test_result="passed"
+    else
+        smoke_status="$?"
+        smoke_test_result="failed"
+        handle_failure "${smoke_status}"
+    fi
 
     deployment_changed=false
     readiness_result="passed"

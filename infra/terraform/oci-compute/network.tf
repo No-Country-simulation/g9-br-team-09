@@ -65,6 +65,38 @@ resource "oci_core_network_security_group_security_rule" "ssh_ingress" {
   }
 }
 
+resource "oci_core_network_security_group_security_rule" "http_ingress" {
+  network_security_group_id = oci_core_network_security_group.compute.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "Public HTTP ingress for Caddy redirects and ACME challenges"
+
+  tcp_options {
+    destination_port_range {
+      min = 80
+      max = 80
+    }
+  }
+}
+
+resource "oci_core_network_security_group_security_rule" "https_ingress" {
+  network_security_group_id = oci_core_network_security_group.compute.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  source_type               = "CIDR_BLOCK"
+  description               = "Public HTTPS ingress for Caddy"
+
+  tcp_options {
+    destination_port_range {
+      min = 443
+      max = 443
+    }
+  }
+}
+
 resource "oci_core_network_security_group_security_rule" "internet_egress" {
   network_security_group_id = oci_core_network_security_group.compute.id
   direction                 = "EGRESS"
