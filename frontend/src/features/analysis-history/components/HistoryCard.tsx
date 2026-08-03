@@ -51,6 +51,7 @@ export function HistoryCard({ analysis, onViewDetails }: HistoryCardProps) {
           variant="ghost"
           icon={ExternalLink}
           onClick={() => onViewDetails(analysis.id)}
+          aria-label={`Ver detalhes da análise ${analysis.id}`}
         >
           Ver detalhes
         </Button>
