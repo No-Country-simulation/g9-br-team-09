@@ -1,10 +1,11 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import { MainLayout } from '@/app/layout/MainLayout'
+import { AnalysisDetailsPage } from '@/features/analysis-details/pages/DetailsPage'
+import { AnalysisHistoryPage } from '@/features/analysis-history/pages/HistoryPage'
 import { AnalysisFormPage } from '@/features/energy-analysis/pages/EnergyAnalysisFormPage'
 import { EnergyAnalysisHomePage } from '@/features/energy-analysis/pages/EnergyAnalysisHomePage'
 import { AnalysisResultsPage } from '@/features/energy-analysis/pages/EnergyAnalysisResultsPage'
-import { AnalysisHistoryPage } from '@/features/history-analysis/pages/HistoryPage'
 import { SummaryDashboardPage } from '@/features/summary-dashboard/pages/DashboardPage'
 
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -36,7 +37,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'detalhes/:id',
-        element: <h1>Detalhes</h1>,
+        element: <AnalysisDetailsPage />,
       },
       {
         path: '*',
