@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,7 +47,11 @@ public class AuthController {
     @GetMapping("/me")
     @Operation(summary = "Obter dados do usuário autenticado", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<AuthenticatedUserResponse> me(@AuthenticationPrincipal Jwt jwt) {
-        Long userId = Long.valueOf(jwt.getSubject());
-        return ResponseEntity.ok(authenticationService.getMe(userId));
+        try {
+            Long userId = Long.valueOf(jwt.getSubject());
+            return ResponseEntity.ok(authenticationService.getMe(userId));
+        } catch (NumberFormatException e) {
+            throw new BadCredentialsException("Token com identificador inválido");
+        }
     }
 }

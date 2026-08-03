@@ -54,7 +54,7 @@ Windows PowerShell:
 
 ```powershell
 cd backend
-$env:JWT_SECRET="MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
+$env:JWT_SECRET="<segredo-base64-com-pelo-menos-256-bits>"
 $env:SPRING_PROFILES_ACTIVE="local"
 .\mvnw.cmd spring-boot:run
 ```
@@ -129,6 +129,11 @@ openssl rand -base64 32
 - roles: Lista de permissões (ex: ["USER"]).
 - jti: Identificador único do token (UUID).
 - iat / exp: Timestamps de emissão e expiração.
+
+### Normalização e Erros
+
+- Normalização de Dados: O sistema realiza o trim() e a conversão para minúsculas do e-mail antes da validação (@Email) e da persistência, garantindo unicidade e evitando erros de entrada.
+- Padronização de Erros: Falhas de segurança (token ausente, expirado ou inválido) retornam o objeto ApiErrorResponse com os códigos UNAUTHORIZED_ERROR (401) ou FORBIDDEN_ERROR (403), mantendo o contrato global da API.
 
 ## Endpoints
 
