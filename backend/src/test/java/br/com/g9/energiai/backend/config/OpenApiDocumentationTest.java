@@ -91,4 +91,16 @@ class OpenApiDocumentationTest {
             .andExpect(jsonPath("$.servers[0].url").value(containsString("https://")))
             .andExpect(jsonPath("$.servers[0].url").value(not(containsString("http://"))));
     }
+
+    @Test
+    @DisplayName("Deve usar HTTPS padrão quando o proxy não encaminha a porta")
+    void shouldGenerateOpenApiServerUsingForwardedHttpsOriginWithoutPort() throws Exception {
+        mockMvc.perform(get("/api/v1/v3/api-docs")
+                .contextPath("/api/v1")
+                .header("X-Forwarded-Proto", "https")
+                .header("X-Forwarded-Host", "api.example.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.servers[0].url").value("https://api.example.com/api/v1"))
+            .andExpect(jsonPath("$.servers[0].url").value(not(containsString("http://"))));
+    }
 }
