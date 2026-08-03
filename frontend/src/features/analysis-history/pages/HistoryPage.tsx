@@ -1,56 +1,76 @@
 import { CircleX, SearchX } from 'lucide-react'
 import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { Button } from '@/shared/components/Button'
 import { EmptyState } from '@/shared/components/EmptyState'
 import { PageHero } from '@/shared/components/PageHero'
 
 import { HistoryCard } from '../components/HistoryCard'
 import { HistoryCardsSkeleton } from '../components/HistoryCardsSkeleton'
 import { Pagination } from '../components/Pagination'
+import { ANALYSIS_HISTORY_PAGE_SIZE, ANALYSIS_HISTORY_PATH } from '../constants'
 import { useAnalysisHistory } from '../hooks/useAnalysisHistory'
 
-export const PAGE_SIZE = 6
 export function AnalysisHistoryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawPage = Number(searchParams.get('page'))
   const page = Number.isInteger(rawPage) && rawPage >= 0 ? rawPage : 0
   const { data, isLoading, error, refetch } = useAnalysisHistory({
     page,
-    size: PAGE_SIZE,
+    size: ANALYSIS_HISTORY_PAGE_SIZE,
   })
+  const location = useLocation()
   const navigate = useNavigate()
 
-  const emptySlotsCount = Math.max(PAGE_SIZE - (data?.analises.length ?? 0), 0)
+  const currentData = data?.pagina_atual === page ? data : null
+  const showLoading =
+    isLoading || (!error && data !== null && currentData === null)
+  const emptySlotsCount = Math.max(
+    ANALYSIS_HISTORY_PAGE_SIZE - (currentData?.analises.length ?? 0),
+    0,
+  )
 
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {
-      prev.set('page', String(newPage))
-      return prev
+      const next = new URLSearchParams(prev)
+      next.set('page', String(newPage))
+      return next
     })
   }
 
   useEffect(() => {
-    if (!data || data.total_paginas === 0) return
+    if (
+      isLoading ||
+      error ||
+      !data ||
+      data.pagina_atual !== page ||
+      data.total_paginas === 0
+    ) {
+      return
+    }
 
     const lastValidPage = data.total_paginas - 1
     if (page > lastValidPage) {
       setSearchParams(
         (prev) => {
-          prev.set('page', String(lastValidPage))
-          return prev
+          const next = new URLSearchParams(prev)
+          next.set('page', String(lastValidPage))
+          return next
         },
         { replace: true },
       )
     }
-  }, [data, page, setSearchParams])
+  }, [data, error, isLoading, page, setSearchParams])
 
   const handleViewDetails = (id: number) => {
-    navigate(`/detalhes/${id}`)
+    navigate(`/detalhes/${id}`, {
+      state: {
+        from: `${ANALYSIS_HISTORY_PATH}${location.search}`,
+      },
+    })
   }
 
-  const totalElements = data?.total_elementos
+  const totalElements = currentData?.total_elementos
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
       <PageHero
@@ -58,16 +78,16 @@ export function AnalysisHistoryPage() {
         subtitle="Acompanhe o histórico das análises realizadas"
       />
 
-      {isLoading && <HistoryCardsSkeleton />}
+      {showLoading && <HistoryCardsSkeleton />}
 
-      {!isLoading && !data && (
+      {!showLoading && error && (
         <EmptyState
           icon={CircleX}
-          title={error ?? 'Nenhuma análise disponível.'}
+          title={error}
           action={{ label: 'Tentar novamente', onClick: refetch }}
         />
       )}
-      {!isLoading && data && totalElements === 0 && (
+      {!showLoading && !error && currentData && totalElements === 0 && (
         <EmptyState
           icon={SearchX}
           title="Nenhuma análise realizada ainda"
@@ -78,10 +98,10 @@ export function AnalysisHistoryPage() {
           }}
         />
       )}
-      {!isLoading && (totalElements ?? 0) > 0 && data && (
+      {!showLoading && !error && (totalElements ?? 0) > 0 && currentData && (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data.analises.map((analysis) => (
+            {currentData.analises.map((analysis) => (
               <HistoryCard
                 key={analysis.id}
                 analysis={analysis}
@@ -93,26 +113,14 @@ export function AnalysisHistoryPage() {
               <div
                 key={`placeholder-${index}`}
                 aria-hidden="true"
-                className=" display-none sm:h-69.75 sm:invisible"
+                className="sm:h-69.75 hidden sm:invisible sm:block"
               />
             ))}
           </div>
 
-          {error && (
-            <div
-              role="alert"
-              className="text-destructive mt-4 flex flex-col items-center gap-2 text-sm"
-            >
-              <p className="text-red-500">{error}</p>
-              <Button variant="ghost" onClick={refetch}>
-                Tentar novamente
-              </Button>
-            </div>
-          )}
-
           <Pagination
-            currentPage={data.pagina_atual}
-            totalPages={data.total_paginas}
+            currentPage={currentData.pagina_atual}
+            totalPages={currentData.total_paginas}
             onPageChange={handlePageChange}
           />
         </>
