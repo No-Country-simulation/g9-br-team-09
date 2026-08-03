@@ -156,6 +156,10 @@ redirecionamentos de HTTP para HTTPS e certificados publicamente confiáveis
 quando o hostname resolve para a instância, as portas TCP 80 e 443 estão
 acessíveis e o provedor ACME consegue concluir a validação.
 
+O Caddy termina HTTPS e encaminha os cabeçalhos padrão de proxy reverso. No
+profile `oci`, o backend usa esses cabeçalhos para que Swagger/OpenAPI gere a
+origem HTTPS pública. O hostname não é fixado na aplicação.
+
 ### CORS e Vercel
 
 Depois de conhecer a URL final de produção da Vercel, defina sua origem exata
