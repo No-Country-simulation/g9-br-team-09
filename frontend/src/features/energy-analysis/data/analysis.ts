@@ -1,24 +1,14 @@
 import { ClockArrowUp, Home, Hourglass, Tv, Zap } from 'lucide-react'
 
+import { propertyTypeSchema } from '@/shared/schemas/analysis'
+import { propertyTypeLabels } from '@/shared/utils/analysisDisplay'
+
 import type { FormStepProps } from '../components/FormStep'
 import {
   ANALYSIS_FIELD_LIMITS,
   BOOLEAN_RADIO_VALUES,
-  PROPERTY_TYPE_VALUES,
 } from '../schemas/analysis'
 export type { AnalysisFormData } from '../schemas/analysis'
-
-const propertyTypeLabels: Record<
-  (typeof PROPERTY_TYPE_VALUES)[number],
-  string
-> = {
-  CASA: 'Casa',
-  APARTAMENTO: 'Apartamento',
-  COMERCIO: 'Comércio',
-  ESCRITORIO: 'Escritório',
-  INDUSTRIA: 'Indústria',
-  OUTRO: 'Outros',
-}
 
 const booleanRadioLabels: Record<
   (typeof BOOLEAN_RADIO_VALUES)[number],
@@ -36,7 +26,7 @@ export const analysisFormSteps = [
     question: 'Qual é o tipo do imóvel que será analisado?',
     field: {
       kind: 'radio',
-      options: PROPERTY_TYPE_VALUES.map((value) => ({
+      options: propertyTypeSchema.options.map((value) => ({
         label: propertyTypeLabels[value],
         value,
       })),

@@ -2,7 +2,7 @@ import 'react-loading-skeleton/dist/skeleton.css'
 
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton'
 
-import { CARD_BASE_CLASSES } from '@/shared/utils/cardStyles'
+import { CardSkeleton } from '@/shared/components/CardSkeleton'
 
 export function SummaryCardsSkeleton() {
   return (
@@ -14,18 +14,18 @@ export function SummaryCardsSkeleton() {
         {/* Cards superiores */}
         <div className="grid gap-4 sm:max-w-4xl md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className={`${CARD_BASE_CLASSES} border-border`}>
+            <CardSkeleton key={index}>
               <Skeleton width={150} height={16} />
 
               <div className="mt-3">
                 <Skeleton width={140} height={42} />
               </div>
-            </div>
+            </CardSkeleton>
           ))}
         </div>
 
         {/* Card do gráfico */}
-        <div className={`${CARD_BASE_CLASSES} border-border sm:max-w-4xl`}>
+        <CardSkeleton className="sm:max-w-4xl">
           <Skeleton width={220} height={16} />
 
           <div className="mt-3 flex flex-col gap-8 sm:flex-row">
@@ -51,10 +51,10 @@ export function SummaryCardsSkeleton() {
               ))}
             </div>
           </div>
-        </div>
+        </CardSkeleton>
       </div>
       <span className="sr-only" role="status">
-        Carregando resumo de análises...
+        Carregando resumo de análises
       </span>
     </SkeletonTheme>
   )
