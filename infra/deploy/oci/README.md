@@ -133,11 +133,15 @@ sslip.io:
 <CURRENT_OCI_PUBLIC_IP>.sslip.io
 ```
 
-For example, the documentation-only TEST-NET address `203.0.113.10` would map
-to `203.0.113.10.sslip.io`. Do not copy the real OCI address into `.env.example`,
-the Caddyfile, Terraform source, commits, tickets, or shared command output.
+The public hostname may be documented in the main project README and in
+deployment evidence because it is intentionally internet-facing. Do not place
+the live address in `.env.example`, the Caddyfile, Terraform source or reusable
+configuration templates. Never publish private IPs, OCIDs, credentials or
+database connection details.
+
 Because the instance address is ephemeral, stopping or recreating the instance
-may require updating `API_PUBLIC_HOSTNAME` and issuing a new certificate.
+may require updating `API_PUBLIC_HOSTNAME`, the documented public links and the
+issued certificate.
 
 In the external `/opt/energiai/config/backend.env`, set:
 
@@ -184,6 +188,12 @@ docker compose \
   --env-file /opt/energiai/config/backend.env \
   -f infra/deploy/oci/compose.yaml \
   config --quiet
+
+O container executa sem privilégios para ignorar permissões do host.
+O Caddyfile não contém credenciais e precisa ser legível dentro do container.
+
+chmod 0644 infra/deploy/oci/Caddyfile
+stat --format='owner=%U group=%G mode=%a' infra/deploy/oci/Caddyfile
 
 docker run --rm \
   --env-file /opt/energiai/config/backend.env \
