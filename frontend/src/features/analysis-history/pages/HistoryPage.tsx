@@ -31,7 +31,7 @@ export function AnalysisHistoryPage() {
     })
   }
 
-   useEffect(() => {
+  useEffect(() => {
     if (!data || data.total_paginas === 0) return
 
     const lastValidPage = data.total_paginas - 1

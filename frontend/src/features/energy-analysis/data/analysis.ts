@@ -1,8 +1,6 @@
 import { ClockArrowUp, Home, Hourglass, Tv, Zap } from 'lucide-react'
 
-import {
-  propertyTypeSchema,
-} from '@/shared/schemas/analysis'
+import { propertyTypeSchema } from '@/shared/schemas/analysis'
 import { propertyTypeLabels } from '@/shared/utils/analysisDisplay'
 
 import type { FormStepProps } from '../components/FormStep'

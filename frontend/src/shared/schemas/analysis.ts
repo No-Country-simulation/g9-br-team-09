@@ -24,4 +24,3 @@ export const analysisClassificationSchema = z.object({
   recomendacoes: z.array(z.string()),
   fonte_classificacao: classificationSourceSchema,
 })
-

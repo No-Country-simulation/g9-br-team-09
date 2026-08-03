@@ -1,6 +1,10 @@
-import z from "zod";
+import z from 'zod'
 
-import { categorySchema, classificationSourceSchema, propertyTypeSchema } from "@/shared/schemas/analysis";
+import {
+  categorySchema,
+  classificationSourceSchema,
+  propertyTypeSchema,
+} from '@/shared/schemas/analysis'
 
 export const analysisDetailSchema = z.object({
   id: z.number().int(),
