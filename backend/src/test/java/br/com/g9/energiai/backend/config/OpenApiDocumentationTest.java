@@ -10,12 +10,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "server.forward-headers-strategy=framework")
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 class OpenApiDocumentationTest {
@@ -75,5 +76,31 @@ class OpenApiDocumentationTest {
         mockMvc.perform(get("/api/v1/swagger-ui/index.html").contextPath("/api/v1"))
             .andExpect(status().isOk())
             .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML));
+    }
+
+    @Test
+    @DisplayName("Deve gerar o servidor OpenAPI com a origem HTTPS encaminhada pelo proxy")
+    void shouldGenerateOpenApiServerUsingForwardedHttpsOrigin() throws Exception {
+        mockMvc.perform(get("/api/v1/v3/api-docs")
+                .contextPath("/api/v1")
+                .header("X-Forwarded-Proto", "https")
+                .header("X-Forwarded-Host", "api.example.com")
+                .header("X-Forwarded-Port", "443"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.servers[0].url").value("https://api.example.com/api/v1"))
+            .andExpect(jsonPath("$.servers[0].url").value(containsString("https://")))
+            .andExpect(jsonPath("$.servers[0].url").value(not(containsString("http://"))));
+    }
+
+    @Test
+    @DisplayName("Deve usar HTTPS padrão quando o proxy não encaminha a porta")
+    void shouldGenerateOpenApiServerUsingForwardedHttpsOriginWithoutPort() throws Exception {
+        mockMvc.perform(get("/api/v1/v3/api-docs")
+                .contextPath("/api/v1")
+                .header("X-Forwarded-Proto", "https")
+                .header("X-Forwarded-Host", "api.example.com"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.servers[0].url").value("https://api.example.com/api/v1"))
+            .andExpect(jsonPath("$.servers[0].url").value(not(containsString("http://"))));
     }
 }
