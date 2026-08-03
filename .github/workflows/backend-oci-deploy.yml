@@ -329,7 +329,11 @@ jobs:
       - validate
       - publish
     if: inputs.operation == 'deploy' || inputs.operation == 'deploy-preview'
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - oci-deploy
     environment: oci-production
     env:
       IMAGE: docker.io/pxs00/energiai-backend:sha-${{ needs.validate.outputs.commit_sha }}
