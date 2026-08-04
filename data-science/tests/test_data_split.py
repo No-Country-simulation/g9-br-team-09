@@ -95,6 +95,7 @@ def test_split_preserva_contrato_determinismo_e_entrada(
     for target in (
         first_split.y_train,
         first_split.y_validation,
+        first_split.y_test,
     ):
         observed_distribution = (
             target.value_counts(normalize=True).sort_index()
