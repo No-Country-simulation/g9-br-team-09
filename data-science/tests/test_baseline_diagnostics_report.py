@@ -24,7 +24,7 @@ def test_comando_gera_relatorio_markdown_reprodutivel(
             sys.executable,
             str(SCRIPT_PATH),
             "--sample-size",
-            "200",
+            "5000",
             "--seed",
             "42",
             "--n-repeats",
@@ -53,7 +53,7 @@ def test_comando_gera_relatorio_markdown_reprodutivel(
     assert "## Diagnóstico por ablação" in first_content
     assert "## Permutation importance" in first_content
     assert "## Consolidação do guardrail" in first_content
-    assert "Tamanho da amostra | `200`" in first_content
+    assert "Tamanho da amostra | `5000`" in first_content
     assert "Seed | `42`" in first_content
     assert "Repetições da permutação | `2`" in first_content
     assert (
@@ -70,7 +70,7 @@ def test_comando_gera_relatorio_markdown_reprodutivel(
             sys.executable,
             str(SCRIPT_PATH),
             "--sample-size",
-            "200",
+            "5000",
             "--seed",
             "42",
             "--n-repeats",
@@ -89,3 +89,36 @@ def test_comando_gera_relatorio_markdown_reprodutivel(
     second_content = output_path.read_text(encoding="utf-8")
 
     assert first_content == second_content
+
+
+def test_comando_rejeita_tamanho_fora_do_contrato(
+    tmp_path: Path,
+) -> None:
+    """Rejeita execução com quantidade diferente de 5.000 registros."""
+    output_path = tmp_path / "invalid-report.md"
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT_PATH),
+            "--sample-size",
+            "200",
+            "--seed",
+            "42",
+            "--n-repeats",
+            "2",
+            "--output",
+            str(output_path),
+        ],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode != 0
+    assert (
+        "o tamanho da amostra deve ser exatamente 5000"
+        in completed.stderr
+    )
+    assert not output_path.exists()

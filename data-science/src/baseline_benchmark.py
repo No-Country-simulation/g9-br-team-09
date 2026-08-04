@@ -10,29 +10,12 @@ from sklearn.dummy import DummyClassifier
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, make_scorer
-from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
+import data_split
 import schema
-
-
-def prepare_benchmark_data(
-    sample: pd.DataFrame,
-) -> tuple[pd.DataFrame, pd.Series]:
-    """Separa as features permitidas e o target oficial."""
-    features = sample.loc[
-        :,
-        list(schema.FEATURE_COLUMNS),
-    ].copy()
-
-    target = sample.loc[
-        :,
-        schema.TARGET_COLUMN,
-    ].copy()
-
-    return features, target
 
 
 def build_preprocessor(
@@ -86,55 +69,6 @@ def build_preprocessor(
         )
 
     return ColumnTransformer(transformers=transformers)
-
-
-def split_benchmark_data(
-    features: pd.DataFrame,
-    target: pd.Series,
-    seed: int = schema.RANDOM_SEED,
-) -> tuple[
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.Series,
-    pd.Series,
-    pd.Series,
-]:
-    """Divide os dados em treino, validação e teste estratificados."""
-    (
-        x_train,
-        x_remaining,
-        y_train,
-        y_remaining,
-    ) = train_test_split(
-        features,
-        target,
-        test_size=0.30,
-        random_state=seed,
-        stratify=target,
-    )
-
-    (
-        x_validation,
-        x_test,
-        y_validation,
-        y_test,
-    ) = train_test_split(
-        x_remaining,
-        y_remaining,
-        test_size=0.50,
-        random_state=seed,
-        stratify=y_remaining,
-    )
-
-    return (
-        x_train,
-        x_validation,
-        x_test,
-        y_train,
-        y_validation,
-        y_test,
-    )
 
 
 def evaluate_dummy_baseline(
@@ -243,41 +177,31 @@ def run_baseline_benchmark(
     seed: int = schema.RANDOM_SEED,
 ) -> dict[str, float]:
     """Executa os modelos diagnósticos na mesma divisão estratificada."""
-    features, target = prepare_benchmark_data(sample)
-
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = split_benchmark_data(
-        features,
-        target,
+    split = data_split.create_stratified_data_split(
+        sample,
         seed=seed,
     )
 
     return {
         "dummy": evaluate_dummy_baseline(
-            x_train,
-            y_train,
-            x_validation,
-            y_validation,
+            split.x_train,
+            split.y_train,
+            split.x_validation,
+            split.y_validation,
             seed=seed,
         ),
         "regressao_logistica": evaluate_logistic_baseline(
-            x_train,
-            y_train,
-            x_validation,
-            y_validation,
+            split.x_train,
+            split.y_train,
+            split.x_validation,
+            split.y_validation,
             seed=seed,
         ),
         "arvore_decisao": evaluate_tree_baseline(
-            x_train,
-            y_train,
-            x_validation,
-            y_validation,
+            split.x_train,
+            split.y_train,
+            split.x_validation,
+            split.y_validation,
             seed=seed,
         ),
     }
@@ -288,21 +212,10 @@ def run_single_feature_logistic_benchmark(
     seed: int = schema.RANDOM_SEED,
 ) -> dict[str, float]:
     """Avalia a Regressão Logística com uma feature por vez."""
-    features, target = prepare_benchmark_data(sample)
-
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = split_benchmark_data(
-        features,
-        target,
+    split = data_split.create_stratified_data_split(
+        sample,
         seed=seed,
     )
-
     results: dict[str, float] = {}
 
     for feature in schema.FEATURE_COLUMNS:
@@ -325,16 +238,16 @@ def run_single_feature_logistic_benchmark(
         )
 
         model.fit(
-            x_train.loc[:, selected_columns],
-            y_train,
+            split.x_train.loc[:, selected_columns],
+            split.y_train,
         )
         predictions = model.predict(
-            x_validation.loc[:, selected_columns]
+            split.x_validation.loc[:, selected_columns]
         )
 
         results[feature] = float(
             f1_score(
-                y_validation,
+                split.y_validation,
                 predictions,
                 labels=list(schema.ENERGY_CATEGORIES),
                 average="macro",
@@ -362,21 +275,10 @@ def run_leave_one_feature_out_logistic_benchmark(
     seed: int = schema.RANDOM_SEED,
 ) -> dict[str, float]:
     """Avalia a Regressão Logística removendo uma feature por execução."""
-    features, target = prepare_benchmark_data(sample)
-
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = split_benchmark_data(
-        features,
-        target,
+    split = data_split.create_stratified_data_split(
+        sample,
         seed=seed,
     )
-
     feature_sets = build_leave_one_feature_out_feature_sets()
     results: dict[str, float] = {}
 
@@ -400,16 +302,16 @@ def run_leave_one_feature_out_logistic_benchmark(
         )
 
         model.fit(
-            x_train.loc[:, selected_columns],
-            y_train,
+            split.x_train.loc[:, selected_columns],
+            split.y_train,
         )
         predictions = model.predict(
-            x_validation.loc[:, selected_columns]
+            split.x_validation.loc[:, selected_columns]
         )
 
         results[removed_feature] = float(
             f1_score(
-                y_validation,
+                split.y_validation,
                 predictions,
                 labels=list(schema.ENERGY_CATEGORIES),
                 average="macro",
@@ -435,18 +337,8 @@ def run_permutation_importance_logistic_benchmark(
             "n_repeats deve ser um inteiro maior que zero"
         )
 
-    features, target = prepare_benchmark_data(sample)
-
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = split_benchmark_data(
-        features,
-        target,
+    split = data_split.create_stratified_data_split(
+        sample,
         seed=seed,
     )
 
@@ -466,7 +358,7 @@ def run_permutation_importance_logistic_benchmark(
         ]
     )
 
-    model.fit(x_train, y_train)
+    model.fit(split.x_train, split.y_train)
 
     f1_macro_scorer = make_scorer(
         f1_score,
@@ -477,8 +369,8 @@ def run_permutation_importance_logistic_benchmark(
 
     permutation_results = permutation_importance(
         model,
-        x_validation,
-        y_validation,
+        split.x_validation,
+        split.y_validation,
         scoring=f1_macro_scorer,
         n_repeats=n_repeats,
         random_state=seed,

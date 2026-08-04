@@ -33,6 +33,31 @@ def _positive_integer(value: str) -> int:
     return parsed_value
 
 
+def _dataset_size_argument(value: str) -> int:
+    """Aceita somente o tamanho contratual do Dataset EnergIAI V2."""
+    parsed_value = _positive_integer(value)
+
+    if parsed_value != schema.DATASET_SIZE:
+        raise argparse.ArgumentTypeError(
+            "o tamanho da amostra deve ser exatamente "
+            f"{schema.DATASET_SIZE}"
+        )
+
+    return parsed_value
+
+
+def _validate_dataset_size(sample_size: int) -> None:
+    """Valida o tamanho contratual antes de gerar o relatório."""
+    if isinstance(sample_size, bool) or not isinstance(sample_size, int):
+        raise TypeError("sample_size deve ser um inteiro")
+
+    if sample_size != schema.DATASET_SIZE:
+        raise ValueError(
+            "sample_size deve ser exatamente "
+            f"{schema.DATASET_SIZE}"
+        )
+
+
 def parse_arguments(
     arguments: Sequence[str] | None = None,
 ) -> argparse.Namespace:
@@ -45,9 +70,12 @@ def parse_arguments(
     )
     parser.add_argument(
         "--sample-size",
-        type=_positive_integer,
+        type=_dataset_size_argument,
         default=schema.DATASET_SIZE,
-        help="Quantidade de registros sintéticos utilizados.",
+        help=(
+            "Quantidade contratual de registros sintéticos "
+            f"({schema.DATASET_SIZE})."
+        ),
     )
     parser.add_argument(
         "--seed",
@@ -257,6 +285,8 @@ def render_report(
     output_path: Path,
 ) -> str:
     """Executa os diagnósticos e devolve o relatório completo."""
+    _validate_dataset_size(sample_size)
+
     sample = dataset.generate_audited_sample_with_rare_cases(
         sample_size,
         seed=seed,

@@ -11,43 +11,29 @@ import pytest
 SRC_PATH = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(SRC_PATH))
 
-import baseline_benchmark  # noqa: E402
 import dataset  # noqa: E402
 import multivariate_validation  # noqa: E402
+import data_split  # noqa: E402
 import schema  # noqa: E402
 
 
-def _build_explicit_splits() -> tuple[
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.Series,
-    pd.Series,
-    pd.Series,
-]:
+def _build_explicit_splits() -> data_split.DataSplit:
     """Cria os splits reproduzíveis usados nos testes."""
     sample = dataset.generate_audited_sample_with_rare_cases(
         schema.DATASET_SIZE,
         seed=schema.RANDOM_SEED,
     )
-    features, target = baseline_benchmark.prepare_benchmark_data(sample)
 
-    return baseline_benchmark.split_benchmark_data(
-        features,
-        target,
+    return data_split.create_stratified_data_split(
+        sample,
         seed=schema.RANDOM_SEED,
     )
 
 
 def test_mutual_information_usa_somente_treino_e_e_reprodutivel() -> None:
-    (
-        x_train,
-        _,
-        _,
-        y_train,
-        _,
-        _,
-    ) = _build_explicit_splits()
+    split = _build_explicit_splits()
+    x_train = split.x_train
+    y_train = split.y_train
 
     original_x_train = x_train.copy(deep=True)
     original_y_train = y_train.copy(deep=True)
@@ -80,14 +66,11 @@ def test_mutual_information_usa_somente_treino_e_e_reprodutivel() -> None:
 
 
 def test_modelos_individuais_usam_splits_explicitos() -> None:
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = _build_explicit_splits()
+    split = _build_explicit_splits()
+    x_train = split.x_train
+    x_validation = split.x_validation
+    y_train = split.y_train
+    y_validation = split.y_validation
 
     original_x_train = x_train.copy(deep=True)
     original_x_validation = x_validation.copy(deep=True)
@@ -133,14 +116,11 @@ def test_modelos_individuais_usam_splits_explicitos() -> None:
 
 
 def test_ablacao_usa_splits_explicitos_e_e_reprodutivel() -> None:
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = _build_explicit_splits()
+    split = _build_explicit_splits()
+    x_train = split.x_train
+    x_validation = split.x_validation
+    y_train = split.y_train
+    y_validation = split.y_validation
 
     first_results = (
         multivariate_validation.evaluate_leave_one_feature_out_logistic(
@@ -170,14 +150,11 @@ def test_ablacao_usa_splits_explicitos_e_e_reprodutivel() -> None:
 
 
 def test_permutation_importance_usa_splits_explicitos() -> None:
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = _build_explicit_splits()
+    split = _build_explicit_splits()
+    x_train = split.x_train
+    x_validation = split.x_validation
+    y_train = split.y_train
+    y_validation = split.y_validation
 
     first_results = (
         multivariate_validation.calculate_permutation_importance(
@@ -227,14 +204,11 @@ def test_permutation_importance_usa_splits_explicitos() -> None:
 def test_permutation_importance_rejeita_repeticoes_invalidas(
     invalid_n_repeats: object,
 ) -> None:
-    (
-        x_train,
-        x_validation,
-        _,
-        y_train,
-        y_validation,
-        _,
-    ) = _build_explicit_splits()
+    split = _build_explicit_splits()
+    x_train = split.x_train
+    x_validation = split.x_validation
+    y_train = split.y_train
+    y_validation = split.y_validation
 
     with pytest.raises(
         ValueError,
@@ -251,14 +225,9 @@ def test_permutation_importance_rejeita_repeticoes_invalidas(
 
 
 def test_diagnostico_rejeita_conjunto_incompleto_de_features() -> None:
-    (
-        x_train,
-        _,
-        _,
-        y_train,
-        _,
-        _,
-    ) = _build_explicit_splits()
+    split = _build_explicit_splits()
+    x_train = split.x_train
+    y_train = split.y_train
 
     incomplete_x_train = x_train.drop(
         columns=["tipo_imovel"],
