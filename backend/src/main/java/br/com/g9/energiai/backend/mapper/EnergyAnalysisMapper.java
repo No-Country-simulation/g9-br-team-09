@@ -4,6 +4,7 @@ import br.com.g9.energiai.backend.dto.request.EnergyAnalysisRequest;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
+import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.service.EnergyAnalysisResult;
 import org.springframework.stereotype.Component;
@@ -16,7 +17,8 @@ public class EnergyAnalysisMapper {
 
     public EnergyAnalysisEntity toEntity(EnergyAnalysisRequest request,
                                          EnergyAnalysisResult analysisResult,
-                                         BigDecimal estimatedCost) {
+                                         BigDecimal estimatedCost,
+                                         AppUser user) {
         List<String> safeRecommendations = analysisResult.recomendacoes() == null
                 ? List.of()
                 : List.copyOf(analysisResult.recomendacoes());
@@ -33,13 +35,15 @@ public class EnergyAnalysisMapper {
                 .custoEstimadoMensal(estimatedCost)
                 .recomendacoes(safeRecommendations)
                 .fonteClassificacao(analysisResult.fonteClassificacao())
+                .user(user)
                 .build();
     }
 
     public EnergyAnalysisEntity toEntity(EnergyAnalysisRequest request,
                                          EnergyAnalysisResponse classification,
                                          BigDecimal estimatedCost,
-                                         List<String> recommendations) {
+                                         List<String> recommendations,
+                                         AppUser user) {
         List<String> safeRecommendations = recommendations == null ? List.of() : List.copyOf(recommendations);
 
         return EnergyAnalysisEntity.builder()
@@ -54,6 +58,7 @@ public class EnergyAnalysisMapper {
                 .custoEstimadoMensal(estimatedCost)
                 .recomendacoes(safeRecommendations)
                 .fonteClassificacao(classification.fonteClassificacao())
+                .user(user)
                 .build();
     }
 
