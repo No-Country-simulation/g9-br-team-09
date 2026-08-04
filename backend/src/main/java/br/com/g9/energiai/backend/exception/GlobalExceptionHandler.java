@@ -1,13 +1,18 @@
 package br.com.g9.energiai.backend.exception;
 
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
+import br.com.g9.energiai.backend.service.UserAlreadyExistsException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -40,24 +45,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final String METHOD_NOT_ALLOWED_ERROR = "METHOD_NOT_ALLOWED_ERROR";
     private static final String UNSUPPORTED_MEDIA_TYPE_ERROR = "UNSUPPORTED_MEDIA_TYPE_ERROR";
     private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+    private static final String CONFLICT_ERROR = "CONFLICT_ERROR";
+    private static final String UNAUTHORIZED_ERROR = "UNAUTHORIZED_ERROR";
+    private static final String FORBIDDEN_ERROR = "FORBIDDEN_ERROR";
 
     private static final String GENERIC_VALIDATION_MESSAGE = "Dados de entrada inválidos";
     private static final String GENERIC_INVALID_BODY_TYPE_MESSAGE = "Um campo do corpo da requisição possui tipo inválido";
     private static final String GENERIC_HTTP_MESSAGE = "Corpo da requisição inválido";
     private static final String GENERIC_INTERNAL_MESSAGE = "Erro interno no servidor";
+
     private static final Map<String, String> PUBLIC_FIELD_NAMES = Map.of(
-        "consumoKwh", "consumo_kwh",
-        "usoHorarioPico", "uso_horario_pico",
-        "quantidadeEquipamentos", "quantidade_equipamentos",
-        "tipoImovel", "tipo_imovel",
-        "horasAltoConsumo", "horas_alto_consumo"
+            "nome", "nome",
+            "email", "email",
+            "password", "senha",
+            "consumoKwh", "consumo_kwh",
+            "usoHorarioPico", "uso_horario_pico",
+            "quantidadeEquipamentos", "quantidade_equipamentos",
+            "tipoImovel", "tipo_imovel",
+            "horasAltoConsumo", "horas_alto_consumo"
     );
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException exception,
-                                                                 HttpHeaders headers,
-                                                                 HttpStatusCode status,
-                                                                 WebRequest request) {
+                                                                  HttpHeaders headers,
+                                                                  HttpStatusCode status,
+                                                                  WebRequest request) {
         return buildResponse(status, VALIDATION_ERROR, buildValidationMessage(exception), headers, request);
     }
 
@@ -74,20 +86,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         if (invalidFormatException.getTargetType() != null && invalidFormatException.getTargetType().isEnum()) {
             return buildResponse(
-                status,
-                ENUM_TYPE_ERROR,
-                buildEnumMessage(invalidFormatException.getTargetType()),
-                headers,
-                request
+                    status,
+                    ENUM_TYPE_ERROR,
+                    buildEnumMessage(invalidFormatException.getTargetType()),
+                    headers,
+                    request
             );
         }
 
         return buildResponse(
-            status,
-            INVALID_TYPE_ERROR,
-            buildInvalidTypeMessage(invalidFormatException),
-            headers,
-            request
+                status,
+                INVALID_TYPE_ERROR,
+                buildInvalidTypeMessage(invalidFormatException),
+                headers,
+                request
         );
     }
 
@@ -148,14 +160,39 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(ResourceNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(buildBody(HttpStatus.NOT_FOUND, NOT_FOUND_ERROR, exception.getMessage()));
+                .body(buildBody(HttpStatus.NOT_FOUND, NOT_FOUND_ERROR, exception.getMessage()));
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ApiErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(buildBody(HttpStatus.CONFLICT, CONFLICT_ERROR, exception.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(buildBody(HttpStatus.CONFLICT, CONFLICT_ERROR, "E-mail já cadastrado ou violação de integridade"));
+    }
+
+    @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(Exception exception) {
+        String message = (exception instanceof BadCredentialsException) ? exception.getMessage() : "E-mail ou senha inválidos";
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(buildBody(HttpStatus.UNAUTHORIZED, UNAUTHORIZED_ERROR, message));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(buildBody(HttpStatus.FORBIDDEN, FORBIDDEN_ERROR, "Acesso negado"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception) {
         log.error("Erro inesperado no processamento da requisição", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(buildBody(HttpStatus.INTERNAL_SERVER_ERROR, INTERNAL_ERROR, GENERIC_INTERNAL_MESSAGE));
+                .body(buildBody(HttpStatus.INTERNAL_SERVER_ERROR, INTERNAL_ERROR, GENERIC_INTERNAL_MESSAGE));
     }
 
     private ResponseEntity<Object> buildResponse(HttpStatusCode status,
@@ -172,36 +209,34 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private String buildValidationMessage(MethodArgumentNotValidException exception) {
         List<String> fieldMessages = exception.getBindingResult()
-            .getFieldErrors()
-            .stream()
-            .filter(error -> hasText(error.getField()) && hasText(error.getDefaultMessage()))
-            .map(error -> toPublicFieldName(error.getField()) + ": " + error.getDefaultMessage())
-            .sorted()
-            .toList();
+                .getFieldErrors()
+                .stream()
+                .filter(error -> hasText(error.getField()) && hasText(error.getDefaultMessage()))
+                .map(error -> toPublicFieldName(error.getField()) + ": " + error.getDefaultMessage())
+                .sorted()
+                .toList();
 
         if (!fieldMessages.isEmpty()) {
             return String.join("; ", fieldMessages);
         }
 
         return exception.getBindingResult()
-            .getGlobalErrors()
-            .stream()
-            .map(error -> error.getDefaultMessage())
-            .filter(this::hasText)
-            .findFirst()
-            .orElse(GENERIC_VALIDATION_MESSAGE);
+                .getGlobalErrors()
+                .stream()
+                .map(error -> error.getDefaultMessage())
+                .filter(this::hasText)
+                .findFirst()
+                .orElse(GENERIC_VALIDATION_MESSAGE);
     }
 
     private InvalidFormatException findInvalidFormatException(HttpMessageNotReadableException exception) {
         Throwable current = exception;
-
         while (current != null) {
             if (current instanceof InvalidFormatException invalidFormatException) {
                 return invalidFormatException;
             }
             current = current.getCause();
         }
-
         return null;
     }
 
@@ -212,11 +247,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private String buildInvalidTypeMessage(InvalidFormatException exception) {
         String fieldPath = exception.getPath()
-            .stream()
-            .map(this::formatPathReference)
-            .filter(this::hasText)
-            .reduce(this::appendPathSegment)
-            .orElse("");
+                .stream()
+                .map(this::formatPathReference)
+                .filter(this::hasText)
+                .reduce(this::appendPathSegment)
+                .orElse("");
 
         if (!hasText(fieldPath)) {
             return GENERIC_INVALID_BODY_TYPE_MESSAGE;
@@ -229,11 +264,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (hasText(reference.getPropertyName())) {
             return toPublicFieldName(reference.getPropertyName());
         }
-
         if (reference.getIndex() >= 0) {
             return "[" + reference.getIndex() + "]";
         }
-
         return "";
     }
 

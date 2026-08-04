@@ -3,6 +3,7 @@ package br.com.g9.energiai.backend.controller;
 import br.com.g9.energiai.backend.client.ml.MlPredictionClient;
 import br.com.g9.energiai.backend.client.ml.exception.MlPredictionClientException;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
+import br.com.g9.energiai.backend.support.LocalProfileTest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles("local")
+@LocalProfileTest
 class EnergyAnalysisControllerTest {
 
     @Autowired
