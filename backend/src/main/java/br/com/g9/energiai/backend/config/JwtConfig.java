@@ -58,8 +58,8 @@ public class JwtConfig {
     }
 
     private byte[] decodeAndValidateSecret(String secret) {
-        if (secret == null || secret.isBlank()) {
-            throw new IllegalArgumentException("O segredo JWT não pode estar vazio. Verifique a variável de ambiente JWT_SECRET.");
+        if (secret == null || secret.isBlank() || secret.startsWith("${")) {
+            throw new IllegalArgumentException("O segredo JWT não foi fornecido. Certifique-se de definir a variável de ambiente JWT_SECRET.");
         }
 
         byte[] decoded;

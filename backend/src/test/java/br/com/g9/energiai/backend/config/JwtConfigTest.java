@@ -16,7 +16,7 @@ class JwtConfigTest {
         JwtConfig config = new JwtConfig(properties);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, config::jwtEncoder);
-        assertEquals("O segredo JWT não pode estar vazio. Verifique a variável de ambiente JWT_SECRET.", exception.getMessage());
+        assertEquals("O segredo JWT não foi fornecido. Certifique-se de definir a variável de ambiente JWT_SECRET.", exception.getMessage());
     }
 
     @Test

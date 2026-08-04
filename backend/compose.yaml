@@ -3,13 +3,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-
     image: energiai-backend:local
-
     container_name: energiai-backend
-
     ports:
       - "8080:8080"
-
     environment:
       SPRING_PROFILES_ACTIVE: local
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-energiai-api}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-energiai-frontend}
+      JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-15m}
