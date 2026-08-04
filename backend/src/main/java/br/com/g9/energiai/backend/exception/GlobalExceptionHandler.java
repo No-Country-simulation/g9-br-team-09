@@ -170,7 +170,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(buildBody(HttpStatus.CONFLICT, CONFLICT_ERROR, "E-mail já cadastrado ou violação de integridade"));
     }
@@ -183,7 +183,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException exception) {
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied() {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(buildBody(HttpStatus.FORBIDDEN, FORBIDDEN_ERROR, "Acesso negado"));
     }

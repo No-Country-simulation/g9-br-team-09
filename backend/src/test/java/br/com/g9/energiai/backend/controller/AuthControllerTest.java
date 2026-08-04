@@ -2,6 +2,7 @@ package br.com.g9.energiai.backend.controller;
 
 import br.com.g9.energiai.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -167,6 +168,88 @@ class AuthControllerTest {
     void shouldReturnUnauthorizedWhenTokenIsMissing() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me")
                         .contextPath("/api/v1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 quando o usuário está inativo")
+    void shouldReturnUnauthorizedWhenUserIsInactive() throws Exception {
+        String email = "inativo@email.com";
+        String registerRequest = """
+                {
+                  "nome": "Inativo",
+                  "email": "%s",
+                  "senha": "senha-segura"
+                }
+                """.formatted(email);
+
+        mockMvc.perform(post("/api/v1/auth/register").contextPath("/api/v1")
+                .contentType(MediaType.APPLICATION_JSON).content(registerRequest));
+
+        var user = userRepository.findByEmail(email).orElseThrow();
+        user.setActive(false);
+        userRepository.save(user);
+
+        String loginRequest = """
+                {
+                  "email": "%s",
+                  "senha": "senha-segura"
+                }
+                """.formatted(email);
+
+        mockMvc.perform(post("/api/v1/auth/login").contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON).content(loginRequest))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
+    }
+
+    @Test
+    @DisplayName("Deve normalizar o e-mail no cadastro e no login")
+    void shouldNormalizeEmail() throws Exception {
+        String request = """
+                {
+                  "nome": "Lucas",
+                  "email": "  LUCAS@EMAIL.COM  ",
+                  "senha": "senha-segura"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/register").contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("lucas@email.com"));
+
+        String loginRequest = """
+                {
+                  "email": " Lucas@Email.Com ",
+                  "senha": "senha-segura"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/login").contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON).content(loginRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.access_token").exists());
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 com contrato JSON correto para token ausente")
+    void shouldReturnStandardErrorForMissingToken() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/me").contextPath("/api/v1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
+                .andExpect(jsonPath("$.message").value("Token inválido ou ausente"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 quando o sub do token não é um número válido")
+    void shouldReturnUnauthorizedForInvalidSub() throws Exception {
+
+        String tokenComSubInvalido = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0LWlzc3VlciIsImlhdCI6MTU3NzgzNjgwMCwiZXhwIjoyNTI0NjA4MDAwLCJhdWQiOlsidGVzdC1hdWRpZW5jZSJdLCJzdWIiOiJhYmMiLCJyb2xlcyI6WyJVU0VSIl19.fake-signature";
+
+        mockMvc.perform(get("/api/v1/auth/me").contextPath("/api/v1")
+                        .header("Authorization", "Bearer " + tokenComSubInvalido))
                 .andExpect(status().isUnauthorized());
     }
 }
