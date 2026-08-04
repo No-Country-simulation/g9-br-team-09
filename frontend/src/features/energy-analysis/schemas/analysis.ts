@@ -1,13 +1,6 @@
 import { z } from 'zod'
 
-export const PROPERTY_TYPE_VALUES = [
-  'CASA',
-  'APARTAMENTO',
-  'COMERCIO',
-  'ESCRITORIO',
-  'INDUSTRIA',
-  'OUTRO',
-] as const
+import { propertyTypeSchema } from '@/shared/schemas/analysis'
 
 export const BOOLEAN_RADIO_VALUES = ['true', 'false'] as const
 
@@ -66,7 +59,7 @@ const numericStringSchema = (
     )
 
 export const analysisFieldSchemas = {
-  propertyType: z.enum(PROPERTY_TYPE_VALUES, {
+  propertyType: z.enum(propertyTypeSchema.options, {
     message: 'Selecione um tipo de imóvel',
   }),
   applianceCount: numericStringSchema(

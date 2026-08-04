@@ -12,19 +12,19 @@ Stack: Java 21, Spring Boot 4.0.7, Spring Web MVC, Spring Data JPA, Flyway, H2, 
 backend/
 ├── src/main/java/.../backend/
 │   ├── client/ml/       # cliente HTTP da API de ML
-│   ├── config/          # Spring, ML, OpenAPI e H2
+│   ├── config/          # Spring, ML, OpenAPI, H2 e Segurança
 │   ├── controller/      # endpoints REST
 │   ├── documentation/   # contrato OpenAPI
-│   ├── dto/             # requests e responses
-│   ├── entity/          # entidade JPA
+│   ├── dto/             # requests e responses (incluindo Auth)
+│   ├── entity/          # entidade JPA (Análise e Usuário)
 │   ├── enums/
 │   ├── exception/
 │   ├── mapper/
 │   ├── repository/
-│   └── service/         # análise, fallback e cálculo
+│   └── service/         # Negócio, Fallback, JWT e Usuário
 ├── src/main/resources/
 │   ├── application*.properties
-│   └── db/migration/    # migrations Flyway
+│   └── db/migration/    # migrations Flyway (Tabelas e Segurança)
 ├── src/test/java/.../backend/
 ├── Dockerfile
 ├── compose.yaml
@@ -46,6 +46,7 @@ Linux, WSL e macOS:
 
 ```bash
 cd backend
+export JWT_SECRET="$(openssl rand -base64 32)"
 SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
 ```
 
@@ -53,6 +54,7 @@ Windows PowerShell:
 
 ```powershell
 cd backend
+$env:JWT_SECRET="<segredo-base64-com-pelo-menos-256-bits>"
 $env:SPRING_PROFILES_ACTIVE="local"
 .\mvnw.cmd spring-boot:run
 ```
@@ -91,17 +93,62 @@ DB_PASSWORD=<senha-da-aplicacao>
 
 Não versione esse arquivo nem credenciais. Para Windows PowerShell, Docker, criação segura do arquivo externo e validação real da conexão, consulte o [guia operacional do Oracle Autonomous Database](../docs/oracle-autonomous-database.md).
 
+## Segurança e Autenticação
+
+A API utiliza **Spring Security** com **OAuth2 Resource Server** para autenticação stateless baseada em **JWT (JSON Web Token)**.
+
+### Arquitetura
+
+- **Algoritmo de Assinatura:** HS256 (Symmetric HMAC).
+- **Codificação de Senha:** `DelegatingPasswordEncoder` com prefixo `{bcrypt}`.
+- **Validação de Token:** Realizada de forma stateless em cada requisição protegida pelo header `Authorization: Bearer <token>`.
+- **Restrição de Algoritmo:** O sistema rejeita tokens assinados com qualquer algoritmo diferente de HS256.
+
+### Variáveis de Ambiente Obrigatórias
+
+| Variável | Descrição | Padrão Local |
+|---|---|---|
+| `JWT_SECRET` | Segredo HMAC em Base64 (mín. 256 bits) | Obrigatório |
+| `JWT_ISSUER` | Emissor do token | `energiai-api` |
+| `JWT_AUDIENCE` | Público alvo do token | `energiai-frontend` |
+| `JWT_ACCESS_TOKEN_EXPIRATION` | Duração do token (ex: 15m, 1h) | `15m` |
+
+### Geração de Segredo Seguro
+
+Para o ambiente local ou produção, gere um segredo de 256 bits codificado em Base64:
+
+```bash
+openssl rand -base64 32
+```
+
+### Estrutura do Access Token (Claims)
+
+- sub: Identificador único do usuário (ID).
+- iss: Emissor do token.
+- aud: Público alvo.
+- roles: Lista de permissões (ex: ["USER"]).
+- jti: Identificador único do token (UUID).
+- iat / exp: Timestamps de emissão e expiração.
+
+### Normalização e Erros
+
+- Normalização de Dados: O sistema realiza o trim() e a conversão para minúsculas do e-mail antes da validação (@Email) e da persistência, garantindo unicidade e evitando erros de entrada.
+- Padronização de Erros: Falhas de segurança (token ausente, expirado ou inválido) retornam o objeto ApiErrorResponse com os códigos UNAUTHORIZED_ERROR (401) ou FORBIDDEN_ERROR (403), mantendo o contrato global da API.
+
 ## Endpoints
 
-| Método e caminho | Descrição |
-|---|---|
-| `POST /api/v1/analise-energetica` | Cria, classifica e persiste uma análise. |
-| `GET /api/v1/analise-energetica` | Lista análises paginadas. Aceita `page`, `size` e `sort`; o padrão é página 0, 20 itens, `createdAt,DESC`. |
-| `GET /api/v1/analise-energetica/{id}` | Obtém os detalhes de uma análise. |
-| `GET /api/v1/analise-energetica/resumo` | Retorna indicadores agregados para o dashboard. |
-| `GET /api/v1/actuator/health` | Estado geral da aplicação. |
-| `GET /api/v1/actuator/health/liveness` | Estado do processo; não depende do banco ou da API de ML. |
-| `GET /api/v1/actuator/health/readiness` | Prontidão para atender tráfego; inclui o banco obrigatório. |
+| Método e caminho                        | Descrição                                                                                                  |
+|-----------------------------------------|------------------------------------------------------------------------------------------------------------|
+| `POST /api/v1/analise-energetica`       | Cria, classifica e persiste uma análise.                                                                   |
+| `GET /api/v1/analise-energetica`        | Lista análises paginadas. Aceita `page`, `size` e `sort`; o padrão é página 0, 20 itens, `createdAt,DESC`. |
+| `GET /api/v1/analise-energetica/{id}`   | Obtém os detalhes de uma análise.                                                                          |
+| `GET /api/v1/analise-energetica/resumo` | Retorna indicadores agregados para o dashboard.                                                            |
+| `GET /api/v1/actuator/health`           | Estado geral da aplicação.                                                                                 |
+| `GET /api/v1/actuator/health/liveness`  | Estado do processo; não depende do banco ou da API de ML.                                                  |
+| `GET /api/v1/actuator/health/readiness` | Prontidão para atender tráfego; inclui o banco obrigatório.                                                |
+| `POST /api/v1/auth/register`            | Cadastra um novo usuário.                                                                                  |
+| `POST /api/v1/auth/login`               | Autentica e emite o token JWT.                                                                             |
+| `GET /api/v1/auth/me`                   | Retorna o perfil do usuário logado.                                                                        |
 
 ### Exemplo de análise
 
@@ -125,6 +172,59 @@ curl --fail --request POST http://localhost:8080/api/v1/analise-energetica \
   --data '{"consumo_kwh":420,"uso_horario_pico":true,"quantidade_equipamentos":10,"tipo_imovel":"CASA","horas_alto_consumo":8}'
 ```
 
+### Exemplos de Autenticação
+
+#### Cadastro (POST /auth/register)
+
+```bash
+{
+  "nome": "Lucas Rossoni",
+  "email": "lucas@email.com",
+  "senha": "senha-segura"
+}
+```
+
+#### Login (POST /auth/login)
+
+```bash
+{
+  "email": "lucas@email.com",
+  "senha": "senha-segura"
+}
+```
+
+- Resposta de Sucesso no Login
+
+```bash
+{
+  "access_token": "eyJhbGci...",
+  "token_type": "Bearer",
+  "expires_in": 900,
+  "usuario": {
+    "id": 1,
+    "nome": "Lucas Rossoni",
+    "email": "lucas@email.com",
+    "role": "USER",
+    "criado_em": "2026-08-02T16:35:32"
+  }
+}
+```
+
+### Perfil do Usuário (GET /auth/me)
+
+- Header: Authorization: Bearer <access_token>
+- Resposta:
+
+```bash
+{
+  "id": 1,
+  "nome": "Lucas Rossoni",
+  "email": "lucas@email.com",
+  "role": "USER",
+  "criado_em": "2026-08-02T16:35:32"
+}
+```
+
 ## Integração com Machine Learning
 
 O backend chama `POST /predict` na API Python. A URL-base padrão é `http://localhost:8000`; os timeouts padrão são 2 segundos para conexão e 5 segundos para leitura. Uma resposta válida produz `fonte_classificacao: ML_MODEL`. Indisponibilidade, erro HTTP, ausência de corpo ou dados inválidos acionam a classificação/recomendação local e retornam `RULE_BASED_FALLBACK`.
@@ -138,6 +238,8 @@ O repositório contém o cliente dessa integração; este documento não pressup
 - Health geral: `http://localhost:8080/api/v1/actuator/health`
 - Liveness: `http://localhost:8080/api/v1/actuator/health/liveness`
 - Readiness: `http://localhost:8080/api/v1/actuator/health/readiness`
+
+O Swagger está configurado para suportar autenticação Bearer. Use o botão **Authorize** para colar o JWT obtido no login.
 
 Somente o endpoint `health` do Actuator é exposto, incluindo seus grupos de health. Detalhes e componentes internos permanecem ocultos em todas as respostas, portanto URLs JDBC, credenciais, stack traces e outros dados sensíveis não são retornados.
 

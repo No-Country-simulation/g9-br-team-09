@@ -55,10 +55,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          JWT_SECRET="$(openssl rand -base64 32)"
+
           docker run -d \
             --name energiai-backend-ci \
             -p 8080:8080 \
             -e SPRING_PROFILES_ACTIVE=local \
+            -e JWT_SECRET="${JWT_SECRET}" \
+            -e JWT_ISSUER=energiai-api \
+            -e JWT_AUDIENCE=energiai-frontend \
+            -e JWT_ACCESS_TOKEN_EXPIRATION=15m \
             "${CI_IMAGE}"
 
           if ! response="$(

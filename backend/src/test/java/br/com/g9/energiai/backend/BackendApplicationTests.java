@@ -1,11 +1,11 @@
 package br.com.g9.energiai.backend;
 
+import br.com.g9.energiai.backend.support.LocalProfileTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-@ActiveProfiles("local")
+@LocalProfileTest
 class BackendApplicationTests {
 
 	@Test

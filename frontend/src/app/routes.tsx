@@ -1,6 +1,8 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import { MainLayout } from '@/app/layout/MainLayout'
+import { AnalysisDetailsPage } from '@/features/analysis-details/pages/DetailsPage'
+import { AnalysisHistoryPage } from '@/features/analysis-history/pages/HistoryPage'
 import { AnalysisFormPage } from '@/features/energy-analysis/pages/EnergyAnalysisFormPage'
 import { EnergyAnalysisHomePage } from '@/features/energy-analysis/pages/EnergyAnalysisHomePage'
 import { AnalysisResultsPage } from '@/features/energy-analysis/pages/EnergyAnalysisResultsPage'
@@ -31,11 +33,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'historico',
-        element: <h1>Histórico</h1>,
+        element: <AnalysisHistoryPage />,
       },
       {
         path: 'detalhes/:id',
-        element: <h1>Detalhes</h1>,
+        element: <AnalysisDetailsPage />,
       },
       {
         path: '*',

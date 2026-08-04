@@ -60,10 +60,13 @@
   --color-input: var(--input);
   --color-efficient-badge-border: var(--efficient-badge-border);
   --color-efficient-badge-text: var(--efficient-badge-text);
+  --color-efficient-badge-bg: var(--efficient-badge-bg);
   --color-moderate-badge-border: var(--moderate-badge-border);
   --color-moderate-badge-text: var(--moderate-badge-text);
+  --color-moderate-badge-bg: var(--moderate-badge-bg);
   --color-inefficient-badge-border: var(--inefficient-badge-border);
   --color-inefficient-badge-text: var(--inefficient-badge-text);
+  --color-inefficient-badge-bg: var(--inefficient-badge-bg);
   --color-skeleton-base: var(--skeleton-base-color);
   --color-skeleton-highlight: var(--skeleton-highlight-color);
   --shadow-card:
