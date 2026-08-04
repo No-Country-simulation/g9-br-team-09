@@ -252,4 +252,14 @@ class AuthControllerTest {
                         .header("Authorization", "Bearer " + tokenComSubInvalido))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("Deve documentar cadastro e login como públicos e /auth/me com Bearer JWT")
+    void shouldDocumentAuthenticationRequirementsPerEndpoint() throws Exception {
+        mockMvc.perform(get("/api/v1/v3/api-docs").contextPath("/api/v1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/auth/register'].post.security").doesNotExist())
+                .andExpect(jsonPath("$.paths['/auth/login'].post.security").doesNotExist())
+                .andExpect(jsonPath("$.paths['/auth/me'].get.security[0].bearerAuth").isArray());
+    }
 }
