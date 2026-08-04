@@ -2,10 +2,22 @@ package br.com.g9.energiai.backend.controller;
 
 import br.com.g9.energiai.backend.client.ml.MlPredictionClient;
 import br.com.g9.energiai.backend.client.ml.exception.MlPredictionClientException;
+import br.com.g9.energiai.backend.config.JwtProperties;
+import br.com.g9.energiai.backend.entity.AppUser;
+import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
+import br.com.g9.energiai.backend.repository.UserRepository;
 import br.com.g9.energiai.backend.support.LocalProfileTest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +26,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
@@ -39,14 +56,33 @@ class EnergyAnalysisControllerTest {
     @Autowired
     private EnergyAnalysisRepository energyAnalysisRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtProperties jwtProperties;
+
     @MockitoBean
     private MlPredictionClient mlPredictionClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @BeforeEach
+    void setup(){
+        energyAnalysisRepository.deleteAll();
+        userRepository.deleteAll();
+    }
+
     @Test
     @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa incluindo ID")
     void shouldPerformAnalysisSuccessfully() throws Exception {
+        AppUser currentUser = userRepository.save(AppUser.builder()
+                .name("Teste").email("teste@email.com").passwordHash("hash")
+                .role(UserRole.USER).active(true).build());
+
+        String token = token(currentUser.getId().toString(),List.of("USER"),
+                Instant.now().plusSeconds(900),issuer(),audience(),signingSecret());
+
         String requestBody = """
             {
               "consumo_kwh": 500,
@@ -63,6 +99,7 @@ class EnergyAnalysisControllerTest {
 
         String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
+                        .header("Authorization","Bearer "+ token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -76,6 +113,8 @@ class EnergyAnalysisControllerTest {
                 .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED_FALLBACK"))
                 .andExpect(jsonPath("$.custoEstimadoMensal").doesNotExist())
                 .andExpect(jsonPath("$.fonteClassificacao").doesNotExist())
+                .andExpect(jsonPath("$.user_id").doesNotExist())
+                .andExpect(jsonPath("$.user").doesNotExist())
                 .andExpect(jsonPath("$.recomendacoes").isArray())
                 .andExpect(jsonPath("$.recomendacoes.length()").value(4))
                 .andExpect(jsonPath("$.recomendacoes", containsInAnyOrder(
@@ -90,15 +129,50 @@ class EnergyAnalysisControllerTest {
 
         JsonNode jsonResponse = objectMapper.readTree(responseBody);
         long persistedId = jsonResponse.get("id").asLong();
+        var saved = energyAnalysisRepository.findById(persistedId);
 
         assertEquals(countBefore + 1, energyAnalysisRepository.count());
-        assertTrue(energyAnalysisRepository.findById(persistedId).isPresent());
+        assertTrue(saved.isPresent());
+        assertEquals(currentUser.getId(),saved.get().getUser().getId());
         verify(mlPredictionClient).predict(any());
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 ao criar análise sem token")
+    void shouldReturnUnauthorizedWhenCreatingAnalysisWithoutToken() throws Exception {
+        String requestBody = """
+            {
+              "consumo_kwh": 500,
+              "uso_horario_pico": true,
+              "quantidade_equipamentos": 10,
+              "tipo_imovel": "CASA",
+              "horas_alto_consumo": 8
+            }
+            """;
+
+        long countBefore = energyAnalysisRepository.count();
+
+        mockMvc.perform(post("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
+                .andExpect(jsonPath("$.message").value("Token inválido ou ausente"));
+
+        assertEquals(countBefore, energyAnalysisRepository.count());
     }
 
     @Test
     @DisplayName("Deve retornar 400 quando os dados de entrada forem inválidos")
     void shouldReturnBadRequestWhenInputIsInvalid() throws Exception {
+        AppUser currentUser = userRepository.save(AppUser.builder()
+                .name("Teste").email("teste-invalido@email.com").passwordHash("hash")
+                .role(UserRole.USER).active(true).build());
+
+        String token = token(currentUser.getId().toString(), List.of("USER"),
+                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+
         String requestBody = """
             {
               "consumo_kwh": -100,
@@ -111,6 +185,7 @@ class EnergyAnalysisControllerTest {
 
         mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
+                        .header("Authorization", "Bearer "+ token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isBadRequest())
@@ -126,6 +201,13 @@ class EnergyAnalysisControllerTest {
     @Test
     @DisplayName("Não deve expor a rota antiga como contrato público")
     void shouldNotServeLegacyRoute() throws Exception {
+        AppUser currentUser = userRepository.save(AppUser.builder()
+                .name("Teste").email("teste-legado@email.com").passwordHash("hash")
+                .role(UserRole.USER).active(true).build());
+
+        String token = token(currentUser.getId().toString(), List.of("USER"),
+                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+
         String requestBody = """
             {
               "consumo_kwh": 500,
@@ -138,8 +220,42 @@ class EnergyAnalysisControllerTest {
 
         mockMvc.perform(post("/api/v1/analises-energeticas")
                         .contextPath("/api/v1")
+                        .header("Authorization","Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isNotFound());
+    }
+
+    private byte[] signingSecret() {
+        return Base64.getDecoder().decode(jwtProperties.secret());
+    }
+
+    private String issuer() {
+        return jwtProperties.issuer();
+    }
+
+    private List<String> audience() {
+        return List.of(jwtProperties.audience());
+    }
+
+    private String token(String subject, List<String> roles, Instant expiresAt, String issuer,
+                         List<String> audience, byte[] secret) throws JOSEException {
+        JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
+                .subject(subject)
+                .issuer(issuer)
+                .audience(audience)
+                .issueTime(Date.from(Instant.now().minusSeconds(5)))
+                .expirationTime(Date.from(expiresAt));
+
+        if (roles != null) {
+            claims.claim("roles", roles);
+        }
+
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.HS256)
+                .type(JOSEObjectType.JWT)
+                .build();
+        SignedJWT jwt = new SignedJWT(header, claims.build());
+        jwt.sign(new MACSigner(secret));
+        return jwt.serialize();
     }
 }
