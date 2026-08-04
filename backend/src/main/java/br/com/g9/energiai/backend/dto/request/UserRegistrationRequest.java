@@ -28,6 +28,6 @@ public record UserRegistrationRequest(
 ) {
         public UserRegistrationRequest {
                 nome = nome != null ? nome.trim() : null;
-                email = email != null ? email.trim() : null;
+                email = email != null ? email.trim().toLowerCase() : null;
         }
 }

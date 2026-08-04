@@ -25,7 +25,7 @@ public class UserService {
         String normalizedEmail = normalizeEmail(request.email());
 
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new UserAlreadyExistsException("E-mail já cadastrado");
+            throw new UserAlreadyExistsException("O e-mail informado já está em uso");
         }
 
         AppUser user = AppUser.builder()

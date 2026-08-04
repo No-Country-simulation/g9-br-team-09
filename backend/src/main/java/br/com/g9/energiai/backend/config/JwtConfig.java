@@ -7,14 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimNames;
-import org.springframework.security.oauth2.jwt.JwtClaimValidator;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.*;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
@@ -46,8 +39,18 @@ public class JwtConfig {
                 .build();
 
         OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(properties.issuer());
-        OAuth2TokenValidator<Jwt> withAudience = new JwtClaimValidator<List<String>>(
-                JwtClaimNames.AUD, aud -> aud != null && aud.contains(properties.audience()));
+
+        OAuth2TokenValidator<Jwt> withAudience = new JwtClaimValidator<Object>(
+                JwtClaimNames.AUD,
+                aud -> {
+                    if (aud instanceof String s) {
+                        return properties.audience().equals(s);
+                    } else if (aud instanceof List<?> l) {
+                        return l.contains(properties.audience());
+                    }
+                    return false;
+                }
+        );
 
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, withAudience));
 
@@ -56,20 +59,17 @@ public class JwtConfig {
 
     private byte[] decodeAndValidateSecret(String secret) {
         if (secret == null || secret.isBlank()) {
-            throw new IllegalArgumentException("O segredo JWT não pode estar vazio");
+            throw new IllegalArgumentException("O segredo JWT não pode estar vazio. Verifique a variável de ambiente JWT_SECRET.");
         }
 
-        byte[] decoded;
         try {
-            decoded = Base64.getDecoder().decode(secret);
+            byte[] decoded = Base64.getDecoder().decode(secret.trim());
+            if (decoded.length < 32) {
+                throw new IllegalArgumentException("O segredo JWT deve possuir pelo menos 256 bits (32 bytes) após a decodificação.");
+            }
+            return decoded;
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("O segredo JWT deve estar em formato Base64 válido", e);
+            throw new IllegalArgumentException("O segredo JWT deve estar em formato Base64 válido. Verifique se há caracteres inválidos (como '$' ou espaços).", e);
         }
-
-        if (decoded.length < 32) {
-            throw new IllegalArgumentException("O segredo JWT deve possuir pelo menos 256 bits (32 bytes) após a decodificação");
-        }
-
-        return decoded;
     }
 }

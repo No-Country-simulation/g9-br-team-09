@@ -53,7 +53,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final String GENERIC_INVALID_BODY_TYPE_MESSAGE = "Um campo do corpo da requisição possui tipo inválido";
     private static final String GENERIC_HTTP_MESSAGE = "Corpo da requisição inválido";
     private static final String GENERIC_INTERNAL_MESSAGE = "Erro interno no servidor";
+
     private static final Map<String, String> PUBLIC_FIELD_NAMES = Map.of(
+            "nome", "nome",
+            "email", "email",
+            "password", "senha",
             "consumoKwh", "consumo_kwh",
             "usoHorarioPico", "uso_horario_pico",
             "quantidadeEquipamentos", "quantidade_equipamentos",
@@ -168,12 +172,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(buildBody(HttpStatus.CONFLICT, CONFLICT_ERROR, "Recurso já cadastrado ou violação de integridade"));
+                .body(buildBody(HttpStatus.CONFLICT, CONFLICT_ERROR, "E-mail já cadastrado ou violação de integridade"));
     }
 
     @ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(Exception exception) {
-        String message = exception instanceof BadCredentialsException ? exception.getMessage() : "Token inválido ou ausente";
+        String message = (exception instanceof BadCredentialsException) ? exception.getMessage() : "E-mail ou senha inválidos";
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(buildBody(HttpStatus.UNAUTHORIZED, UNAUTHORIZED_ERROR, message));
     }
@@ -227,14 +231,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private InvalidFormatException findInvalidFormatException(HttpMessageNotReadableException exception) {
         Throwable current = exception;
-
         while (current != null) {
             if (current instanceof InvalidFormatException invalidFormatException) {
                 return invalidFormatException;
             }
             current = current.getCause();
         }
-
         return null;
     }
 
@@ -262,11 +264,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (hasText(reference.getPropertyName())) {
             return toPublicFieldName(reference.getPropertyName());
         }
-
         if (reference.getIndex() >= 0) {
             return "[" + reference.getIndex() + "]";
         }
-
         return "";
     }
 

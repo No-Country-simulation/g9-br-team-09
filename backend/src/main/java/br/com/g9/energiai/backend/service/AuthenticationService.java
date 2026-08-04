@@ -30,7 +30,7 @@ public class AuthenticationService {
         AppUser user = userRepository.findByEmail(normalizedEmail)
                 .filter(AppUser::getActive)
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
-                .orElseThrow(() -> new BadCredentialsException("E-mail ou senha inválidos."));
+                .orElseThrow(() -> new BadCredentialsException("E-mail ou senha inválidos"));
 
         String token = jwtTokenService.generateToken(user);
 
@@ -46,7 +46,7 @@ public class AuthenticationService {
     public AuthenticatedUserResponse getMe(Long userId) {
         AppUser user = userRepository.findById(userId)
                 .filter(AppUser::getActive)
-                .orElseThrow(() -> new BadCredentialsException("Usuário inexistente ou inativo."));
+                .orElseThrow(() -> new BadCredentialsException("Token inválido ou usuário inativo"));
 
         return userMapper.toAuthenticatedUserResponse(user);
     }
