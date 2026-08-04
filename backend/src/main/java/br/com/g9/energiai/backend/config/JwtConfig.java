@@ -62,14 +62,17 @@ public class JwtConfig {
             throw new IllegalArgumentException("O segredo JWT não pode estar vazio. Verifique a variável de ambiente JWT_SECRET.");
         }
 
+        byte[] decoded;
         try {
-            byte[] decoded = Base64.getDecoder().decode(secret.trim());
-            if (decoded.length < 32) {
-                throw new IllegalArgumentException("O segredo JWT deve possuir pelo menos 256 bits (32 bytes) após a decodificação.");
-            }
-            return decoded;
+            decoded = Base64.getDecoder().decode(secret.trim());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("O segredo JWT deve estar em formato Base64 válido. Verifique se há caracteres inválidos (como '$' ou espaços).", e);
         }
+
+        if (decoded.length < 32) {
+            throw new IllegalArgumentException("O segredo JWT deve possuir pelo menos 256 bits (32 bytes) após a decodificação.");
+        }
+
+        return decoded;
     }
 }
