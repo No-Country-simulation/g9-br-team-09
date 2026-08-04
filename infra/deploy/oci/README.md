@@ -90,7 +90,20 @@ Use [`.env.example`](.env.example) apenas como referência de nomes e formatos. 
 - `DB_URL`, `DB_USERNAME` e `DB_PASSWORD` recebidos por canal autorizado;
 - parâmetros opcionais de conexão/pool do Oracle;
 - URL e timeouts da API de ML;
-- origens CORS exatas, separadas por vírgula e nunca `*`.
+- origens CORS exatas, separadas por vírgula e nunca `*`;
+- `JWT_SECRET` com pelo menos 32 bytes aleatórios codificados em Base64;
+- `JWT_ISSUER`, `JWT_AUDIENCE` e `JWT_ACCESS_TOKEN_EXPIRATION` com os valores esperados pela aplicação.
+
+Gere um segredo exclusivo para o ambiente OCI com `JWT_SECRET="$(openssl rand -base64 32)"`,
+transfira-o por um canal seguro e informe o valor somente na linha `JWT_SECRET=` de
+`/opt/energiai/config/backend.env` durante o `sudoedit`. Depois, execute `unset JWT_SECRET`.
+Não reutilize segredos de produção em testes, não registre o valor em arquivos do repositório
+e não use comandos que exibam o conteúdo de `backend.env`.
+
+O `env_file` do Compose entrega essas variáveis diretamente ao container. A aplicação valida
+o segredo Base64 na inicialização e encerra imediatamente quando ele está ausente, malformado
+ou representa menos de 256 bits. Nesse caso, a readiness falha e o script automatizado mantém
+o fluxo de rollback existente.
 
 `DB_URL` deve ser a string JDBC Thin TLS sem wallet fornecida pelo OCI Console, no formato conceitual `jdbc:oracle:thin:@tcps://<host>:<porta>/<service-name>`. Não registre host, service name, usuário ou URL reais no Git, em tickets ou em comandos compartilhados. A conta da aplicação precisa apenas dos privilégios exigidos pelo schema; não conceda `DBA`.
 
