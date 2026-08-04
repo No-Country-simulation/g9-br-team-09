@@ -1,0 +1,4 @@
+# Preserva LF no arquivo de atributos e nos artefatos auditáveis do Dataset V2.
+/.gitattributes text eol=lf
+data-science/data/dataset_energiai_v2.csv text eol=lf
+data-science/data/dataset_energiai_v2.metadata.json text eol=lf
