@@ -7,6 +7,7 @@ import br.com.g9.energiai.backend.dto.response.AuthenticationResponse;
 import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.mapper.UserMapper;
 import br.com.g9.energiai.backend.repository.UserRepository;
+import br.com.g9.energiai.backend.util.EmailNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,10 +26,10 @@ public class AuthenticationService {
 
     @Transactional(readOnly = true)
     public AuthenticationResponse login(UserLoginRequest request) {
-        String normalizedEmail = request.email().trim().toLowerCase();
+        String normalizedEmail = EmailNormalizer.normalize(request.email());
 
         AppUser user = userRepository.findByEmail(normalizedEmail)
-                .filter(AppUser::getActive)
+                .filter(AppUser::isActive)
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
                 .orElseThrow(() -> new BadCredentialsException("E-mail ou senha inválidos"));
 
@@ -45,7 +46,7 @@ public class AuthenticationService {
     @Transactional(readOnly = true)
     public AuthenticatedUserResponse getMe(Long userId) {
         AppUser user = userRepository.findById(userId)
-                .filter(AppUser::getActive)
+                .filter(AppUser::isActive)
                 .orElseThrow(() -> new BadCredentialsException("Token inválido ou usuário inativo"));
 
         return userMapper.toAuthenticatedUserResponse(user);

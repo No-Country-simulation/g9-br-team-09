@@ -7,6 +7,7 @@ import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.exception.ResourceNotFoundException;
 import br.com.g9.energiai.backend.mapper.UserMapper;
 import br.com.g9.energiai.backend.repository.UserRepository;
+import br.com.g9.energiai.backend.util.EmailNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,7 +23,7 @@ public class UserService {
 
     @Transactional
     public UserRegistrationResponse register(UserRegistrationRequest request) {
-        String normalizedEmail = normalizeEmail(request.email());
+        String normalizedEmail = EmailNormalizer.normalize(request.email());
 
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new UserAlreadyExistsException("O e-mail informado já está em uso");
@@ -48,14 +49,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public AppUser findByEmail(String email) {
-        return userRepository.findByEmail(normalizeEmail(email))
+        return userRepository.findByEmail(EmailNormalizer.normalize(email))
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
-    }
-
-    public String normalizeEmail(String email) {
-        if (email == null) {
-            return null;
-        }
-        return email.trim().toLowerCase();
     }
 }

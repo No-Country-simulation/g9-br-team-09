@@ -1,5 +1,6 @@
 package br.com.g9.energiai.backend.dto.request;
 
+import br.com.g9.energiai.backend.util.EmailNormalizer;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -21,6 +22,6 @@ public record UserLoginRequest(
         String password
 ) {
         public UserLoginRequest {
-                email = email != null ? email.trim() : null;
+                email = EmailNormalizer.normalize(email);
         }
 }

@@ -50,7 +50,7 @@ public class AuthController {
         try {
             Long userId = Long.valueOf(jwt.getSubject());
             return ResponseEntity.ok(authenticationService.getMe(userId));
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException ignored) {
             throw new BadCredentialsException("Token com identificador inválido");
         }
     }
