@@ -16,7 +16,7 @@ class JwtConfigTest {
         JwtConfig config = new JwtConfig(properties);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, config::jwtEncoder);
-        assertEquals("O segredo JWT não pode estar vazio", exception.getMessage());
+        assertEquals("O segredo JWT não pode estar vazio. Verifique a variável de ambiente JWT_SECRET.", exception.getMessage());
     }
 
     @Test
@@ -26,7 +26,7 @@ class JwtConfigTest {
         JwtConfig config = new JwtConfig(properties);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, config::jwtEncoder);
-        assertEquals("O segredo JWT deve possuir pelo menos 256 bits (32 bytes) após a decodificação", exception.getMessage());
+        assertEquals("O segredo JWT deve possuir pelo menos 256 bits (32 bytes) após a decodificação.", exception.getMessage());
     }
 
     @Test
@@ -36,7 +36,7 @@ class JwtConfigTest {
         JwtConfig config = new JwtConfig(properties);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, config::jwtEncoder);
-        assertEquals("O segredo JWT deve estar em formato Base64 válido", exception.getMessage());
+        assertEquals("O segredo JWT deve estar em formato Base64 válido. Verifique se há caracteres inválidos (como '$' ou espaços).", exception.getMessage());
     }
 
     @Test
