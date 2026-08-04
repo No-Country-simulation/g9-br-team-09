@@ -73,7 +73,7 @@ class AuthControllerTest {
                         .content(request))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT_ERROR"))
-                .andExpect(jsonPath("$.message").value("E-mail já cadastrado"));
+                .andExpect(jsonPath("$.message").value("O e-mail informado já está em uso"));
     }
 
     @Test
@@ -122,7 +122,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginRequest))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos."));
+                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
     }
 
     @Test
