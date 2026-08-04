@@ -7,7 +7,7 @@ import hashlib
 import json
 import platform
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -708,20 +708,49 @@ def _calculate_sha256(file_path: Path) -> str:
     return digest.hexdigest()
 
 
+def _normalize_generated_at_utc(
+    generated_at_utc: datetime | None,
+) -> str:
+    """Normaliza o instante auditável de geração em UTC."""
+    if generated_at_utc is None:
+        return datetime.now(timezone.utc).isoformat()
+
+    if not isinstance(generated_at_utc, datetime):
+        raise TypeError(
+            "generated_at_utc deve ser datetime ou None"
+        )
+
+    if (
+        generated_at_utc.tzinfo is None
+        or generated_at_utc.utcoffset() is None
+    ):
+        raise ValueError(
+            "generated_at_utc deve possuir timezone UTC"
+        )
+
+    if generated_at_utc.utcoffset() != timedelta(0):
+        raise ValueError(
+            "generated_at_utc deve estar em UTC"
+        )
+
+    return generated_at_utc.astimezone(
+        timezone.utc
+    ).isoformat()
+
+
 def _build_metadata(
     summary: dict[str, Any],
     csv_hash: str,
     commit_or_tag: str,
     repair_count: int,
+    generated_at_utc: str,
 ) -> dict[str, Any]:
     """Monta os metadados do dataset candidato."""
     return {
         "dataset_name": "EnergIAI Dataset V2",
         "dataset_version": DATASET_VERSION,
         "artifact_status": "CANDIDATE",
-        "generated_at_utc": datetime.now(
-            timezone.utc
-        ).isoformat(),
+        "generated_at_utc": generated_at_utc,
         "seed": schema.RANDOM_SEED,
         "record_count": summary[
             "record_count"
@@ -831,8 +860,9 @@ def _build_metadata(
 def write_dataset_artifacts(
     output_directory: Path | str,
     commit_or_tag: str,
+    generated_at_utc: datetime | None = None,
 ) -> DatasetArtifactResult:
-    """Gera, valida e persiste CSV e metadados do dataset candidato."""
+    """Gera o CSV reproduzível e os metadados auditáveis."""
     normalized_commit_or_tag = (
         commit_or_tag.strip()
     )
@@ -841,6 +871,12 @@ def write_dataset_artifacts(
         raise ValueError(
             "commit_or_tag não pode estar vazio"
         )
+
+    normalized_generated_at_utc = (
+        _normalize_generated_at_utc(
+            generated_at_utc
+        )
+    )
 
     normalized_output_directory = Path(
         output_directory
@@ -892,6 +928,7 @@ def write_dataset_artifacts(
         csv_hash,
         normalized_commit_or_tag,
         repair_count,
+        normalized_generated_at_utc,
     )
 
     metadata_path.write_text(
@@ -951,7 +988,7 @@ def _parse_arguments(
 def main(
     arguments: Sequence[str] | None = None,
 ) -> int:
-    """Executa a geração reproduzível dos artefatos."""
+    """Executa a geração do CSV reproduzível e dos metadados auditáveis."""
     parsed_arguments = _parse_arguments(
         arguments
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +18,18 @@ sys.path.insert(0, str(SRC_PATH))
 import dataset_artifact  # noqa: E402
 import schema  # noqa: E402
 import scenarios  # noqa: E402
+
+
+FIXED_GENERATED_AT_UTC = datetime(
+    2026,
+    8,
+    1,
+    0,
+    1,
+    43,
+    910061,
+    tzinfo=timezone.utc,
+)
 
 
 def test_validate_final_dataset_accepts_valid_candidate() -> None:
@@ -88,6 +101,7 @@ def test_write_dataset_artifacts_creates_csv_and_metadata(
     result = dataset_artifact.write_dataset_artifacts(
         output_directory=tmp_path,
         commit_or_tag="test-commit",
+        generated_at_utc=FIXED_GENERATED_AT_UTC,
     )
 
     csv_path = tmp_path / dataset_artifact.DATASET_FILENAME
@@ -111,6 +125,9 @@ def test_write_dataset_artifacts_creates_csv_and_metadata(
     assert metadata["seed"] == schema.RANDOM_SEED
     assert metadata["sha256"] == csv_hash
     assert metadata["commit_or_tag"] == "test-commit"
+    assert metadata["generated_at_utc"] == (
+        FIXED_GENERATED_AT_UTC.isoformat()
+    )
     assert metadata["class_distribution"] == (
         reloaded[schema.TARGET_COLUMN]
         .value_counts()
@@ -142,16 +159,91 @@ def test_write_dataset_artifacts_is_reproducible(
     first_result = dataset_artifact.write_dataset_artifacts(
         output_directory=first_directory,
         commit_or_tag="same-commit",
+        generated_at_utc=FIXED_GENERATED_AT_UTC,
     )
     second_result = dataset_artifact.write_dataset_artifacts(
         output_directory=second_directory,
         commit_or_tag="same-commit",
+        generated_at_utc=FIXED_GENERATED_AT_UTC,
     )
 
     assert (
         first_result.csv_path.read_bytes()
         == second_result.csv_path.read_bytes()
     )
+    assert (
+        first_result.metadata_path.read_bytes()
+        == second_result.metadata_path.read_bytes()
+    )
+
+
+def test_write_dataset_artifacts_uses_current_utc_by_default(
+    tmp_path: Path,
+) -> None:
+    before_generation = datetime.now(timezone.utc)
+
+    result = dataset_artifact.write_dataset_artifacts(
+        output_directory=tmp_path,
+        commit_or_tag="test-current-time",
+    )
+
+    after_generation = datetime.now(timezone.utc)
+    metadata = json.loads(
+        result.metadata_path.read_text(encoding="utf-8")
+    )
+    generated_at_utc = datetime.fromisoformat(
+        metadata["generated_at_utc"]
+    )
+
+    assert generated_at_utc.utcoffset() == timedelta(0)
+    assert before_generation <= generated_at_utc <= after_generation
+
+
+def test_write_dataset_artifacts_rejects_naive_generated_at_utc(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="generated_at_utc deve possuir timezone UTC",
+    ):
+        dataset_artifact.write_dataset_artifacts(
+            output_directory=tmp_path,
+            commit_or_tag="test-commit",
+            generated_at_utc=datetime(2026, 8, 1),
+        )
+
+
+def test_write_dataset_artifacts_rejects_non_utc_generated_at_utc(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="generated_at_utc deve estar em UTC",
+    ):
+        dataset_artifact.write_dataset_artifacts(
+            output_directory=tmp_path,
+            commit_or_tag="test-commit",
+            generated_at_utc=datetime(
+                2026,
+                8,
+                1,
+                tzinfo=timezone(timedelta(hours=-3)),
+            ),
+        )
+
+
+def test_write_dataset_artifacts_rejects_invalid_generated_at_utc_type(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        TypeError,
+        match="generated_at_utc deve ser datetime ou None",
+    ):
+        dataset_artifact.write_dataset_artifacts(
+            output_directory=tmp_path,
+            commit_or_tag="test-commit",
+            generated_at_utc="2026-08-01T00:00:00+00:00",  # type: ignore[arg-type]
+        )
 
 
 def test_write_dataset_artifacts_rejects_empty_commit_or_tag(
