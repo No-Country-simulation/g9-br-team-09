@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
@@ -26,9 +27,10 @@ public interface EnergyAnalysisApi {
     @Operation(
             summary = "Criar análise energética",
             description = """
-            Valida os dados de consumo, calcula o custo mensal estimado,
-            classifica o perfil energético e retorna recomendações.
-            """
+                    Exige um Bearer JWT válido. Valida os dados de consumo, calcula o custo mensal estimado,
+                    classifica o perfil energético e retorna recomendações.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
             @ApiResponse(
@@ -57,6 +59,14 @@ public interface EnergyAnalysisApi {
             @ApiResponse(
                     responseCode = "400",
                     description = "Dados inválidos, enum inválido, tipo inválido ou JSON malformado",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Bearer JWT ausente, inválido ou sem usuário autorizado",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ApiErrorResponse.class)

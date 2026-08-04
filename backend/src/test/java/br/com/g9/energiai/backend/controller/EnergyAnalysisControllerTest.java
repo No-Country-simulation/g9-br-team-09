@@ -26,6 +26,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.Instant;
 import java.util.Base64;
@@ -39,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -49,6 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @LocalProfileTest
 class EnergyAnalysisControllerTest {
+
+    private static final String GENERIC_AUTHENTICATION_MESSAGE = "Token inválido ou usuário não autorizado";
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,7 +72,7 @@ class EnergyAnalysisControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
-    void setup(){
+    void setup() {
         energyAnalysisRepository.deleteAll();
         userRepository.deleteAll();
     }
@@ -80,8 +84,8 @@ class EnergyAnalysisControllerTest {
                 .name("Teste").email("teste@email.com").passwordHash("hash")
                 .role(UserRole.USER).active(true).build());
 
-        String token = token(currentUser.getId().toString(),List.of("USER"),
-                Instant.now().plusSeconds(900),issuer(),audience(),signingSecret());
+        String token = token(currentUser.getId().toString(), List.of("USER"),
+                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
 
         String requestBody = """
             {
@@ -99,7 +103,7 @@ class EnergyAnalysisControllerTest {
 
         String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
-                        .header("Authorization","Bearer "+ token)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -133,34 +137,93 @@ class EnergyAnalysisControllerTest {
 
         assertEquals(countBefore + 1, energyAnalysisRepository.count());
         assertTrue(saved.isPresent());
-        assertEquals(currentUser.getId(),saved.get().getUser().getId());
+        assertEquals(currentUser.getId(), saved.get().getUser().getId());
         verify(mlPredictionClient).predict(any());
     }
 
     @Test
     @DisplayName("Deve retornar 401 ao criar análise sem token")
     void shouldReturnUnauthorizedWhenCreatingAnalysisWithoutToken() throws Exception {
-        String requestBody = """
-            {
-              "consumo_kwh": 500,
-              "uso_horario_pico": true,
-              "quantidade_equipamentos": 10,
-              "tipo_imovel": "CASA",
-              "horas_alto_consumo": 8
-            }
-            """;
-
         long countBefore = energyAnalysisRepository.count();
 
         mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
+                        .content(validRequestJson()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
                 .andExpect(jsonPath("$.message").value("Token inválido ou ausente"));
 
         assertEquals(countBefore, energyAnalysisRepository.count());
+    }
+
+    @Test
+    @DisplayName("Deve retornar erro genérico para subject JWT malformado e não persistir")
+    void shouldRejectMalformedSubjectWithoutDisclosingDetails() throws Exception {
+        String token = token("not-a-number", List.of("USER"), Instant.now().plusSeconds(900),
+                issuer(), audience(), signingSecret());
+
+        expectProviderUnauthorized(token);
+    }
+
+    @Test
+    @DisplayName("Deve retornar erro genérico para usuário inexistente e não persistir")
+    void shouldRejectNonexistentUserWithoutDisclosingDetails() throws Exception {
+        String token = token("999999", List.of("USER"), Instant.now().plusSeconds(900),
+                issuer(), audience(), signingSecret());
+
+        expectProviderUnauthorized(token);
+    }
+
+    @Test
+    @DisplayName("Deve retornar erro genérico para usuário inativo e não persistir")
+    void shouldRejectInactiveUserWithoutDisclosingDetails() throws Exception {
+        AppUser inactiveUser = saveUser("Inactive User", "inactive-analysis@example.com", false);
+        String token = token(inactiveUser.getId().toString(), List.of("USER"), Instant.now().plusSeconds(900),
+                issuer(), audience(), signingSecret());
+
+        expectProviderUnauthorized(token);
+    }
+
+    @Test
+    @DisplayName("Deve ignorar tentativas do cliente de escolher outro proprietário")
+    void shouldUseOnlyJwtSubjectAsOwnershipSource() throws Exception {
+        AppUser authenticatedUser = saveUser("User A", "user-a@example.com", true);
+        AppUser forgedUser = saveUser("User B", "user-b@example.com", true);
+        String token = token(authenticatedUser.getId().toString(), List.of("USER"),
+                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+        String requestBody = """
+                {
+                  "consumo_kwh": 500,
+                  "uso_horario_pico": true,
+                  "quantidade_equipamentos": 10,
+                  "tipo_imovel": "CASA",
+                  "horas_alto_consumo": 8,
+                  "user_id": %d
+                }
+                """.formatted(forgedUser.getId());
+
+        when(mlPredictionClient.predict(any())).thenThrow(new MlPredictionClientException("API indisponível"));
+
+        String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .queryParam("user_id", forgedUser.getId().toString())
+                        .header("X-User-Id", forgedUser.getId().toString())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id").doesNotExist())
+                .andExpect(jsonPath("$.user").doesNotExist())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long persistedId = objectMapper.readTree(responseBody).get("id").asLong();
+        var persistedAnalysis = energyAnalysisRepository.findById(persistedId).orElseThrow();
+
+        assertEquals(authenticatedUser.getId(), persistedAnalysis.getUser().getId());
+        assertEquals(1, energyAnalysisRepository.count());
     }
 
     @Test
@@ -185,7 +248,7 @@ class EnergyAnalysisControllerTest {
 
         mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
-                        .header("Authorization", "Bearer "+ token)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isBadRequest())
@@ -220,10 +283,49 @@ class EnergyAnalysisControllerTest {
 
         mockMvc.perform(post("/api/v1/analises-energeticas")
                         .contextPath("/api/v1")
-                        .header("Authorization","Bearer " + token)
+                        .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isNotFound());
+    }
+
+    private void expectProviderUnauthorized(String token) throws Exception {
+        ResultActions result = mockMvc.perform(post("/api/v1/analise-energetica")
+                .contextPath("/api/v1")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validRequestJson()));
+
+        result.andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
+                .andExpect(jsonPath("$.message").value(GENERIC_AUTHENTICATION_MESSAGE));
+
+        assertEquals(0, energyAnalysisRepository.count());
+        verifyNoInteractions(mlPredictionClient);
+    }
+
+    private AppUser saveUser(String name, String email, boolean active) {
+        return userRepository.save(AppUser.builder()
+                .name(name)
+                .email(email)
+                .passwordHash("hash")
+                .role(UserRole.USER)
+                .active(active)
+                .build());
+    }
+
+    private String validRequestJson() {
+        return """
+                {
+                  "consumo_kwh": 500,
+                  "uso_horario_pico": true,
+                  "quantidade_equipamentos": 10,
+                  "tipo_imovel": "CASA",
+                  "horas_alto_consumo": 8
+                }
+                """;
     }
 
     private byte[] signingSecret() {

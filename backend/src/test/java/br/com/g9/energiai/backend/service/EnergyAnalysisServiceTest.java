@@ -106,7 +106,7 @@ class EnergyAnalysisServiceTest {
     void shouldNotAnalyzeOrPersistWhenAuthenticatedUserIsInvalid() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
         when(authenticatedUserProvider.getCurrentUser())
-                .thenThrow(new BadCredentialsException("Token inválido ou usuário inativo"));
+                .thenThrow(new BadCredentialsException("Token inválido ou usuário não autorizado"));
 
         assertThrows(BadCredentialsException.class, () -> energyAnalysisService.analyze(request));
 
