@@ -27,3 +27,4 @@ dist-ssr
 # Alternative package manager lockfiles
 pnpm-lock.yaml
 yarn.lock
+.vercel
