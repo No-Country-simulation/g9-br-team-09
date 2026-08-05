@@ -6,6 +6,7 @@ import br.com.g9.energiai.backend.dto.response.EnergyAnalysisDetailResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisListResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisResponse;
 import br.com.g9.energiai.backend.dto.response.EnergyAnalysisSummaryResponse;
+import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.BadCredentialsException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -53,12 +55,17 @@ class EnergyAnalysisServiceTest {
     @Mock
     private EnergyAnalysisMapper energyAnalysisMapper;
 
+    @Mock
+    private AuthenticatedUserProvider authenticatedUserProvider;
+
     @InjectMocks
     private EnergyAnalysisService energyAnalysisService;
+
 
     @Test
     @DisplayName("Deve orquestrar o fluxo de análise e persistência utilizando mocks")
     void shouldOrchestrateAnalysisAndPersistence() {
+        AppUser currentUser = AppUser.builder().id(1L).build();
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
 
         EnergyAnalysisResult analysisResult = new EnergyAnalysisResult(
@@ -73,9 +80,10 @@ class EnergyAnalysisServiceTest {
                 1L, EnergyCategory.INEFICIENTE, 0.95, 95, cost, analysisResult.recomendacoes(), ClassificationSource.ML_MODEL
         );
 
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
         when(energyAnalysisOrchestrator.analyze(request)).thenReturn(analysisResult);
         when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
-        when(energyAnalysisMapper.toEntity(request, analysisResult, cost)).thenReturn(entity);
+        when(energyAnalysisMapper.toEntity(request, analysisResult, cost, currentUser)).thenReturn(entity);
         when(energyAnalysisRepository.save(entity)).thenReturn(savedEntity);
         when(energyAnalysisMapper.toResponse(savedEntity)).thenReturn(expectedResponse);
 
@@ -88,14 +96,28 @@ class EnergyAnalysisServiceTest {
 
         verify(energyAnalysisOrchestrator).analyze(request);
         verify(energyCostCalculator).calculate(request.consumoKwh());
-        verify(energyAnalysisMapper).toEntity(request, analysisResult, cost);
+        verify(energyAnalysisMapper).toEntity(request, analysisResult, cost, currentUser);
         verify(energyAnalysisRepository).save(entity);
         verify(energyAnalysisMapper).toResponse(savedEntity);
     }
 
     @Test
+    @DisplayName("Não deve calcular nem persistir análise quando o usuário autenticado for inválido")
+    void shouldNotAnalyzeOrPersistWhenAuthenticatedUserIsInvalid() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
+        when(authenticatedUserProvider.getCurrentUser())
+                .thenThrow(new BadCredentialsException("Token inválido ou usuário não autorizado"));
+
+        assertThrows(BadCredentialsException.class, () -> energyAnalysisService.analyze(request));
+
+        verify(energyAnalysisOrchestrator, never()).analyze(any());
+        verify(energyAnalysisRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Deve propagar falha inesperada durante a persistência")
     void shouldPropagateUnexpectedPersistenceFailure() {
+        AppUser currentUser = AppUser.builder().id(1L).build();
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, true, 10, PropertyType.CASA, 8);
         EnergyAnalysisResult analysisResult = new EnergyAnalysisResult(
                 EnergyCategory.INEFICIENTE, 0.95, 95, List.of("Dica"), ClassificationSource.ML_MODEL
@@ -104,9 +126,10 @@ class EnergyAnalysisServiceTest {
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         RuntimeException expected = new RuntimeException("Falha inesperada na persistência");
 
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
         when(energyAnalysisOrchestrator.analyze(request)).thenReturn(analysisResult);
         when(energyCostCalculator.calculate(request.consumoKwh())).thenReturn(cost);
-        when(energyAnalysisMapper.toEntity(request, analysisResult, cost)).thenReturn(entity);
+        when(energyAnalysisMapper.toEntity(request, analysisResult, cost, currentUser)).thenReturn(entity);
         when(energyAnalysisRepository.save(entity)).thenThrow(expected);
 
         RuntimeException actual = assertThrows(RuntimeException.class, () -> energyAnalysisService.analyze(request));

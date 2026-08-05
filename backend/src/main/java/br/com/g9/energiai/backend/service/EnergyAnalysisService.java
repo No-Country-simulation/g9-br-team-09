@@ -28,13 +28,17 @@ public class EnergyAnalysisService {
     private final EnergyCostCalculator energyCostCalculator;
     private final EnergyAnalysisRepository energyAnalysisRepository;
     private final EnergyAnalysisMapper energyAnalysisMapper;
+    private final AuthenticatedUserProvider authenticatedUserProvider;
 
+    @Transactional
     public EnergyAnalysisResponse analyze(EnergyAnalysisRequest request) {
+        var currentUser = authenticatedUserProvider.getCurrentUser();
+
         EnergyAnalysisResult analysisResult = energyAnalysisOrchestrator.analyze(request);
         BigDecimal estimatedCost = energyCostCalculator.calculate(request.consumoKwh());
 
         EnergyAnalysisEntity entity = energyAnalysisMapper.toEntity(
-                request, analysisResult, estimatedCost
+                request, analysisResult, estimatedCost, currentUser
         );
         EnergyAnalysisEntity savedEntity = energyAnalysisRepository.save(entity);
 
