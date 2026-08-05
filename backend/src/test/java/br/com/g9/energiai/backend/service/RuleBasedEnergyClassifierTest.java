@@ -91,7 +91,7 @@ class RuleBasedEnergyClassifierTest {
         assertEquals(ClassificationSource.RULE_BASED, response.fonteClassificacao());
     }
 
-    @ParameterizedTest(name = "score calculado {0} deve manter confiança heurística")
+    @ParameterizedTest(name = "score calculado {1} deve manter confiança heurística")
     @MethodSource("ruleBasedRequests")
     void shouldReturnHeuristicConfidenceForAllRuleBasedClassifications(
             EnergyAnalysisRequest request, int expectedScore) {

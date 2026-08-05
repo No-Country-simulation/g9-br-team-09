@@ -50,7 +50,7 @@ public interface EnergyAnalysisApi {
                           "recomendacoes": [
                             "Reduzir o uso de equipamentos durante horários de pico."
                           ],
-                          "fonte_classificacao": "RULE_BASED"
+                          "fonte_classificacao": "RULE_BASED_FALLBACK"
                         }
                         """
                             )

@@ -61,7 +61,7 @@ Valores aceitos pelo contrato atual:
     "Distribuir o consumo ao longo do dia.",
     "Verificar a eficiência energética dos equipamentos."
   ],
-  "fonte_classificacao": "RULE_BASED"
+  "fonte_classificacao": "RULE_BASED_FALLBACK"
 }
 ```
 
@@ -107,7 +107,9 @@ produzido pelo modelo de Machine Learning. Quando for `RULE_BASED` ou
 `0.75`. Essa confiança não é uma probabilidade estatística produzida por um
 modelo e não deve ser calculada a partir do `score`.
 
-No estado atual do backend, a classificação documentada nesta branch é retornada com `fonte_classificacao = RULE_BASED`.
+No fluxo do endpoint, `fonte_classificacao` é `ML_MODEL` quando a integração
+com Machine Learning retorna uma resposta válida e `RULE_BASED_FALLBACK` quando
+ocorre falha, timeout ou resposta inválida da API de ML.
 
 ## Cálculo de custo estimado
 
