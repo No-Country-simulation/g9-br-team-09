@@ -52,7 +52,7 @@ Valores aceitos pelo contrato atual:
 ```json
 {
   "categoria": "INEFICIENTE",
-  "probabilidade": 0.95,
+  "probabilidade": 0.75,
   "score": 95,
   "custo_estimado_mensal": 315.00,
   "recomendacoes": [
@@ -91,6 +91,17 @@ Valores possíveis no contrato:
 - `RULE_BASED`: classificação realizada diretamente pelo classificador local do backend.
 - `ML_MODEL`: classificação retornada pelo modelo ou API de Data Science.
 - `RULE_BASED_FALLBACK`: a aplicação tentou usar a integração com Data Science, mas utilizou o classificador local por erro, timeout ou resposta inválida.
+
+## Semântica de score e probabilidade
+
+O `score` é um índice de ineficiência energética de `0` a `100`; ele determina
+a categoria, mas não representa a confiança da classificação.
+
+Quando `fonte_classificacao` for `ML_MODEL`, `probabilidade` contém o valor
+produzido pelo modelo de Machine Learning. Quando for `RULE_BASED` ou
+`RULE_BASED_FALLBACK`, `probabilidade` contém a confiança heurística fixa
+`0.75`. Essa confiança não é uma probabilidade estatística produzida por um
+modelo e não deve ser calculada a partir do `score`.
 
 No estado atual do backend, a classificação documentada nesta branch é retornada com `fonte_classificacao = RULE_BASED`.
 

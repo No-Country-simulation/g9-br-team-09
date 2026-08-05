@@ -128,7 +128,7 @@ O contrato público aceita os seis valores de `tipo_imovel`. No classificador lo
 A semântica de `probabilidade` dependerá temporariamente da fonte da classificação:
 
 * `ML_MODEL`: maior probabilidade retornada para a categoria prevista, calibrada somente quando a calibração for tecnicamente adotada;
-* `RULE_BASED` e `RULE_BASED_FALLBACK`: o valor atual `score / 100` será tratado como confiança heurística, e não como probabilidade calibrada.
+* `RULE_BASED` e `RULE_BASED_FALLBACK`: confiança heurística fixa de `0.75`, que não deve ser interpretada como probabilidade estatística ou calculada a partir do `score`.
 
 Essa diferença deverá permanecer explícita por meio de `fonte_classificacao` até eventual unificação da semântica no backend.
 

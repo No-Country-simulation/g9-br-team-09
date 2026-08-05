@@ -69,7 +69,7 @@ class OpenApiDocumentationTest {
             .andExpect(jsonPath("$.paths['/analise-energetica'].post.responses['200'].content['application/json'].example.id")
                 .value(1))
             .andExpect(jsonPath("$.paths['/analise-energetica'].post.responses['200'].content['application/json'].example.probabilidade")
-                .value(0.95))
+                .value(0.75))
             .andExpect(jsonPath("$.paths['/analise-energetica'].post.responses['200'].content['application/json'].example.custo_estimado_mensal")
                 .value(315.0))
             .andExpect(content().string(containsString("\"consumo_kwh\"")))

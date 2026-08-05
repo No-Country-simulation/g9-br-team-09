@@ -7,6 +7,11 @@ import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.enums.PropertyType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,43 +20,20 @@ class RuleBasedEnergyClassifierTest {
 
     private final RuleBasedEnergyClassifier classifier = new RuleBasedEnergyClassifier();
 
-    @Test
-    @DisplayName("Deve classificar como EFICIENTE quando o score for igual a 30")
-    void shouldClassifyAsEfficientWhenScoreIsExactly30() {
-        EnergyAnalysisRequest request = new EnergyAnalysisRequest(200.0, true, 3, PropertyType.APARTAMENTO, 8);
-        EnergyAnalysisResponse response = classifier.classify(request);
-        assertEquals(30, response.score());
-        assertEquals(EnergyCategory.EFICIENTE, response.categoria());
+    @ParameterizedTest(name = "score {0} deve ser classificado como {1}")
+    @MethodSource("categoryBoundaries")
+    void shouldClassifyCategoryAtScoreBoundaries(int score, EnergyCategory expectedCategory) {
+        assertEquals(expectedCategory, classifier.determineCategory(score));
     }
 
     @Test
-    @DisplayName("Deve classificar como MODERADO quando o score for igual a 31")
-    void shouldClassifyAsModerateWhenScoreIsExactly31() {
-        assertEquals(EnergyCategory.MODERADO, classifier.determineCategory(31));
-    }
-
-    @Test
-    @DisplayName("Deve classificar como MODERADO quando o score for igual a 60")
-    void shouldClassifyAsModerateWhenScoreIsExactly60() {
-        EnergyAnalysisRequest request = new EnergyAnalysisRequest(500.0, false, 9, PropertyType.APARTAMENTO, 2);
-        EnergyAnalysisResponse response = classifier.classify(request);
-        assertEquals(60, response.score());
-        assertEquals(EnergyCategory.MODERADO, response.categoria());
-    }
-
-    @Test
-    @DisplayName("Deve classificar como INEFICIENTE quando o score for igual a 61")
-    void shouldClassifyAsInefficientWhenScoreIsExactly61() {
-        assertEquals(EnergyCategory.INEFICIENTE, classifier.determineCategory(61));
-    }
-
-    @Test
-    @DisplayName("Deve limitar a probabilidade em 1.00 quando o score atingir o valor máximo")
-    void shouldCapProbabilityAtOneWhenScoreIsMaximum() {
+    @DisplayName("Deve manter a confiança heurística quando o score atingir o valor máximo")
+    void shouldUseHeuristicConfidenceWhenScoreIsMaximum() {
         EnergyAnalysisRequest extremeRequest = new EnergyAnalysisRequest(1000.0, true, 50, PropertyType.COMERCIO, 24);
         EnergyAnalysisResponse response = classifier.classify(extremeRequest);
         assertEquals(100, response.score());
-        assertEquals(1.0, response.probabilidade());
+        assertEquals(EnergyCategory.INEFICIENTE, response.categoria());
+        assertEquals(0.75, response.probabilidade());
     }
 
     @Test
@@ -88,13 +70,55 @@ class RuleBasedEnergyClassifierTest {
     }
 
     @Test
-    @DisplayName("Deve lidar com campos nulos atribuindo pontuação zero")
+    @DisplayName("Deve retornar confiança heurística para score cinco")
+    void shouldReturnHeuristicConfidenceForScoreFive() {
+        EnergyAnalysisRequest request = new EnergyAnalysisRequest(100.0, false, 2, PropertyType.CASA, 2);
+        EnergyAnalysisResponse response = classifier.classify(request);
+
+        assertEquals(5, response.score());
+        assertEquals(EnergyCategory.EFICIENTE, response.categoria());
+        assertEquals(0.75, response.probabilidade());
+    }
+
+    @Test
+    @DisplayName("Deve lidar com campos nulos atribuindo score zero e confiança heurística")
     void shouldHandleNullFieldsAsZeroScore() {
         EnergyAnalysisRequest request = new EnergyAnalysisRequest(null, null, null, null, null);
         EnergyAnalysisResponse response = classifier.classify(request);
         assertEquals(0, response.score());
-        assertEquals(0.0, response.probabilidade());
+        assertEquals(0.75, response.probabilidade());
         assertEquals(EnergyCategory.EFICIENTE, response.categoria());
         assertEquals(ClassificationSource.RULE_BASED, response.fonteClassificacao());
+    }
+
+    @ParameterizedTest(name = "score calculado {0} deve manter confiança heurística")
+    @MethodSource("ruleBasedRequests")
+    void shouldReturnHeuristicConfidenceForAllRuleBasedClassifications(
+            EnergyAnalysisRequest request, int expectedScore) {
+        EnergyAnalysisResponse response = classifier.classify(request);
+
+        assertEquals(expectedScore, response.score());
+        assertEquals(0.75, response.probabilidade());
+        assertTrue(response.probabilidade() >= 0.0 && response.probabilidade() <= 1.0);
+    }
+
+    private static Stream<Arguments> categoryBoundaries() {
+        return Stream.of(
+                Arguments.of(0, EnergyCategory.EFICIENTE),
+                Arguments.of(30, EnergyCategory.EFICIENTE),
+                Arguments.of(31, EnergyCategory.MODERADO),
+                Arguments.of(60, EnergyCategory.MODERADO),
+                Arguments.of(61, EnergyCategory.INEFICIENTE),
+                Arguments.of(100, EnergyCategory.INEFICIENTE)
+        );
+    }
+
+    private static Stream<Arguments> ruleBasedRequests() {
+        return Stream.of(
+                Arguments.of(new EnergyAnalysisRequest(100.0, false, 2, PropertyType.APARTAMENTO, 2), 0),
+                Arguments.of(new EnergyAnalysisRequest(200.0, true, 3, PropertyType.APARTAMENTO, 8), 30),
+                Arguments.of(new EnergyAnalysisRequest(500.0, false, 9, PropertyType.APARTAMENTO, 2), 60),
+                Arguments.of(new EnergyAnalysisRequest(1000.0, true, 50, PropertyType.COMERCIO, 24), 100)
+        );
     }
 }
