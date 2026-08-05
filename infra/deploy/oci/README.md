@@ -187,6 +187,13 @@ Nunca use `*` para a origem do navegador em produção. Reinicie somente o
 backend depois de alterar esse valor e valide o preflight do navegador no
 endpoint HTTPS implantado.
 
+Para um teste não produtivo que precise aceitar os dois frontends, use origens
+exatas separadas por vírgula:
+
+```text
+CORS_ALLOWED_ORIGINS=http://localhost:5173,https://energiai.vercel.app
+```
+
 Nas configurações do projeto Vercel, configure esta variável de ambiente de
 produção:
 
@@ -197,6 +204,73 @@ VITE_API_BASE_URL=https://<API_PUBLIC_HOSTNAME>/api/v1
 Reimplante o frontend depois de alterar uma variável de build do Vite. Não faça
 commit do hostname ativo da OCI no código do frontend nem em seu arquivo de
 ambiente de exemplo.
+
+#### Evidência de produção já coletada (Issue #110)
+
+As observações a seguir foram coletadas durante a implantação já concluída e
+registradas na Issue #110. Esta atualização apenas as documenta; nenhuma nova
+execução na OCI foi realizada. Na produção validada, o frontend é
+https://energiai.vercel.app e a API usa o prefixo de cliente
+`https://147.15.30.0.sslip.io/api/v1`. As URLs públicas são
+[Swagger UI](https://147.15.30.0.sslip.io/api/v1/swagger-ui/index.html) e
+[OpenAPI](https://147.15.30.0.sslip.io/api/v1/v3/api-docs). A configuração
+final contém somente a origem exata abaixo; o arquivo real continua externo ao
+Git em `/opt/energiai/config/backend.env` e nenhum outro valor dele deve ser
+documentado:
+
+```text
+CORS_ALLOWED_ORIGINS=https://energiai.vercel.app
+```
+
+Após essa alteração de CORS na implantação já concluída, foi recriado somente
+o `backend`; o Caddy não foi recriado:
+
+```bash
+docker compose \
+  --env-file /opt/energiai/config/backend.env \
+  -f infra/deploy/oci/compose.yaml \
+  up -d --no-build --force-recreate backend
+```
+
+Na mesma validação já coletada, o health local retornou HTTP `200` e
+`status: UP`:
+
+```bash
+curl -i \
+  --connect-timeout 5 \
+  http://127.0.0.1:8080/api/v1/actuator/health
+```
+
+Durante essa recriação, enquanto o Spring Boot ainda inicializava, foi
+observado HTTP `502` temporário pelo Caddy. O `502` cessou após o endpoint local
+de health retornar `UP`; aguarde esse estado antes de validar a rota pública
+por meio do Caddy.
+
+O preflight HTTPS da origem permitida retornou HTTP `200` com
+`Access-Control-Allow-Origin: https://energiai.vercel.app`, credenciais,
+cabeçalhos `authorization, content-type`:
+
+```bash
+curl -i -X OPTIONS \
+  'https://147.15.30.0.sslip.io/api/v1/analise-energetica' \
+  -H 'Origin: https://energiai.vercel.app' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization,content-type'
+```
+
+A mesma validação com `Origin: https://example.com` retornou HTTP `403` e
+`Invalid CORS request`, confirmando a rejeição de origem não autorizada. O
+frontend publicado também executou `POST /analise-energetica` com HTTP `200` e
+renderizou a resposta real: categoria, score, probabilidade, custo estimado e
+recomendações. A documentação detalhada do deploy da Vercel pertence à Issue
+#119.
+
+O diagnóstico de acesso administrativo ocorreu na camada de rede/ingress da
+OCI, não na aplicação: TCP/22 estava restrito por uma regra de ingress `/32`
+para um IP público administrativo desatualizado. As portas 80 e 443 continuaram
+funcionando, mas o SSH expirava antes da autenticação. A regra de ingress da
+OCI foi atualizada para o IP administrativo atual; SSH nunca deve permanecer
+exposto a `0.0.0.0/0`.
 
 ### Validar e iniciar o Caddy
 
