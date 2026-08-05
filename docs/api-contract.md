@@ -145,20 +145,12 @@ Formato atual documentado para erros de validação:
 
 Outros códigos de erro já previstos na implementação atual incluem `ENUM_TYPE_ERROR`, `INVALID_TYPE_ERROR`, `HTTP_MESSAGE_ERROR`, `NOT_FOUND_ERROR`, `METHOD_NOT_ALLOWED_ERROR`, `UNSUPPORTED_MEDIA_TYPE_ERROR` e `INTERNAL_ERROR`.
 
-## Estado atual e arquitetura-alvo
-
-Estado atual:
+## Estado atual
 
 - O backend recebe e valida o request.
-- O backend executa atualmente a classificação local baseada em regras.
-- O backend calcula o custo estimado.
-- O backend gera as recomendações disponíveis atualmente.
-- O backend monta e retorna o contrato público.
-- A fonte atual da classificação é `RULE_BASED`.
-
-Arquitetura-alvo:
-
-- Data Science disponibilizará o modelo ou classificação por meio da integração definida pelo time.
-- Data Science poderá fornecer recomendações caso essa responsabilidade seja confirmada no contrato de integração.
-- O backend continuará responsável pela API pública, validação, orquestração, cálculo de custo, persistência e resposta final.
-- Em falha, timeout ou resposta inválida da integração com Data Science, o backend poderá utilizar `RULE_BASED_FALLBACK`.
+- O backend tenta obter a classificação pela integração com Machine Learning.
+- Respostas válidas da API de ML usam `fonte_classificacao = ML_MODEL`.
+- Em caso de falha, timeout ou resposta inválida, o backend utiliza o
+  classificador local com `fonte_classificacao = RULE_BASED_FALLBACK`.
+- O backend calcula o custo estimado, gera recomendações, persiste a análise e
+  retorna o contrato público.
