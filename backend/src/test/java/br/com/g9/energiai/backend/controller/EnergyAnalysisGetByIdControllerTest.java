@@ -1,11 +1,23 @@
 package br.com.g9.energiai.backend.controller;
 
+import br.com.g9.energiai.backend.config.JwtProperties;
+import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.entity.EnergyAnalysisEntity;
 import br.com.g9.energiai.backend.enums.ClassificationSource;
 import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.enums.PropertyType;
+import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
+import br.com.g9.energiai.backend.repository.UserRepository;
 import br.com.g9.energiai.backend.support.LocalProfileTest;
+import com.jayway.jsonpath.JsonPath;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +26,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -28,38 +45,98 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @LocalProfileTest
 class EnergyAnalysisGetByIdControllerTest {
 
+    private static final String ANALYSIS_NOT_FOUND_MESSAGE = "Análise não encontrada com o ID informado.";
+    private static final String UNAUTHORIZED_MESSAGE= "Token inválido ou ausente";
+
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private EnergyAnalysisRepository energyAnalysisRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtProperties jwtProperties;
+
+    private AppUser userA;
+    private AppUser userB;
+    private String tokenA;
+    private String tokenB;
+
     @BeforeEach
-    void setup() {
+    void setup() throws JOSEException {
         energyAnalysisRepository.deleteAll();
+        userRepository.deleteAll();
+
+        userA = saveUser("User A", "user-a@example.com", true);
+        userB = saveUser("User B", "user-b@example.com", true);
+        tokenA = tokenFor(userA.getId().toString(), Instant.now().plusSeconds(900));
+        tokenB = tokenFor(userB.getId().toString(), Instant.now().plusSeconds(900));
     }
 
     @Test
-    @DisplayName("Deve retornar detalhes completos da análise quando o ID existir")
+    @DisplayName("Deve retornar 401 ao consultar detalhe sem token")
+    void shouldReturnUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/api/v1/analise-energetica/{id}", 1L).contextPath("/api/v1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
+                .andExpect(jsonPath("$.message").value(UNAUTHORIZED_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 ao consultar detalhe com token inválido")
+    void shouldReturnUnauthorizedWithInvalidToken() throws Exception {
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
+                        .contextPath("/api/v1"), "not-a-valid-jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
+                .andExpect(jsonPath("$.message").value(UNAUTHORIZED_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 ao consultar detalhe com token expirado")
+    void shouldReturnUnauthorizedWithExpiredToken() throws Exception {
+        String expiredToken = tokenFor(userA.getId().toString(), Instant.now().minusSeconds(60));
+
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
+                        .contextPath("/api/v1"), expiredToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"))
+                .andExpect(jsonPath("$.message").value(UNAUTHORIZED_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 ao consultar detalhe com usuário inexistente no token")
+    void shouldReturnUnauthorizedForNonexistentUser() throws Exception {
+        String token = tokenFor("999999", Instant.now().plusSeconds(900));
+
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
+                        .contextPath("/api/v1"), token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 ao consultar detalhe com usuário inativo")
+    void shouldReturnUnauthorizedForInactiveUser() throws Exception {
+        AppUser inactiveUser = saveUser("Inactive", "inactive@example.com", false);
+        String token = tokenFor(inactiveUser.getId().toString(), Instant.now().plusSeconds(900));
+
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
+                        .contextPath("/api/v1"), token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED_ERROR"));
+    }
+
+    @Test
+    @DisplayName("Usuário A deve conseguir consultar a própria análise")
     void shouldReturnDetailedAnalysisWhenIdExists() throws Exception {
-        EnergyAnalysisEntity analysis = EnergyAnalysisEntity.builder()
-                .consumoKwh(420.0)
-                .usoHorarioPico(true)
-                .quantidadeEquipamentos(10)
-                .tipoImovel(PropertyType.CASA)
-                .horasAltoConsumo(8)
-                .categoria(EnergyCategory.INEFICIENTE)
-                .probabilidade(0.95)
-                .score(95)
-                .custoEstimadoMensal(new BigDecimal("315.00"))
-                .fonteClassificacao(ClassificationSource.RULE_BASED)
-                .recomendacoes(List.of("Dica 1"))
-                .build();
+        EnergyAnalysisEntity saved = persistAnalysis(userA);
 
-        EnergyAnalysisEntity saved = energyAnalysisRepository.save(analysis);
-
-        mockMvc.perform(get("/api/v1/analise-energetica/{id}", saved.getId())
-                        .contextPath("/api/v1"))
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", saved.getId())
+                        .contextPath("/api/v1"), tokenA))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(saved.getId()))
@@ -78,15 +155,136 @@ class EnergyAnalysisGetByIdControllerTest {
     }
 
     @Test
-    @DisplayName("Deve retornar 404 para ID inexistente")
+    @DisplayName("Deve retornar 404 genérico para ID inexistente")
     void shouldReturn404ForMissingId() throws Exception {
-        mockMvc.perform(get("/api/v1/analise-energetica/{id}", 999L)
-                        .contextPath("/api/v1"))
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 999L)
+                        .contextPath("/api/v1"), tokenA))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"))
-                .andExpect(jsonPath("$.message")
-                        .value("Análise não encontrada com o ID: 999"))
+                .andExpect(jsonPath("$.message").value(ANALYSIS_NOT_FOUND_MESSAGE))
                 .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    @DisplayName("Usuário A não deve conseguir acessar análise de B (404)")
+    void shouldReturn404WhenUserAAccessesUserBsAnalysis() throws Exception {
+        EnergyAnalysisEntity savedForUserB = persistAnalysis(userB);
+
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", savedForUserB.getId())
+                        .contextPath("/api/v1"), tokenA))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"))
+                .andExpect(jsonPath("$.message").value(ANALYSIS_NOT_FOUND_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("Usuário B não deve conseguir acessar análise de A (404) - simétrico")
+    void shouldReturn404WhenUserBAccessesUserAsAnalysis() throws Exception {
+        EnergyAnalysisEntity savedForUserA = persistAnalysis(userA);
+
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", savedForUserA.getId())
+                        .contextPath("/api/v1"), tokenB))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("NOT_FOUND_ERROR"))
+                .andExpect(jsonPath("$.message").value(ANALYSIS_NOT_FOUND_MESSAGE));
+    }
+
+    @Test
+    @DisplayName("As respostas para ID inexistente e ID de outro usuário devem ser equivalentes (mesmo status, erro, mensagem e conjunto de campos)")
+    void shouldReturnEquivalentResponsesForMissingAndCrossUserAccess() throws Exception {
+        EnergyAnalysisEntity savedForUserB = persistAnalysis(userB);
+
+        String responseForMissingId = mockMvc.perform(authenticated(
+                        get("/api/v1/analise-energetica/{id}", 999999L).contextPath("/api/v1"), tokenA))
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+
+        String responseForOtherUsersAnalysis = mockMvc.perform(authenticated(
+                        get("/api/v1/analise-energetica/{id}", savedForUserB.getId()).contextPath("/api/v1"), tokenA))
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+
+        Integer statusMissing = JsonPath.read(responseForMissingId, "$.status");
+        String errorMissing = JsonPath.read(responseForMissingId, "$.error");
+        String messageMissing = JsonPath.read(responseForMissingId, "$.message");
+
+        Integer statusCrossUser = JsonPath.read(responseForOtherUsersAnalysis, "$.status");
+        String errorCrossUser = JsonPath.read(responseForOtherUsersAnalysis, "$.error");
+        String messageCrossUser = JsonPath.read(responseForOtherUsersAnalysis, "$.message");
+
+        assertEquals(statusMissing, statusCrossUser);
+        assertEquals(errorMissing, errorCrossUser);
+        assertEquals(messageMissing, messageCrossUser);
+    }
+
+    @Test
+    @DisplayName("Não deve permitir acesso a registro legado sem proprietário pelo endpoint de detalhe")
+    void shouldReturn404ForLegacyRecordWithoutOwner() throws Exception {
+        EnergyAnalysisEntity legacy = persistAnalysis(null);
+
+        mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", legacy.getId())
+                        .contextPath("/api/v1"), tokenA))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value(ANALYSIS_NOT_FOUND_MESSAGE));
+    }
+
+
+    private EnergyAnalysisEntity persistAnalysis(AppUser owner) {
+        EnergyAnalysisEntity analysis = EnergyAnalysisEntity.builder()
+                .user(owner)
+                .consumoKwh(420.0)
+                .usoHorarioPico(true)
+                .quantidadeEquipamentos(10)
+                .tipoImovel(PropertyType.CASA)
+                .horasAltoConsumo(8)
+                .categoria(EnergyCategory.INEFICIENTE)
+                .probabilidade(0.95)
+                .score(95)
+                .custoEstimadoMensal(new BigDecimal("315.00"))
+                .fonteClassificacao(ClassificationSource.RULE_BASED)
+                .recomendacoes(List.of("Dica 1"))
+                .build();
+
+        return energyAnalysisRepository.save(analysis);
+    }
+
+    private AppUser saveUser(String name, String email, boolean active) {
+        return userRepository.save(AppUser.builder()
+                .name(name)
+                .email(email)
+                .passwordHash("hash")
+                .role(UserRole.USER)
+                .active(active)
+                .build());
+    }
+
+    private String tokenFor(String subject, Instant expiresAt) throws JOSEException {
+        return tokenFor(subject, expiresAt, jwtProperties.issuer(), List.of(jwtProperties.audience()),
+                Base64.getDecoder().decode(jwtProperties.secret()));
+    }
+
+    private String tokenFor(String subject, Instant expiresAt, String issuer, List<String> audience, byte[] secret)
+            throws JOSEException {
+        JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
+                .subject(subject)
+                .issuer(issuer)
+                .audience(audience)
+                .issueTime(Date.from(Instant.now().minusSeconds(5)))
+                .expirationTime(Date.from(expiresAt))
+                .claim("roles", List.of("USER"));
+
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.HS256)
+                .type(JOSEObjectType.JWT)
+                .build();
+        SignedJWT jwt = new SignedJWT(header, claims.build());
+        jwt.sign(new MACSigner(secret));
+        return jwt.serialize();
+    }
+
+    private MockHttpServletRequestBuilder authenticated(MockHttpServletRequestBuilder builder, String token) {
+        return builder.header("Authorization", "Bearer " + token);
     }
 }
