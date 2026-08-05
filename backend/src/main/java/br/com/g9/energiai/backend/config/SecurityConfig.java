@@ -32,7 +32,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/analise-energetica/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/analise-energetica/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/analise-energetica/**").authenticated()
                         .requestMatchers("/auth/me").hasRole("USER")
                         .anyRequest().authenticated()
                 )
