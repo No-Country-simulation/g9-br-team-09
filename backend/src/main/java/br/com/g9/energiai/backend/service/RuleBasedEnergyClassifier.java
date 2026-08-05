@@ -12,8 +12,7 @@ import java.util.List;
 @Service
 public class RuleBasedEnergyClassifier implements EnergyClassifier {
 
-    private static final double MAX_PROBABILITY = 1.0;
-    private static final double SCORE_TO_PROBABILITY_DIVISOR = 100.0;
+    private static final double RULE_BASED_CONFIDENCE = 0.75;
 
     private static final int HIGH_CONSUMPTION_THRESHOLD = 400;
     private static final int HIGH_CONSUMPTION_SCORE = 50;
@@ -33,7 +32,7 @@ public class RuleBasedEnergyClassifier implements EnergyClassifier {
         int score = calculateScore(request);
         EnergyCategory categoria = determineCategory(score);
 
-        double probabilidade = estimateProbability(score);
+        double probabilidade = estimateRuleBasedConfidence();
 
         return new EnergyAnalysisResponse(
                 null,
@@ -76,8 +75,8 @@ public class RuleBasedEnergyClassifier implements EnergyClassifier {
         return score;
     }
 
-    double estimateProbability(int score) {
-        return Math.min(score / SCORE_TO_PROBABILITY_DIVISOR, MAX_PROBABILITY);
+    double estimateRuleBasedConfidence() {
+        return RULE_BASED_CONFIDENCE;
     }
 
     EnergyCategory determineCategory(int score) {

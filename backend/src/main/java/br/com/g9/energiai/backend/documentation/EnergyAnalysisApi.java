@@ -44,13 +44,13 @@ public interface EnergyAnalysisApi {
                         {
                           "id": 1,
                           "categoria": "INEFICIENTE",
-                          "probabilidade": 0.95,
+                          "probabilidade": 0.75,
                           "score": 95,
                           "custo_estimado_mensal": 315.00,
                           "recomendacoes": [
                             "Reduzir o uso de equipamentos durante horários de pico."
                           ],
-                          "fonte_classificacao": "RULE_BASED"
+                          "fonte_classificacao": "RULE_BASED_FALLBACK"
                         }
                         """
                             )

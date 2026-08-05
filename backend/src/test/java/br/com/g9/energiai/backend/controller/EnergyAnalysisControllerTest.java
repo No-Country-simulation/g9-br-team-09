@@ -111,7 +111,7 @@ class EnergyAnalysisControllerTest {
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
-                .andExpect(jsonPath("$.probabilidade").value(0.95))
+                .andExpect(jsonPath("$.probabilidade").value(0.75))
                 .andExpect(jsonPath("$.score").value(95))
                 .andExpect(jsonPath("$.custo_estimado_mensal").value(375.00))
                 .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED_FALLBACK"))
