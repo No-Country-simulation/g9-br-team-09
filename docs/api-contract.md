@@ -92,6 +92,10 @@ Valores possíveis no contrato:
 - `ML_MODEL`: classificação retornada pelo modelo ou API de Data Science.
 - `RULE_BASED_FALLBACK`: a aplicação tentou usar a integração com Data Science, mas utilizou o classificador local por erro, timeout ou resposta inválida.
 
+O valor `0.75` é uma confiança heurística convencional do classificador baseado
+em regras. Ele não representa uma taxa de acurácia medida, uma probabilidade
+estatística nem um valor obtido por calibração.
+
 ## Semântica de score e probabilidade
 
 O `score` é um índice de ineficiência energética de `0` a `100`; ele determina

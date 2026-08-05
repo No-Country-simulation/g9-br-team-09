@@ -130,6 +130,9 @@ A semântica de `probabilidade` dependerá temporariamente da fonte da classific
 * `ML_MODEL`: maior probabilidade retornada para a categoria prevista, calibrada somente quando a calibração for tecnicamente adotada;
 * `RULE_BASED` e `RULE_BASED_FALLBACK`: confiança heurística fixa de `0.75`, que não deve ser interpretada como probabilidade estatística ou calculada a partir do `score`.
 
+A confiança fixa `0.75` do fallback baseado em regras não corresponde a uma
+métrica de acurácia nem a uma probabilidade calibrada do modelo.
+
 Essa diferença deverá permanecer explícita por meio de `fonte_classificacao` até eventual unificação da semântica no backend.
 
 O enunciado exige EDA, treinamento supervisionado, métricas, recomendações, serialização, API REST e uso comprovado de OCI.
