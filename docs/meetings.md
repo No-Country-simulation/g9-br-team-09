@@ -607,3 +607,96 @@ A transcrição completa deverá permanecer como fonte interna de apoio e não d
 A ausência de Miguel foi registrada como fato. Não foi incluída qualquer afirmação sobre abandono do projeto porque não existe confirmação formal disponível.
 
 Esta ata deverá passar por revisão via Pull Request antes de ser considerada definitiva.
+
+---
+
+## 30/07/2026 — Sprint Meet
+
+### Contexto da reunião de 30/07
+
+Sprint Meet realizada para acompanhar os avanços do Backend, da infraestrutura,
+do Frontend e de Data Science, além de avaliar o prazo restante do projeto e a
+viabilidade das funcionalidades de controle de acesso.
+
+Não houve gravação nem transcrição. Esta ata foi elaborada exclusivamente com
+base no resumo publicado por Gustavo no Discord e nos avisos de ausência
+registrados pela equipe.
+
+### Participantes da reunião de 30/07
+
+- Gustavo Kenzo
+- Alan Ryan da Silva Domingues
+- Rafaela Pereira Campos
+
+### Ausências justificadas em 30/07
+
+- Fábio Andrade informou antecipadamente que não poderia participar.
+- Lucas Rossoni Dieder informou antecipadamente que não poderia participar.
+- Adriana Firmino dos Santos informou que não participaria porque estava sem
+  energia elétrica após uma ventania ocorrida no Rio de Janeiro.
+
+### Ausências sem justificativa registrada em 30/07
+
+- Miguel Luan Tavares Leite
+- Túlio Braga
+
+### Backend e infraestrutura
+
+- O Backend apresentou avanços nas atividades de deploy sob a condução técnica
+  de Lucas.
+- Foram mencionadas como concluídas atividades relacionadas à publicação do
+  Backend containerizado na OCI Compute.
+- Foi mencionada a preparação da instância Ubuntu para execução de containers.
+- Foi mencionado o provisionamento da instância Compute Free Tier com
+  Terraform.
+- Outras atividades de Backend e infraestrutura também foram mencionadas, mas
+  não foram detalhadas no resumo disponível.
+- A viabilidade das tarefas de controle de acesso foi debatida.
+- A janela de tempo disponível foi identificada como o principal ponto de
+  atenção para esse possível escopo.
+
+### Frontend
+
+- O desenvolvimento do Frontend registrou avanços.
+- Uma issue foi concluída.
+- Um Pull Request foi aprovado.
+- A disponibilidade para desenvolvimento do Frontend estaria mais limitada na
+  semana seguinte.
+- Essa limitação poderia impactar eventuais alterações de interface necessárias
+  para o controle de acesso.
+
+### Data Science
+
+- As atividades foram relatadas como dependentes da disponibilização do modelo
+  naquele momento.
+- O tema teve pouco aprofundamento durante a reunião por exigir conhecimento
+  técnico mais específico da área.
+- Este registro representa exclusivamente o estado relatado durante a reunião
+  de 30/07/2026 e não substitui atualizações posteriores registradas no GitHub
+  ou no Discord.
+
+### Cronograma e governança
+
+- O prazo restante do projeto foi identificado como um ponto de atenção.
+- A equipe avaliou que possuía praticamente a semana da reunião e a semana
+  seguinte para concluir as entregas técnicas.
+- A última semana do cronograma da No Country estaria direcionada
+  principalmente à preparação e ao envio das entregas.
+- A definição sobre o escopo e a viabilidade do controle de acesso permaneceu
+  pendente.
+- A discussão deveria continuar de forma assíncrona no Discord ou nas próprias
+  issues.
+- O apoio de Lucas foi mencionado na organização das issues.
+- O controle de acesso não foi registrado como funcionalidade aprovada ou
+  implementada.
+
+### Observações sobre a reunião de 30/07
+
+Esta ata registra somente as informações sustentadas pelo resumo publicado por
+Gustavo e pelos avisos de ausência disponíveis.
+
+A menção à condução técnica de Lucas nas atividades de deploy não representa sua
+participação na reunião. Sua ausência havia sido informada antecipadamente.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.
