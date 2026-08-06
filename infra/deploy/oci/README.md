@@ -187,6 +187,13 @@ Nunca use `*` para a origem do navegador em produção. Reinicie somente o
 backend depois de alterar esse valor e valide o preflight do navegador no
 endpoint HTTPS implantado.
 
+Para um teste não produtivo que precise aceitar os dois frontends, use origens
+exatas separadas por vírgula:
+
+```text
+CORS_ALLOWED_ORIGINS=http://localhost:5173,https://energiai.vercel.app
+```
+
 Nas configurações do projeto Vercel, configure esta variável de ambiente de
 produção:
 
@@ -197,6 +204,73 @@ VITE_API_BASE_URL=https://<API_PUBLIC_HOSTNAME>/api/v1
 Reimplante o frontend depois de alterar uma variável de build do Vite. Não faça
 commit do hostname ativo da OCI no código do frontend nem em seu arquivo de
 ambiente de exemplo.
+
+#### Evidência de produção já coletada (Issue #110)
+
+As observações a seguir foram coletadas durante a implantação já concluída e
+registradas na Issue #110. Esta atualização apenas as documenta; nenhuma nova
+execução na OCI foi realizada. Na produção validada, o frontend é
+https://energiai.vercel.app e a API usa o prefixo de cliente
+`https://147.15.30.0.sslip.io/api/v1`. As URLs públicas são
+[Swagger UI](https://147.15.30.0.sslip.io/api/v1/swagger-ui/index.html) e
+[OpenAPI](https://147.15.30.0.sslip.io/api/v1/v3/api-docs). A configuração
+final contém somente a origem exata abaixo; o arquivo real continua externo ao
+Git em `/opt/energiai/config/backend.env` e nenhum outro valor dele deve ser
+documentado:
+
+```text
+CORS_ALLOWED_ORIGINS=https://energiai.vercel.app
+```
+
+Após essa alteração de CORS na implantação já concluída, foi recriado somente
+o `backend`; o Caddy não foi recriado:
+
+```bash
+docker compose \
+  --env-file /opt/energiai/config/backend.env \
+  -f infra/deploy/oci/compose.yaml \
+  up -d --no-build --force-recreate backend
+```
+
+Na mesma validação já coletada, o health local retornou HTTP `200` e
+`status: UP`:
+
+```bash
+curl -i \
+  --connect-timeout 5 \
+  http://127.0.0.1:8080/api/v1/actuator/health
+```
+
+Durante essa recriação, enquanto o Spring Boot ainda inicializava, foi
+observado HTTP `502` temporário pelo Caddy. O `502` cessou após o endpoint local
+de health retornar `UP`; aguarde esse estado antes de validar a rota pública
+por meio do Caddy.
+
+O preflight HTTPS da origem permitida retornou HTTP `200` com
+`Access-Control-Allow-Origin: https://energiai.vercel.app`, credenciais,
+cabeçalhos `authorization, content-type`:
+
+```bash
+curl -i -X OPTIONS \
+  'https://147.15.30.0.sslip.io/api/v1/analise-energetica' \
+  -H 'Origin: https://energiai.vercel.app' \
+  -H 'Access-Control-Request-Method: POST' \
+  -H 'Access-Control-Request-Headers: authorization,content-type'
+```
+
+A mesma validação com `Origin: https://example.com` retornou HTTP `403` e
+`Invalid CORS request`, confirmando a rejeição de origem não autorizada. O
+frontend publicado também executou `POST /analise-energetica` com HTTP `200` e
+renderizou a resposta real: categoria, score, probabilidade, custo estimado e
+recomendações. A documentação detalhada do deploy da Vercel pertence à Issue
+#119.
+
+O diagnóstico de acesso administrativo ocorreu na camada de rede/ingress da
+OCI, não na aplicação: TCP/22 estava restrito por uma regra de ingress `/32`
+para um IP público administrativo desatualizado. As portas 80 e 443 continuaram
+funcionando, mas o SSH expirava antes da autenticação. A regra de ingress da
+OCI foi atualizada para o IP administrativo atual; SSH nunca deve permanecer
+exposto a `0.0.0.0/0`.
 
 ### Validar e iniciar o Caddy
 
@@ -414,6 +488,33 @@ versões anterior/nova seguras. Ele não contém o host, a configuração JDBC, 
 ambiente externo, a chave ou o token.
 
 Uma falha antes da troca de `BACKEND_IMAGE` não requer rollback. Em falhas de pull, Compose, readiness ou smoke após a troca, o helper tenta rollback. Se o rollback também falhar, a job permanece falha e o resumo indica `failed-rollback-failed`; investigue através do acesso SSH aprovado e das verificações seguras de logs abaixo. O rollback da aplicação não reverte migrations compatíveis de Oracle.
+
+Antes do rollback, quando o container candidato já substituiu o anterior, o
+helper preserva um diagnóstico restrito em
+`/opt/energiai/deploy-diagnostics/<commit-completo>.log`. O diretório usa modo
+`0700`, cada arquivo usa `0600` e a coleta best-effort não impede a reversão.
+Implantações bem-sucedidas e falhas anteriores à substituição do container não
+criam esse arquivo.
+
+Pelo acesso SSH aprovado, inspecione somente o diagnóstico do SHA desejado:
+
+```bash
+sudo stat --format='mode=%a owner=%U group=%G' \
+  /opt/energiai/deploy-diagnostics/<commit-completo>.log
+sudo less -- \
+  /opt/energiai/deploy-diagnostics/<commit-completo>.log
+```
+
+O helper mantém no máximo os cinco diagnósticos mais recentes e nunca remove o
+arquivo criado pela execução corrente. O nome determinístico preserva o
+diagnóstico mais recente de cada commit alvo; uma nova falha do mesmo SHA
+substitui o diagnóstico anterior desse SHA. Para remover manualmente um
+diagnóstico antigo, revise o SHA completo e exclua somente o arquivo
+identificado:
+
+```bash
+sudo rm -- /opt/energiai/deploy-diagnostics/<commit-completo-antigo>.log
+```
 
 Para rotação ou revogação, revogue a credencial Docker Hub afetada, atualize somente o repository secret correspondente, execute `validate` e faça uma implantação aprovada. Nunca reutilize `DOCKERHUB_TOKEN` na VM, `DOCKERHUB_DEPLOY_TOKEN` no publish job, nem adicione credenciais a `backend.env` ou ao repositório.
 
