@@ -18,6 +18,7 @@ from sklearn.metrics import f1_score, make_scorer
 from sklearn.pipeline import Pipeline
 
 import baseline_benchmark
+import modeling_pipeline
 import schema
 
 
@@ -205,20 +206,12 @@ def _build_logistic_pipeline(
     seed: int,
 ) -> Pipeline:
     """Cria uma Regressão Logística com pré-processamento encapsulado."""
-    return Pipeline(
-        steps=[
-            (
-                "preprocessor",
-                baseline_benchmark.build_preprocessor(feature_columns),
-            ),
-            (
-                "classifier",
-                LogisticRegression(
-                    max_iter=2_000,
-                    random_state=seed,
-                ),
-            ),
-        ]
+    return modeling_pipeline.build_model_pipeline(
+        LogisticRegression(
+            max_iter=2_000,
+            random_state=seed,
+        ),
+        feature_columns,
     )
 
 

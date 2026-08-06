@@ -5,70 +5,19 @@ serializa modelos. Ele utiliza apenas as cinco features de produção.
 """
 
 import pandas as pd
-from sklearn.compose import ColumnTransformer
 from sklearn.dummy import DummyClassifier
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, make_scorer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
 import data_split
+from modeling_pipeline import (
+    build_model_pipeline,
+    build_preprocessor as build_preprocessor,
+)
 import schema
 
-
-def build_preprocessor(
-    feature_columns: tuple[str, ...],
-) -> ColumnTransformer:
-    """Cria o pré-processamento para um subconjunto de features."""
-    if not feature_columns:
-        raise ValueError("feature_columns não pode estar vazio")
-
-    invalid_features = sorted(
-        set(feature_columns).difference(schema.FEATURE_COLUMNS)
-    )
-
-    if invalid_features:
-        raise ValueError(
-            "Features inválidas: " + ", ".join(invalid_features)
-        )
-
-    categorical_features = [
-        feature
-        for feature in feature_columns
-        if feature == "tipo_imovel"
-    ]
-    numerical_features = [
-        feature
-        for feature in feature_columns
-        if feature != "tipo_imovel"
-    ]
-
-    transformers = []
-
-    if numerical_features:
-        transformers.append(
-            (
-                "numerical",
-                StandardScaler(),
-                numerical_features,
-            )
-        )
-
-    if categorical_features:
-        transformers.append(
-            (
-                "categorical",
-                OneHotEncoder(
-                    handle_unknown="ignore",
-                    sparse_output=False,
-                ),
-                categorical_features,
-            )
-        )
-
-    return ColumnTransformer(transformers=transformers)
 
 
 def evaluate_dummy_baseline(
@@ -106,19 +55,12 @@ def evaluate_logistic_baseline(
     seed: int = schema.RANDOM_SEED,
 ) -> float:
     """Avalia uma Regressão Logística com pré-processamento."""
-    preprocessor = build_preprocessor(schema.FEATURE_COLUMNS)
-
-    model = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            (
-                "classifier",
-                LogisticRegression(
-                    max_iter=2_000,
-                    random_state=seed,
-                ),
-            ),
-        ]
+    model = build_model_pipeline(
+        LogisticRegression(
+            max_iter=2_000,
+            random_state=seed,
+        ),
+        schema.FEATURE_COLUMNS,
     )
 
     model.fit(x_train, y_train)
@@ -143,19 +85,12 @@ def evaluate_tree_baseline(
     seed: int = schema.RANDOM_SEED,
 ) -> float:
     """Avalia uma Árvore de Decisão simples com pré-processamento."""
-    preprocessor = build_preprocessor(schema.FEATURE_COLUMNS)
-
-    model = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            (
-                "classifier",
-                DecisionTreeClassifier(
-                    max_depth=5,
-                    random_state=seed,
-                ),
-            ),
-        ]
+    model = build_model_pipeline(
+        DecisionTreeClassifier(
+            max_depth=5,
+            random_state=seed,
+        ),
+        schema.FEATURE_COLUMNS,
     )
 
     model.fit(x_train, y_train)
@@ -221,20 +156,12 @@ def run_single_feature_logistic_benchmark(
     for feature in schema.FEATURE_COLUMNS:
         selected_columns = [feature]
 
-        model = Pipeline(
-            steps=[
-                (
-                    "preprocessor",
-                    build_preprocessor((feature,)),
-                ),
-                (
-                    "classifier",
-                    LogisticRegression(
-                        max_iter=2_000,
-                        random_state=seed,
-                    ),
-                ),
-            ]
+        model = build_model_pipeline(
+            LogisticRegression(
+                max_iter=2_000,
+                random_state=seed,
+            ),
+            (feature,),
         )
 
         model.fit(
@@ -285,20 +212,12 @@ def run_leave_one_feature_out_logistic_benchmark(
     for removed_feature, selected_features in feature_sets.items():
         selected_columns = list(selected_features)
 
-        model = Pipeline(
-            steps=[
-                (
-                    "preprocessor",
-                    build_preprocessor(selected_features),
-                ),
-                (
-                    "classifier",
-                    LogisticRegression(
-                        max_iter=2_000,
-                        random_state=seed,
-                    ),
-                ),
-            ]
+        model = build_model_pipeline(
+            LogisticRegression(
+                max_iter=2_000,
+                random_state=seed,
+            ),
+            selected_features,
         )
 
         model.fit(
@@ -342,20 +261,12 @@ def run_permutation_importance_logistic_benchmark(
         seed=seed,
     )
 
-    model = Pipeline(
-        steps=[
-            (
-                "preprocessor",
-                build_preprocessor(schema.FEATURE_COLUMNS),
-            ),
-            (
-                "classifier",
-                LogisticRegression(
-                    max_iter=2_000,
-                    random_state=seed,
-                ),
-            ),
-        ]
+    model = build_model_pipeline(
+        LogisticRegression(
+            max_iter=2_000,
+            random_state=seed,
+        ),
+        schema.FEATURE_COLUMNS,
     )
 
     model.fit(split.x_train, split.y_train)
