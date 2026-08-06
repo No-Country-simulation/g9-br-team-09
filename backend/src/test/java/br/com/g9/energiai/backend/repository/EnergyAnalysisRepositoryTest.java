@@ -8,7 +8,6 @@ import br.com.g9.energiai.backend.enums.PropertyType;
 import br.com.g9.energiai.backend.enums.UserRole;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +54,6 @@ class EnergyAnalysisRepositoryTest {
         userB = userRepository.save(user("User B", "user-b@example.com"));
     }
 
-    @Disabled("Método legado, quando não havia autenticação (alterado apenas nome da variável \"repository\" para \"energyAnalysisRepository\")")
     @Test
     @DisplayName("Deve persistir e recuperar a análise usando apenas a tabela energy_analysis")
     void shouldPersistAndLoadAnalysisUsingSingleTable() {
