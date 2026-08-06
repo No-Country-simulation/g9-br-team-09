@@ -7,14 +7,10 @@ import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import br.com.g9.energiai.backend.repository.UserRepository;
+import br.com.g9.energiai.backend.service.JwtTokenService;
 import br.com.g9.energiai.backend.support.LocalProfileTest;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
+import br.com.g9.energiai.backend.support.TestJwtFactory;
+import br.com.g9.energiai.backend.support.TestUserFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,11 +23,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
@@ -66,16 +57,22 @@ class EnergyAnalysisControllerTest {
     @Autowired
     private JwtProperties jwtProperties;
 
+    @Autowired
+    private JwtTokenService jwtTokenService;
+
     @MockitoBean
     private MlPredictionClient mlPredictionClient;
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    private TestJwtFactory testJwtFactory;
+
     @BeforeEach
     void setup() {
         energyAnalysisRepository.deleteAll();
         userRepository.deleteAll();
+        testJwtFactory = new TestJwtFactory(jwtProperties);
     }
 
     @Test
@@ -85,8 +82,7 @@ class EnergyAnalysisControllerTest {
                 .name("Teste").email("teste@email.com").passwordHash("hash")
                 .role(UserRole.USER).active(true).build());
 
-        String token = token(currentUser.getId().toString(), List.of("USER"),
-                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+        String token = jwtTokenService.generateToken(currentUser);
 
         String requestBody = """
             {
@@ -161,8 +157,7 @@ class EnergyAnalysisControllerTest {
     @Test
     @DisplayName("Deve retornar erro genérico para subject JWT malformado e não persistir")
     void shouldRejectMalformedSubjectWithoutDisclosingDetails() throws Exception {
-        String token = token("not-a-number", List.of("USER"), Instant.now().plusSeconds(900),
-                issuer(), audience(), signingSecret());
+        String token = testJwtFactory.withSubject("not-a-number");
 
         expectProviderUnauthorized(token);
     }
@@ -170,8 +165,7 @@ class EnergyAnalysisControllerTest {
     @Test
     @DisplayName("Deve retornar erro genérico para usuário inexistente e não persistir")
     void shouldRejectNonexistentUserWithoutDisclosingDetails() throws Exception {
-        String token = token("999999", List.of("USER"), Instant.now().plusSeconds(900),
-                issuer(), audience(), signingSecret());
+        String token = jwtTokenService.generateToken(TestUserFixtures.nonPersistedActiveUser(999999L));
 
         expectProviderUnauthorized(token);
     }
@@ -180,8 +174,7 @@ class EnergyAnalysisControllerTest {
     @DisplayName("Deve retornar erro genérico para usuário inativo e não persistir")
     void shouldRejectInactiveUserWithoutDisclosingDetails() throws Exception {
         AppUser inactiveUser = saveUser("Inactive User", "inactive-analysis@example.com", false);
-        String token = token(inactiveUser.getId().toString(), List.of("USER"), Instant.now().plusSeconds(900),
-                issuer(), audience(), signingSecret());
+        String token = jwtTokenService.generateToken(inactiveUser);
 
         expectProviderUnauthorized(token);
     }
@@ -191,8 +184,7 @@ class EnergyAnalysisControllerTest {
     void shouldUseOnlyJwtSubjectAsOwnershipSource() throws Exception {
         AppUser authenticatedUser = saveUser("User A", "user-a@example.com", true);
         AppUser forgedUser = saveUser("User B", "user-b@example.com", true);
-        String token = token(authenticatedUser.getId().toString(), List.of("USER"),
-                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+        String token = jwtTokenService.generateToken(authenticatedUser);
         String requestBody = """
                 {
                   "consumo_kwh": 500,
@@ -234,8 +226,7 @@ class EnergyAnalysisControllerTest {
                 .name("Teste").email("teste-invalido@email.com").passwordHash("hash")
                 .role(UserRole.USER).active(true).build());
 
-        String token = token(currentUser.getId().toString(), List.of("USER"),
-                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+        String token = jwtTokenService.generateToken(currentUser);
 
         String requestBody = """
             {
@@ -269,8 +260,7 @@ class EnergyAnalysisControllerTest {
                 .name("Teste").email("teste-legado@email.com").passwordHash("hash")
                 .role(UserRole.USER).active(true).build());
 
-        String token = token(currentUser.getId().toString(), List.of("USER"),
-                Instant.now().plusSeconds(900), issuer(), audience(), signingSecret());
+        String token = jwtTokenService.generateToken(currentUser);
 
         String requestBody = """
             {
@@ -329,36 +319,4 @@ class EnergyAnalysisControllerTest {
                 """;
     }
 
-    private byte[] signingSecret() {
-        return Base64.getDecoder().decode(jwtProperties.secret());
-    }
-
-    private String issuer() {
-        return jwtProperties.issuer();
-    }
-
-    private List<String> audience() {
-        return List.of(jwtProperties.audience());
-    }
-
-    private String token(String subject, List<String> roles, Instant expiresAt, String issuer,
-                         List<String> audience, byte[] secret) throws JOSEException {
-        JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
-                .subject(subject)
-                .issuer(issuer)
-                .audience(audience)
-                .issueTime(Date.from(Instant.now().minusSeconds(5)))
-                .expirationTime(Date.from(expiresAt));
-
-        if (roles != null) {
-            claims.claim("roles", roles);
-        }
-
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.HS256)
-                .type(JOSEObjectType.JWT)
-                .build();
-        SignedJWT jwt = new SignedJWT(header, claims.build());
-        jwt.sign(new MACSigner(secret));
-        return jwt.serialize();
-    }
 }

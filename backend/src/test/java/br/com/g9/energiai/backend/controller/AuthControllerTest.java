@@ -41,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class AuthControllerTest {
 
+    private static final String PASSWORD = "senha-segura";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -374,20 +376,21 @@ class AuthControllerTest {
     }
 
     @Test
-    void shouldReturnUnauthorizedForInvalidCredentials() throws Exception {
-        String loginRequest = """
-                {
-                  "email": "inexistente@email.com",
-                  "senha": "senha"
-                }
-                """;
+    @DisplayName("Falhas de login devem ser publicamente equivalentes")
+    void shouldReturnEquivalentErrorsForAllLoginAuthenticationFailures() throws Exception {
+        register("login-ativo@example.test");
+        register("login-inativo@example.test");
+        var inactiveUser = userRepository.findByEmail("login-inativo@example.test").orElseThrow();
+        inactiveUser.setActive(false);
+        userRepository.saveAndFlush(inactiveUser);
 
-        mockMvc.perform(post("/api/v1/auth/login")
-                        .contextPath("/api/v1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginRequest))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
+        MvcResult unknownEmail = loginFailure("login-inexistente@example.test", PASSWORD);
+        MvcResult wrongPassword = loginFailure("login-ativo@example.test", "senha-incorreta");
+        MvcResult inactive = loginFailure("login-inativo@example.test", PASSWORD);
+
+        PublicLoginError expected = publicLoginError(unknownEmail);
+        assertEquals(expected, publicLoginError(wrongPassword));
+        assertEquals(expected, publicLoginError(inactive));
     }
 
     @Test
@@ -433,38 +436,6 @@ class AuthControllerTest {
         mockMvc.perform(get("/api/v1/auth/me")
                         .contextPath("/api/v1"))
                 .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("Deve retornar 401 quando o usuário está inativo")
-    void shouldReturnUnauthorizedWhenUserIsInactive() throws Exception {
-        String email = "inativo@email.com";
-        String registerRequest = """
-                {
-                  "nome": "Inativo",
-                  "email": "%s",
-                  "senha": "senha-segura"
-                }
-                """.formatted(email);
-
-        mockMvc.perform(post("/api/v1/auth/register").contextPath("/api/v1")
-                .contentType(MediaType.APPLICATION_JSON).content(registerRequest));
-
-        var user = userRepository.findByEmail(email).orElseThrow();
-        user.setActive(false);
-        userRepository.save(user);
-
-        String loginRequest = """
-                {
-                  "email": "%s",
-                  "senha": "senha-segura"
-                }
-                """.formatted(email);
-
-        mockMvc.perform(post("/api/v1/auth/login").contextPath("/api/v1")
-                        .contentType(MediaType.APPLICATION_JSON).content(loginRequest))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("E-mail ou senha inválidos"));
     }
 
     @Test
@@ -580,6 +551,20 @@ class AuthControllerTest {
                 .andReturn();
     }
 
+    private MvcResult loginFailure(String email, String password) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/login")
+                        .contextPath("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "%s",
+                                  "senha": "%s"
+                                }
+                                """.formatted(email, password)))
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+    }
+
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder refreshRequest(
             String refreshToken, String csrfToken) {
         var request = post("/api/v1/auth/refresh")
@@ -603,6 +588,24 @@ class AuthControllerTest {
         Map<String, Object> body = com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$");
         assertEquals(Set.of("timestamp", "status", "error", "message"), body.keySet());
         return new PublicRefreshError(
+                result.getResponse().getStatus(),
+                ((Number) body.get("status")).intValue(),
+                (String) body.get("error"),
+                (String) body.get("message"),
+                body.keySet()
+        );
+    }
+
+    private PublicLoginError publicLoginError(MvcResult result) throws Exception {
+        assertEquals(401, result.getResponse().getStatus());
+        assertTrue(MediaType.APPLICATION_JSON.isCompatibleWith(
+                MediaType.parseMediaType(result.getResponse().getContentType())));
+        Map<String, Object> body = com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$");
+        assertEquals(Set.of("timestamp", "status", "error", "message"), body.keySet());
+        assertEquals(401, ((Number) body.get("status")).intValue());
+        assertEquals("UNAUTHORIZED_ERROR", body.get("error"));
+        assertEquals("E-mail ou senha inválidos", body.get("message"));
+        return new PublicLoginError(
                 result.getResponse().getStatus(),
                 ((Number) body.get("status")).intValue(),
                 (String) body.get("error"),
@@ -648,5 +651,8 @@ class AuthControllerTest {
 
     private record PublicRefreshError(int httpStatus, int status, String error, String message,
                                       Set<String> fields) {
+    }
+
+    private record PublicLoginError(int httpStatus, int status, String error, String message, Set<String> fields) {
     }
 }
