@@ -9,15 +9,11 @@ import br.com.g9.energiai.backend.enums.PropertyType;
 import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import br.com.g9.energiai.backend.repository.UserRepository;
+import br.com.g9.energiai.backend.service.JwtTokenService;
 import br.com.g9.energiai.backend.support.LocalProfileTest;
+import br.com.g9.energiai.backend.support.TestJwtFactory;
+import br.com.g9.energiai.backend.support.TestUserFixtures;
 import com.jayway.jsonpath.JsonPath;
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,9 +25,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,20 +53,26 @@ class EnergyAnalysisGetByIdControllerTest {
     @Autowired
     private JwtProperties jwtProperties;
 
+    @Autowired
+    private JwtTokenService jwtTokenService;
+
+    private TestJwtFactory testJwtFactory;
+
     private AppUser userA;
     private AppUser userB;
     private String tokenA;
     private String tokenB;
 
     @BeforeEach
-    void setup() throws JOSEException {
+    void setup() {
         energyAnalysisRepository.deleteAll();
         userRepository.deleteAll();
 
         userA = saveUser("User A", "user-a@example.com", true);
         userB = saveUser("User B", "user-b@example.com", true);
-        tokenA = tokenFor(userA.getId().toString(), Instant.now().plusSeconds(900));
-        tokenB = tokenFor(userB.getId().toString(), Instant.now().plusSeconds(900));
+        testJwtFactory = new TestJwtFactory(jwtProperties);
+        tokenA = jwtTokenService.generateToken(userA);
+        tokenB = jwtTokenService.generateToken(userB);
     }
 
     @Test
@@ -98,7 +97,7 @@ class EnergyAnalysisGetByIdControllerTest {
     @Test
     @DisplayName("Deve retornar 401 ao consultar detalhe com token expirado")
     void shouldReturnUnauthorizedWithExpiredToken() throws Exception {
-        String expiredToken = tokenFor(userA.getId().toString(), Instant.now().minusSeconds(60));
+        String expiredToken = testJwtFactory.expiredFor(userA.getId().toString());
 
         mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
                         .contextPath("/api/v1"), expiredToken))
@@ -110,7 +109,7 @@ class EnergyAnalysisGetByIdControllerTest {
     @Test
     @DisplayName("Deve retornar 401 ao consultar detalhe com usuário inexistente no token")
     void shouldReturnUnauthorizedForNonexistentUser() throws Exception {
-        String token = tokenFor("999999", Instant.now().plusSeconds(900));
+        String token = jwtTokenService.generateToken(TestUserFixtures.nonPersistedActiveUser(999999L));
 
         mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
                         .contextPath("/api/v1"), token))
@@ -122,7 +121,7 @@ class EnergyAnalysisGetByIdControllerTest {
     @DisplayName("Deve retornar 401 ao consultar detalhe com usuário inativo")
     void shouldReturnUnauthorizedForInactiveUser() throws Exception {
         AppUser inactiveUser = saveUser("Inactive", "inactive@example.com", false);
-        String token = tokenFor(inactiveUser.getId().toString(), Instant.now().plusSeconds(900));
+        String token = jwtTokenService.generateToken(inactiveUser);
 
         mockMvc.perform(authenticated(get("/api/v1/analise-energetica/{id}", 1L)
                         .contextPath("/api/v1"), token))
@@ -259,29 +258,6 @@ class EnergyAnalysisGetByIdControllerTest {
                 .role(UserRole.USER)
                 .active(active)
                 .build());
-    }
-
-    private String tokenFor(String subject, Instant expiresAt) throws JOSEException {
-        return tokenFor(subject, expiresAt, jwtProperties.issuer(), List.of(jwtProperties.audience()),
-                Base64.getDecoder().decode(jwtProperties.secret()));
-    }
-
-    private String tokenFor(String subject, Instant expiresAt, String issuer, List<String> audience, byte[] secret)
-            throws JOSEException {
-        JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
-                .subject(subject)
-                .issuer(issuer)
-                .audience(audience)
-                .issueTime(Date.from(Instant.now().minusSeconds(5)))
-                .expirationTime(Date.from(expiresAt))
-                .claim("roles", List.of("USER"));
-
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.HS256)
-                .type(JOSEObjectType.JWT)
-                .build();
-        SignedJWT jwt = new SignedJWT(header, claims.build());
-        jwt.sign(new MACSigner(secret));
-        return jwt.serialize();
     }
 
     private MockHttpServletRequestBuilder authenticated(MockHttpServletRequestBuilder builder, String token) {
