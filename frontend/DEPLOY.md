@@ -18,6 +18,10 @@ Node.js 20.19+ ou 22.12+ e npm. O projeto usa `package-lock.json`, então a inst
 | ------------------- | ---------------------------------------------- | ---------------------- |
 | `VITE_API_BASE_URL` | URL pública do backend consumido pelo frontend | Production and Preview |
 
+O arquivo `.env.example` permanece versionado apenas como referência. As demais variantes `.env*` são ignoradas pelo Git e pelo deploy da Vercel.
+
+Variáveis com prefixo `VITE_` são incorporadas ao bundle e ficam disponíveis no cliente. Portanto, `VITE_API_BASE_URL` deve conter somente a URL pública da API; senhas, tokens, credenciais e outras informações confidenciais não devem usar esse prefixo nem ser armazenadas em arquivos de ambiente do frontend.
+
 ## Comandos de build
 
 Executados a partir da pasta `frontend`:
