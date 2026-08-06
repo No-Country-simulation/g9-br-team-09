@@ -154,3 +154,64 @@ Outros códigos de erro já previstos na implementação atual incluem `ENUM_TYP
   classificador local com `fonte_classificacao = RULE_BASED_FALLBACK`.
 - O backend calcula o custo estimado, gera recomendações, persiste a análise e
   retorna o contrato público.
+
+## Autenticação e renovação de sessão
+
+O access token continua sendo um JWT assinado com `HS256`, enviado no JSON de
+login e refresh e utilizado como `Bearer`. Ele é de curta duração, não é
+persistido e não recebe blacklist no logout desta versão.
+
+O refresh token é um valor opaco com pelo menos 256 bits de entropia. Ele nunca
+faz parte do JSON: é enviado somente no cookie `refresh_token`, com `HttpOnly`,
+e apenas seu hash `SHA-256` é persistido. Cada login cria uma nova família de
+sessão e cada refresh válido rotaciona obrigatoriamente o token dentro da mesma
+família.
+
+### `POST /api/v1/auth/login`
+
+Mantém o `AuthenticationResponse` existente no corpo e também emite:
+
+- o cookie HttpOnly `refresh_token`;
+- o cookie não HttpOnly `XSRF-TOKEN`;
+- o header `X-XSRF-TOKEN`, com o valor a ser enviado pelo cliente nas operações
+  protegidas por CSRF.
+
+### `POST /api/v1/auth/refresh`
+
+Não recebe body. Exige o cookie `refresh_token`, o cookie `XSRF-TOKEN` e o
+header `X-XSRF-TOKEN` correspondente. Uma rotação bem-sucedida retorna `200`
+com um novo access token no mesmo contrato JSON do login e substitui o cookie
+de refresh.
+
+Falhas de autenticação do refresh retornam `401` com `UNAUTHORIZED_ERROR` e
+mensagem genérica. CSRF ausente ou inválido retorna `403` com
+`FORBIDDEN_ERROR`. A reutilização concorrente do predecessor dentro da janela
+de tolerância retorna `401` sem apagar o cookie que pode conter o sucessor já
+emitido. Reutilização posterior à tolerância revoga a família.
+
+### `POST /api/v1/auth/logout`
+
+Não recebe body e exige a mesma proteção CSRF do refresh. O endpoint é
+idempotente, retorna `204` e remove os cookies de refresh e CSRF. O logout
+revoga a sessão de refresh apresentada, mas não invalida antecipadamente um
+access token já emitido.
+
+### Cookies, CORS e expiração
+
+O cliente web deve usar `credentials: "include"`. CORS mantém
+`allowCredentials=true`, origens explícitas, o request header
+`X-XSRF-TOKEN` permitido e o response header homônimo exposto; wildcard não é
+aceito com credenciais.
+
+As validades do token e da família, a janela de tolerância e os atributos do
+cookie são configuráveis pelas variáveis `AUTH_REFRESH_*`. A validade do
+sucessor é o menor valor entre sua duração configurada e o fim absoluto da
+família. Localmente, o cookie usa `Secure=false` para HTTP. Na OCI, frontend e
+API em sites diferentes exigem `SameSite=None; Secure`; por padrão, fora desse
+cenário, usa-se `SameSite=Strict`.
+
+`SameSite=None; Secure` é necessário para o fluxo cross-site, mas não contorna
+bloqueios de cookies de terceiros impostos pelo navegador. Safari/WebKit e
+ambientes com políticas restritivas podem bloquear os cookies; valide a
+integração manualmente em navegador real. Compatibilidade ampla pode exigir no
+futuro uma topologia same-site.
