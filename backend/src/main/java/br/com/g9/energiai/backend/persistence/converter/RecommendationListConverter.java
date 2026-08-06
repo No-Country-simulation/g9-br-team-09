@@ -1,17 +1,17 @@
 package br.com.g9.energiai.backend.persistence.converter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
 @Converter
 public class RecommendationListConverter implements AttributeConverter<List<String>, String> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final JsonMapper OBJECT_MAPPER = JsonMapper.builder().build();
     private static final TypeReference<List<String>> LIST_OF_STRING_TYPE = new TypeReference<>() {
     };
 
@@ -21,7 +21,7 @@ public class RecommendationListConverter implements AttributeConverter<List<Stri
 
         try {
             return OBJECT_MAPPER.writeValueAsString(safeRecommendations);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Não foi possível serializar as recomendações", exception);
         }
     }
@@ -34,7 +34,7 @@ public class RecommendationListConverter implements AttributeConverter<List<Stri
 
         try {
             return List.copyOf(OBJECT_MAPPER.readValue(value, LIST_OF_STRING_TYPE));
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Não foi possível desserializar as recomendações", exception);
         }
     }

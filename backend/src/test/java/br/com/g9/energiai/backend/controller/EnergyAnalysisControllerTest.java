@@ -8,8 +8,6 @@ import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import br.com.g9.energiai.backend.repository.UserRepository;
 import br.com.g9.energiai.backend.support.LocalProfileTest;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -27,6 +25,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.Base64;
@@ -69,7 +69,8 @@ class EnergyAnalysisControllerTest {
     @MockitoBean
     private MlPredictionClient mlPredictionClient;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {

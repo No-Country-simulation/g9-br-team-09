@@ -8,8 +8,6 @@ import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import br.com.g9.energiai.backend.repository.RefreshTokenRepository;
 import br.com.g9.energiai.backend.repository.UserRepository;
 import br.com.g9.energiai.backend.service.JwtTokenService;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +21,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -68,7 +68,8 @@ class OracleAutonomousDatabaseIntegrationTest {
     @MockitoBean
     private MlPredictionClient mlPredictionClient;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
     private Long createdId;
     private Long createdUserId;
 
