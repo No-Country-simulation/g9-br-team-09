@@ -20,6 +20,15 @@ class JwtConfigTest {
     }
 
     @Test
+    void shouldFailWhenSecretIsBlank() {
+        JwtProperties properties = new JwtProperties("   ", "iss", "aud", Duration.ofMinutes(15));
+        JwtConfig config = new JwtConfig(properties);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, config::jwtEncoder);
+        assertEquals("O segredo JWT não foi fornecido. Certifique-se de definir a variável de ambiente JWT_SECRET.", exception.getMessage());
+    }
+
+    @Test
     void shouldFailWhenSecretIsTooShort() {
         String shortSecret = "YmFkLXNlY3JldA==";
         JwtProperties properties = new JwtProperties(shortSecret, "iss", "aud", Duration.ofMinutes(15));
