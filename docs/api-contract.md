@@ -52,7 +52,7 @@ Valores aceitos pelo contrato atual:
 ```json
 {
   "categoria": "INEFICIENTE",
-  "probabilidade": 0.95,
+  "probabilidade": 0.75,
   "score": 95,
   "custo_estimado_mensal": 315.00,
   "recomendacoes": [
@@ -61,7 +61,7 @@ Valores aceitos pelo contrato atual:
     "Distribuir o consumo ao longo do dia.",
     "Verificar a eficiência energética dos equipamentos."
   ],
-  "fonte_classificacao": "RULE_BASED"
+  "fonte_classificacao": "RULE_BASED_FALLBACK"
 }
 ```
 
@@ -92,7 +92,24 @@ Valores possíveis no contrato:
 - `ML_MODEL`: classificação retornada pelo modelo ou API de Data Science.
 - `RULE_BASED_FALLBACK`: a aplicação tentou usar a integração com Data Science, mas utilizou o classificador local por erro, timeout ou resposta inválida.
 
-No estado atual do backend, a classificação documentada nesta branch é retornada com `fonte_classificacao = RULE_BASED`.
+O valor `0.75` é uma confiança heurística convencional do classificador baseado
+em regras. Ele não representa uma taxa de acurácia medida, uma probabilidade
+estatística nem um valor obtido por calibração.
+
+## Semântica de score e probabilidade
+
+O `score` é um índice de ineficiência energética de `0` a `100`; ele determina
+a categoria, mas não representa a confiança da classificação.
+
+Quando `fonte_classificacao` for `ML_MODEL`, `probabilidade` contém o valor
+produzido pelo modelo de Machine Learning. Quando for `RULE_BASED` ou
+`RULE_BASED_FALLBACK`, `probabilidade` contém a confiança heurística fixa
+`0.75`. Essa confiança não é uma probabilidade estatística produzida por um
+modelo e não deve ser calculada a partir do `score`.
+
+No fluxo do endpoint, `fonte_classificacao` é `ML_MODEL` quando a integração
+com Machine Learning retorna uma resposta válida e `RULE_BASED_FALLBACK` quando
+ocorre falha, timeout ou resposta inválida da API de ML.
 
 ## Cálculo de custo estimado
 
@@ -128,20 +145,12 @@ Formato atual documentado para erros de validação:
 
 Outros códigos de erro já previstos na implementação atual incluem `ENUM_TYPE_ERROR`, `INVALID_TYPE_ERROR`, `HTTP_MESSAGE_ERROR`, `NOT_FOUND_ERROR`, `METHOD_NOT_ALLOWED_ERROR`, `UNSUPPORTED_MEDIA_TYPE_ERROR` e `INTERNAL_ERROR`.
 
-## Estado atual e arquitetura-alvo
-
-Estado atual:
+## Estado atual
 
 - O backend recebe e valida o request.
-- O backend executa atualmente a classificação local baseada em regras.
-- O backend calcula o custo estimado.
-- O backend gera as recomendações disponíveis atualmente.
-- O backend monta e retorna o contrato público.
-- A fonte atual da classificação é `RULE_BASED`.
-
-Arquitetura-alvo:
-
-- Data Science disponibilizará o modelo ou classificação por meio da integração definida pelo time.
-- Data Science poderá fornecer recomendações caso essa responsabilidade seja confirmada no contrato de integração.
-- O backend continuará responsável pela API pública, validação, orquestração, cálculo de custo, persistência e resposta final.
-- Em falha, timeout ou resposta inválida da integração com Data Science, o backend poderá utilizar `RULE_BASED_FALLBACK`.
+- O backend tenta obter a classificação pela integração com Machine Learning.
+- Respostas válidas da API de ML usam `fonte_classificacao = ML_MODEL`.
+- Em caso de falha, timeout ou resposta inválida, o backend utiliza o
+  classificador local com `fonte_classificacao = RULE_BASED_FALLBACK`.
+- O backend calcula o custo estimado, gera recomendações, persiste a análise e
+  retorna o contrato público.

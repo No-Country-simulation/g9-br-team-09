@@ -2,6 +2,7 @@ package br.com.g9.energiai.backend.entity;
 
 import br.com.g9.energiai.backend.enums.UserRole;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -16,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.NumericBooleanConverter;
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,6 +47,7 @@ public class AppUser {
     private UserRole role;
 
     @Builder.Default
+    @Convert(converter = NumericBooleanConverter.class)
     @Column(nullable = false)
     private boolean active = true;
 

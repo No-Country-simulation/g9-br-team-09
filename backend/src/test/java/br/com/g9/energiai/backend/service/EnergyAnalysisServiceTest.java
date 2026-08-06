@@ -43,6 +43,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class EnergyAnalysisServiceTest {
 
+    private static final String ANALYSIS_NOT_FOUND_MESSAGE = "Análise não encontrada com o ID informado.";
+
     @Mock
     private EnergyAnalysisOrchestrator energyAnalysisOrchestrator;
 
@@ -141,6 +143,7 @@ class EnergyAnalysisServiceTest {
     @Test
     @DisplayName("Deve retornar histórico de análises paginado com sucesso")
     void shouldReturnPaginatedHistorySuccessfully() {
+        AppUser currentUser = AppUser.builder().id(7L).build();
         Pageable pageable = PageRequest.of(0, 10);
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         Page<EnergyAnalysisEntity> page = new PageImpl<>(List.of(entity));
@@ -150,7 +153,8 @@ class EnergyAnalysisServiceTest {
                 LocalDateTime.of(2026, 7, 14, 18, 0)
         );
 
-        when(energyAnalysisRepository.findAll(pageable)).thenReturn(page);
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+        when(energyAnalysisRepository.findAllByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable)).thenReturn(page);
         when(energyAnalysisMapper.toSummaryResponse(any(EnergyAnalysisEntity.class))).thenReturn(summary);
 
         EnergyAnalysisListResponse response = energyAnalysisService.findAll(pageable);
@@ -161,13 +165,14 @@ class EnergyAnalysisServiceTest {
         assertEquals(1, response.totalPaginas());
         assertEquals(1L, response.totalElementos());
 
-        verify(energyAnalysisRepository).findAll(pageable);
+        verify(energyAnalysisRepository).findAllByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable);
         verify(energyAnalysisMapper).toSummaryResponse(entity);
     }
 
     @Test
-    @DisplayName("Deve retornar detalhes quando a análise existir")
+    @DisplayName("Deve retornar detalhes quando a análise pertencer ao usuário autenticado")
     void shouldReturnDetailWhenAnalysisExists() {
+        AppUser currentUser = AppUser.builder().id(7L).build();
         EnergyAnalysisEntity entity = new EnergyAnalysisEntity();
         entity.setId(1L);
         EnergyAnalysisDetailResponse expected = new EnergyAnalysisDetailResponse(
@@ -176,36 +181,44 @@ class EnergyAnalysisServiceTest {
                 LocalDateTime.of(2026, 7, 14, 18, 0)
         );
 
-        when(energyAnalysisRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+        when(energyAnalysisRepository.findByIdAndUserId(1L, currentUser.getId())).thenReturn(Optional.of(entity));
         when(energyAnalysisMapper.toDetailResponse(entity)).thenReturn(expected);
 
         EnergyAnalysisDetailResponse response = energyAnalysisService.findById(1L);
 
         assertSame(expected, response);
-        verify(energyAnalysisRepository).findById(1L);
+        verify(energyAnalysisRepository).findByIdAndUserId(1L, currentUser.getId());
         verify(energyAnalysisMapper).toDetailResponse(entity);
     }
 
     @Test
-    @DisplayName("Deve lançar exceção quando a análise não existir")
+    @DisplayName("Deve lançar exceção com mensagem genérica quando o ID não existir para o usuário atual")
     void shouldThrowWhenAnalysisDoesNotExist() {
-        when(energyAnalysisRepository.findById(99L)).thenReturn(Optional.empty());
+        AppUser currentUser = AppUser.builder().id(7L).build();
 
-        assertThrows(ResourceNotFoundException.class, () -> energyAnalysisService.findById(99L));
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+        when(energyAnalysisRepository.findByIdAndUserId(99L,currentUser.getId())).thenReturn(Optional.empty());
 
-        verify(energyAnalysisRepository).findById(99L);
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> energyAnalysisService.findById(99L));
+
+        assertEquals(ANALYSIS_NOT_FOUND_MESSAGE, exception.getMessage());
+        verify(energyAnalysisRepository).findByIdAndUserId(99L, currentUser.getId());
         verify(energyAnalysisMapper, never()).toDetailResponse(any(EnergyAnalysisEntity.class));
     }
 
     @Test
     @DisplayName("Deve retornar resumo do dashboard com média de custo arredondada")
     void shouldReturnDashboardSummaryWithRoundedCostAverage() {
-        when(energyAnalysisRepository.count()).thenReturn(3L);
-        when(energyAnalysisRepository.getAverageConsumoKwh()).thenReturn(420.5);
-        when(energyAnalysisRepository.getTotalCustoMensal()).thenReturn(new BigDecimal("100.00"));
-        when(energyAnalysisRepository.countByCategoria(EnergyCategory.EFICIENTE)).thenReturn(1L);
-        when(energyAnalysisRepository.countByCategoria(EnergyCategory.MODERADO)).thenReturn(1L);
-        when(energyAnalysisRepository.countByCategoria(EnergyCategory.INEFICIENTE)).thenReturn(1L);
+        AppUser currentUser = AppUser.builder().id(7L).build();
+
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+        when(energyAnalysisRepository.countByUserId(currentUser.getId())).thenReturn(3L);
+        when(energyAnalysisRepository.getAverageConsumoKwhByUserId(currentUser.getId())).thenReturn(420.5);
+        when(energyAnalysisRepository.getTotalMonthlyCostByUserId(currentUser.getId())).thenReturn(new BigDecimal("100.00"));
+        when(energyAnalysisRepository.countByUserIdAndCategoria(currentUser.getId(), EnergyCategory.EFICIENTE)).thenReturn(1L);
+        when(energyAnalysisRepository.countByUserIdAndCategoria(currentUser.getId(), EnergyCategory.MODERADO)).thenReturn(1L);
+        when(energyAnalysisRepository.countByUserIdAndCategoria(currentUser.getId(), EnergyCategory.INEFICIENTE)).thenReturn(1L);
 
         EnergyAnalysisDashboardResponse response = energyAnalysisService.getDashboardSummary();
 
@@ -220,12 +233,15 @@ class EnergyAnalysisServiceTest {
     @Test
     @DisplayName("Deve retornar zeros quando não houver análises no dashboard")
     void shouldReturnZeroedDashboardSummaryWhenThereAreNoAnalyses() {
-        when(energyAnalysisRepository.count()).thenReturn(0L);
-        when(energyAnalysisRepository.getAverageConsumoKwh()).thenReturn(null);
-        when(energyAnalysisRepository.getTotalCustoMensal()).thenReturn(null);
-        when(energyAnalysisRepository.countByCategoria(EnergyCategory.EFICIENTE)).thenReturn(0L);
-        when(energyAnalysisRepository.countByCategoria(EnergyCategory.MODERADO)).thenReturn(0L);
-        when(energyAnalysisRepository.countByCategoria(EnergyCategory.INEFICIENTE)).thenReturn(0L);
+        AppUser currentUser = AppUser.builder().id(7L).build();
+
+        when(authenticatedUserProvider.getCurrentUser()).thenReturn(currentUser);
+        when(energyAnalysisRepository.countByUserId(currentUser.getId())).thenReturn(0L);
+        when(energyAnalysisRepository.getAverageConsumoKwhByUserId(currentUser.getId())).thenReturn(null);
+        when(energyAnalysisRepository.getTotalMonthlyCostByUserId(currentUser.getId())).thenReturn(null);
+        when(energyAnalysisRepository.countByUserIdAndCategoria(currentUser.getId(), EnergyCategory.EFICIENTE)).thenReturn(0L);
+        when(energyAnalysisRepository.countByUserIdAndCategoria(currentUser.getId(), EnergyCategory.MODERADO)).thenReturn(0L);
+        when(energyAnalysisRepository.countByUserIdAndCategoria(currentUser.getId(), EnergyCategory.INEFICIENTE)).thenReturn(0L);
 
         EnergyAnalysisDashboardResponse response = energyAnalysisService.getDashboardSummary();
 

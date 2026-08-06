@@ -489,6 +489,33 @@ ambiente externo, a chave ou o token.
 
 Uma falha antes da troca de `BACKEND_IMAGE` não requer rollback. Em falhas de pull, Compose, readiness ou smoke após a troca, o helper tenta rollback. Se o rollback também falhar, a job permanece falha e o resumo indica `failed-rollback-failed`; investigue através do acesso SSH aprovado e das verificações seguras de logs abaixo. O rollback da aplicação não reverte migrations compatíveis de Oracle.
 
+Antes do rollback, quando o container candidato já substituiu o anterior, o
+helper preserva um diagnóstico restrito em
+`/opt/energiai/deploy-diagnostics/<commit-completo>.log`. O diretório usa modo
+`0700`, cada arquivo usa `0600` e a coleta best-effort não impede a reversão.
+Implantações bem-sucedidas e falhas anteriores à substituição do container não
+criam esse arquivo.
+
+Pelo acesso SSH aprovado, inspecione somente o diagnóstico do SHA desejado:
+
+```bash
+sudo stat --format='mode=%a owner=%U group=%G' \
+  /opt/energiai/deploy-diagnostics/<commit-completo>.log
+sudo less -- \
+  /opt/energiai/deploy-diagnostics/<commit-completo>.log
+```
+
+O helper mantém no máximo os cinco diagnósticos mais recentes e nunca remove o
+arquivo criado pela execução corrente. O nome determinístico preserva o
+diagnóstico mais recente de cada commit alvo; uma nova falha do mesmo SHA
+substitui o diagnóstico anterior desse SHA. Para remover manualmente um
+diagnóstico antigo, revise o SHA completo e exclua somente o arquivo
+identificado:
+
+```bash
+sudo rm -- /opt/energiai/deploy-diagnostics/<commit-completo-antigo>.log
+```
+
 Para rotação ou revogação, revogue a credencial Docker Hub afetada, atualize somente o repository secret correspondente, execute `validate` e faça uma implantação aprovada. Nunca reutilize `DOCKERHUB_TOKEN` na VM, `DOCKERHUB_DEPLOY_TOKEN` no publish job, nem adicione credenciais a `backend.env` ou ao repositório.
 
 ## Validação do Compose

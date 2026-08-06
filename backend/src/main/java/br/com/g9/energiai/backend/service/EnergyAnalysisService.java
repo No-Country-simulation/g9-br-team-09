@@ -24,6 +24,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EnergyAnalysisService {
 
+    private static final String ANALYSIS_NOT_FOUND_MESSAGE = "Análise não encontrada com o ID informado.";
     private final EnergyAnalysisOrchestrator energyAnalysisOrchestrator;
     private final EnergyCostCalculator energyCostCalculator;
     private final EnergyAnalysisRepository energyAnalysisRepository;
@@ -47,7 +48,10 @@ public class EnergyAnalysisService {
 
     @Transactional(readOnly = true)
     public EnergyAnalysisListResponse findAll(Pageable pageable) {
-        Page<EnergyAnalysisEntity> analysisPage = energyAnalysisRepository.findAll(pageable);
+        var currentUser = authenticatedUserProvider.getCurrentUser();
+
+        Page<EnergyAnalysisEntity> analysisPage = energyAnalysisRepository
+                .findAllByUserIdOrderByCreatedAtDesc(currentUser.getId(), pageable);
 
         var summaries = analysisPage.getContent().stream()
                 .map(energyAnalysisMapper::toSummaryResponse)
@@ -64,19 +68,24 @@ public class EnergyAnalysisService {
 
     @Transactional(readOnly = true)
     public EnergyAnalysisDetailResponse findById(Long id) {
-        return energyAnalysisRepository.findById(id)
+        var currentUser = authenticatedUserProvider.getCurrentUser();
+
+        return energyAnalysisRepository.findByIdAndUserId(id, currentUser.getId())
                 .map(energyAnalysisMapper::toDetailResponse)
-                .orElseThrow(() -> new ResourceNotFoundException("Análise não encontrada com o ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ANALYSIS_NOT_FOUND_MESSAGE));
     }
 
     @Transactional(readOnly = true)
     public EnergyAnalysisDashboardResponse getDashboardSummary() {
-        long total = energyAnalysisRepository.count();
+        var currentUser = authenticatedUserProvider.getCurrentUser();
+        var userId = currentUser.getId();
 
-        Double mediaConsumo = Optional.ofNullable(energyAnalysisRepository.getAverageConsumoKwh())
+        long total = energyAnalysisRepository.countByUserId(userId);
+
+        Double mediaConsumo = Optional.ofNullable(energyAnalysisRepository.getAverageConsumoKwhByUserId(userId))
                 .orElse(0.0);
 
-        BigDecimal totalCusto = Optional.ofNullable(energyAnalysisRepository.getTotalCustoMensal())
+        BigDecimal totalCusto = Optional.ofNullable(energyAnalysisRepository.getTotalMonthlyCostByUserId(userId))
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal mediaCusto = total == 0
@@ -87,9 +96,9 @@ public class EnergyAnalysisService {
                 total,
                 mediaConsumo,
                 mediaCusto,
-                energyAnalysisRepository.countByCategoria(EnergyCategory.EFICIENTE),
-                energyAnalysisRepository.countByCategoria(EnergyCategory.MODERADO),
-                energyAnalysisRepository.countByCategoria(EnergyCategory.INEFICIENTE)
+                energyAnalysisRepository.countByUserIdAndCategoria(userId, EnergyCategory.EFICIENTE),
+                energyAnalysisRepository.countByUserIdAndCategoria(userId, EnergyCategory.MODERADO),
+                energyAnalysisRepository.countByUserIdAndCategoria(userId, EnergyCategory.INEFICIENTE)
         );
     }
 }

@@ -10,6 +10,12 @@ readonly DIGEST_PATTERN='^sha256:[0-9a-f]{64}$'
 readonly READINESS_URL="http://127.0.0.1:8080/api/v1/actuator/health/readiness"
 readonly READINESS_ATTEMPTS="${READINESS_ATTEMPTS:-30}"
 readonly READINESS_DELAY_SECONDS="${READINESS_DELAY_SECONDS:-5}"
+readonly DEPLOY_DIAGNOSTICS_DIR="${DEPLOY_DIAGNOSTICS_DIR:-/opt/energiai/deploy-diagnostics}"
+readonly DIAGNOSTIC_LOG_TAIL_LINES=200
+readonly DIAGNOSTIC_RETENTION_COUNT=5
+readonly DIAGNOSTIC_INSPECT_TIMEOUT_SECONDS=5
+readonly DIAGNOSTIC_LOGS_TIMEOUT_SECONDS=10
+readonly DIAGNOSTIC_TIMEOUT_KILL_AFTER_SECONDS=2
 
 readonly REPOSITORY_DIR="${REPOSITORY_DIR:-/opt/energiai/repository}"
 readonly BACKEND_ENV_FILE="${BACKEND_ENV_FILE:-/opt/energiai/config/backend.env}"
@@ -76,7 +82,7 @@ require_readiness_policy() {
 require_dependencies() {
     local command
 
-    for command in docker curl jq git awk mktemp stat chmod chown mv; do
+    for command in docker curl jq git awk mktemp stat chmod chown mv mkdir find sort date timeout; do
         command -v "${command}" >/dev/null 2>&1 \
             || fail "Dependência obrigatória ausente no host OCI: ${command}."
     done
@@ -273,6 +279,148 @@ pull_and_verify_previous_image() {
     fi
 }
 
+sanitize_diagnostic_stream() {
+    awk '
+        {
+            lowered = tolower($0)
+            if (inside_private_key) {
+                if (lowered ~ /end.*private[[:space:]]+key/) {
+                    inside_private_key = 0
+                }
+                next
+            }
+            if (lowered ~ /begin.*private[[:space:]]+key/) {
+                print "[REDACTED SENSITIVE DIAGNOSTIC LINE]"
+                inside_private_key = 1
+                next
+            }
+            if (lowered ~ /(password|secret|token|authorization|bearer[[:space:]]|cookie|private[ _-]?key|db[_. -]?(url|username|password)|jdbc:oracle|ocid1)/) {
+                print "[REDACTED SENSITIVE DIAGNOSTIC LINE]"
+            } else {
+                print
+            }
+        }
+    '
+}
+
+run_diagnostic_command_with_timeout() {
+    local timeout_seconds="$1"
+
+    shift
+    timeout \
+        --signal=TERM \
+        --kill-after="${DIAGNOSTIC_TIMEOUT_KILL_AFTER_SECONDS}s" \
+        "${timeout_seconds}s" \
+        "$@"
+}
+
+retain_failed_deployment_diagnostics() {
+    local current_diagnostic="$1"
+    local index
+    local record
+    local retention_listing
+    local remove_count
+    local -a old_diagnostics=()
+
+    retention_listing="$(
+        find "${DEPLOY_DIAGNOSTICS_DIR}" \
+            -maxdepth 1 \
+            -type f \
+            -regextype posix-extended \
+            -regex '.*/[0-9a-f]{40}\.log' \
+            ! -path "${current_diagnostic}" \
+            -printf '%T@ %p\n' \
+            | sort -n
+    )" || return 1
+
+    while IFS= read -r record; do
+        [[ -n "${record}" ]] || continue
+        old_diagnostics+=("${record#* }")
+    done <<<"${retention_listing}"
+
+    remove_count=$(( ${#old_diagnostics[@]} + 1 - DIAGNOSTIC_RETENTION_COUNT ))
+    for ((index = 0; index < remove_count; index += 1)); do
+        rm -f -- "${old_diagnostics[index]}" || return 1
+    done
+}
+
+capture_failed_deployment_diagnostics() (
+    local capture_timestamp
+    local container_image
+    local diagnostic_file
+    local diagnostic_temp_file
+    local inspect_output
+
+    umask 077
+    inspect_output="$(run_diagnostic_command_with_timeout \
+        "${DIAGNOSTIC_INSPECT_TIMEOUT_SECONDS}" \
+        docker inspect --format \
+        'container_image={{.Config.Image}}
+container_status={{.State.Status}}
+exit_code={{.State.ExitCode}}
+oom_killed={{.State.OOMKilled}}
+restart_count={{.RestartCount}}
+docker_error={{json .State.Error}}' \
+        energiai-backend 2>/dev/null)" || return 1
+    container_image="${inspect_output%%$'\n'*}"
+    container_image="${container_image#container_image=}"
+
+    if [[ "${container_image}" != "${TARGET_IMAGE}" ]]; then
+        printf '[INFO] Diagnóstico não criado: o container candidato ainda não substituiu o anterior.\n'
+        return 0
+    fi
+
+    if [[ -L "${DEPLOY_DIAGNOSTICS_DIR}" ]]; then
+        return 1
+    fi
+    mkdir -p -- "${DEPLOY_DIAGNOSTICS_DIR}" || return 1
+    [[ -d "${DEPLOY_DIAGNOSTICS_DIR}" && ! -L "${DEPLOY_DIAGNOSTICS_DIR}" ]] \
+        || return 1
+    chmod 700 -- "${DEPLOY_DIAGNOSTICS_DIR}" || return 1
+
+    diagnostic_file="${DEPLOY_DIAGNOSTICS_DIR}/${TARGET_COMMIT}.log"
+    diagnostic_temp_file="$(mktemp "${DEPLOY_DIAGNOSTICS_DIR}/.${TARGET_COMMIT}.XXXXXX")" \
+        || return 1
+    chmod 600 -- "${diagnostic_temp_file}" \
+        || { rm -f -- "${diagnostic_temp_file}"; return 1; }
+    capture_timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+        || { rm -f -- "${diagnostic_temp_file}"; return 1; }
+
+    if ! {
+        printf 'capture_timestamp_utc=%s\n' "${capture_timestamp}"
+        printf 'target_commit=%s\n' "${TARGET_COMMIT}"
+        printf 'target_image=%s\n' "${TARGET_IMAGE}"
+        printf '%s\n' "${inspect_output}" | sanitize_diagnostic_stream
+        printf 'recent_logs_tail_lines=%s\n' "${DIAGNOSTIC_LOG_TAIL_LINES}"
+        printf '%s\n' 'recent_logs_begin'
+        if ! run_diagnostic_command_with_timeout \
+                "${DIAGNOSTIC_LOGS_TIMEOUT_SECONDS}" \
+                docker logs \
+                --timestamps \
+                --tail "${DIAGNOSTIC_LOG_TAIL_LINES}" \
+                energiai-backend 2>&1 \
+                | sanitize_diagnostic_stream; then
+            printf '%s\n' 'recent_logs_unavailable=true'
+            printf '[INFO] AVISO: os logs recentes do candidato não puderam ser coletados; os demais metadados serão preservados.\n' >&2
+        fi
+        printf '%s\n' 'recent_logs_end'
+    } >"${diagnostic_temp_file}"; then
+        rm -f -- "${diagnostic_temp_file}"
+        return 1
+    fi
+
+    if ! mv -f -- "${diagnostic_temp_file}" "${diagnostic_file}"; then
+        rm -f -- "${diagnostic_temp_file}"
+        return 1
+    fi
+    chmod 600 -- "${diagnostic_file}" || return 1
+
+    if ! retain_failed_deployment_diagnostics "${diagnostic_file}"; then
+        printf '[INFO] AVISO: diagnóstico preservado, mas a retenção não pôde ser concluída.\n' >&2
+    fi
+    printf '[INFO] Diagnóstico restrito preservado em %s.\n' "${diagnostic_file}"
+)
+
 rollback() {
     printf '[INFO] Iniciando rollback para imagem imutável anterior.\n'
 
@@ -308,6 +456,9 @@ handle_failure() {
 
     set +e
     if [[ "${deployment_changed}" == true ]]; then
+        if ! capture_failed_deployment_diagnostics; then
+            printf '[INFO] AVISO: não foi possível preservar o diagnóstico do candidato; o rollback continuará.\n' >&2
+        fi
         rollback_attempted="yes"
         if rollback; then
             rollback_result="succeeded"
