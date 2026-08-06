@@ -111,6 +111,10 @@ Use [`.env.example`](.env.example) apenas como referência de nomes e formatos. 
 - origens CORS exatas, separadas por vírgula e nunca `*`;
 - `JWT_SECRET` com pelo menos 32 bytes aleatórios codificados em Base64;
 - `JWT_ISSUER`, `JWT_AUDIENCE` e `JWT_ACCESS_TOKEN_EXPIRATION` com os valores esperados pela aplicação.
+- `AUTH_REFRESH_TOKEN_EXPIRATION`, `AUTH_REFRESH_FAMILY_EXPIRATION` e
+  `AUTH_REFRESH_REUSE_GRACE_PERIOD` em segundos;
+- nome, segurança, `SameSite`, path e domínio opcional do cookie por meio das
+  variáveis `AUTH_REFRESH_COOKIE_*`.
 
 Gere um segredo exclusivo para o ambiente OCI com `JWT_SECRET="$(openssl rand -base64 32)"`,
 transfira-o por um canal seguro e informe o valor somente na linha `JWT_SECRET=` de
@@ -122,6 +126,22 @@ O `env_file` do Compose entrega essas variáveis diretamente ao container. A apl
 o segredo Base64 na inicialização e encerra imediatamente quando ele está ausente, malformado
 ou representa menos de 256 bits. Nesse caso, a readiness falha e o script automatizado mantém
 o fluxo de rollback existente.
+
+Na OCI, mantenha `AUTH_REFRESH_COOKIE_SECURE=true`. Como o frontend publicado e
+a API estão em sites diferentes, o navegador exige
+`AUTH_REFRESH_COOKIE_SAME_SITE=None` em conjunto com `Secure=true`. O path
+externo validado para os cookies de sessão é `/api/v1/auth`; deixe o domínio
+vazio para um cookie host-only, salvo necessidade operacional previamente
+validada. O frontend deve enviar `credentials: "include"` e usar o valor do
+header exposto `X-XSRF-TOKEN` ao chamar refresh ou logout; não deve depender da
+leitura do cookie da API por `document.cookie`. Não use origem CORS wildcard
+com credenciais.
+
+`SameSite=None; Secure` é necessário para esse fluxo cross-site, mas não
+contorna bloqueios de cookies de terceiros impostos pelo navegador.
+Safari/WebKit e ambientes com políticas restritivas podem bloquear os cookies;
+valide a integração manualmente em navegador real. Compatibilidade ampla pode
+exigir futuramente uma topologia same-site.
 
 `DB_URL` deve ser a string JDBC Thin TLS sem wallet fornecida pelo OCI Console, no formato conceitual `jdbc:oracle:thin:@tcps://<host>:<porta>/<service-name>`. Não registre host, service name, usuário ou URL reais no Git, em tickets ou em comandos compartilhados. A conta da aplicação precisa apenas dos privilégios exigidos pelo schema; não conceda `DBA`.
 
@@ -853,6 +873,10 @@ Depois da janela de rollback, remova manualmente apenas um TAR identificado em `
 - **Fallback não aparece:** confirme que o endereço de teste é o loopback indisponível do container e que os timeouts expiraram; não implante FastAPI nesta issue.
 - **Túnel falha:** confirme SSH e o bind local do container. Não abra 8080 publicamente.
 - **CORS nega o frontend:** configure origens exatas separadas por vírgula; não use `*`.
+- **Refresh ou logout retorna 403:** confirme o envio dos cookies com
+  credenciais e do header `X-XSRF-TOKEN`, sem registrar seus valores.
+- **Refresh retorna 401:** trate a sessão como não renovável; não exponha o
+  cookie, o token bruto nem seu hash durante o diagnóstico.
 
 ## Fora de escopo e validação pendente no ambiente implantado
 

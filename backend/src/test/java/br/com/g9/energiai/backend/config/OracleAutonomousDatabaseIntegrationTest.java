@@ -2,9 +2,12 @@ package br.com.g9.energiai.backend.config;
 
 import br.com.g9.energiai.backend.client.ml.MlPredictionClient;
 import br.com.g9.energiai.backend.client.ml.exception.MlPredictionClientException;
+import br.com.g9.energiai.backend.entity.AppUser;
+import br.com.g9.energiai.backend.enums.UserRole;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import br.com.g9.energiai.backend.repository.RefreshTokenRepository;
+import br.com.g9.energiai.backend.repository.UserRepository;
+import br.com.g9.energiai.backend.service.JwtTokenService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,9 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -50,16 +56,31 @@ class OracleAutonomousDatabaseIntegrationTest {
     @Autowired
     private EnergyAnalysisRepository energyAnalysisRepository;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtTokenService jwtTokenService;
+
     @MockitoBean
     private MlPredictionClient mlPredictionClient;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    private ObjectMapper objectMapper;
     private Long createdId;
+    private Long createdUserId;
 
     @AfterEach
     void deleteCreatedAnalysis() {
         if (createdId != null) {
             energyAnalysisRepository.deleteById(createdId);
+        }
+        if (createdUserId != null) {
+            refreshTokenRepository.deleteAllByUserId(createdUserId);
+            userRepository.deleteById(createdUserId);
         }
     }
 
@@ -90,12 +111,31 @@ class OracleAutonomousDatabaseIntegrationTest {
                     "ENERGY_ANALYSIS deve existir no schema atual após a migration do Flyway"
                 );
             }
+
+            try (ResultSet tables = connection.getMetaData().getTables(
+                    null,
+                    currentSchema,
+                    "REFRESH_TOKEN",
+                    new String[]{"TABLE"}
+            )) {
+                assertTrue(tables.next(), "REFRESH_TOKEN deve existir após a migration V4");
+            }
         }
         assertTrue(
             Arrays.stream(flyway.info().applied())
-                .anyMatch(migration -> "1".equals(migration.getVersion().getVersion())),
-            "Flyway deve aplicar ou validar a migration V1"
+                .anyMatch(migration -> "4".equals(migration.getVersion().getVersion())),
+            "Flyway deve aplicar ou validar a migration V4"
         );
+
+        AppUser user = userRepository.saveAndFlush(AppUser.builder()
+                .name("Oracle Integration Test")
+                .email("oracle-it-" + System.nanoTime() + "@example.com")
+                .passwordHash("unused-password-hash")
+                .role(UserRole.USER)
+                .active(true)
+                .build());
+        createdUserId = user.getId();
+        String accessToken = jwtTokenService.generateToken(user);
 
         when(mlPredictionClient.predict(any())).thenThrow(new MlPredictionClientException("API indisponível"));
         String requestBody = """
@@ -110,6 +150,7 @@ class OracleAutonomousDatabaseIntegrationTest {
 
         String responseBody = mockMvc.perform(post("/api/v1/analise-energetica")
                         .contextPath("/api/v1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -121,7 +162,9 @@ class OracleAutonomousDatabaseIntegrationTest {
         JsonNode response = objectMapper.readTree(responseBody);
         createdId = response.get("id").asLong();
 
-        mockMvc.perform(get("/api/v1/analise-energetica/{id}", createdId).contextPath("/api/v1"))
+        mockMvc.perform(get("/api/v1/analise-energetica/{id}", createdId)
+                        .contextPath("/api/v1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(createdId))
                 .andExpect(jsonPath("$.consumo_kwh").value(420.0))

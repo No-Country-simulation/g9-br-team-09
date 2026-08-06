@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -47,11 +48,8 @@ class EnergyAnalysisRepositoryTest {
 
     @BeforeEach
     void setup() {
-        energyAnalysisRepository.deleteAll();
-        userRepository.deleteAll();
-
-        userA = userRepository.save(user("User A", "user-a@example.com"));
-        userB = userRepository.save(user("User B", "user-b@example.com"));
+        userA = userRepository.save(user("User A", uniqueEmail("user-a")));
+        userB = userRepository.save(user("User B", uniqueEmail("user-b")));
     }
 
     @Test
@@ -212,5 +210,9 @@ class EnergyAnalysisRepositoryTest {
                 .role(UserRole.USER)
                 .active(true)
                 .build();
+    }
+
+    private String uniqueEmail(String prefix) {
+        return prefix + "-" + UUID.randomUUID() + "@example.com";
     }
 }

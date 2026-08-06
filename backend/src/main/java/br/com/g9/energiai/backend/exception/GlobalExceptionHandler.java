@@ -2,6 +2,8 @@ package br.com.g9.energiai.backend.exception;
 
 import br.com.g9.energiai.backend.dto.response.ApiErrorResponse;
 import br.com.g9.energiai.backend.service.UserAlreadyExistsException;
+import br.com.g9.energiai.backend.service.RefreshTokenCookieService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,7 +36,10 @@ import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final RefreshTokenCookieService refreshTokenCookieService;
 
     private static final String VALIDATION_ERROR = "VALIDATION_ERROR";
     private static final String ENUM_TYPE_ERROR = "ENUM_TYPE_ERROR";
@@ -180,6 +185,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         String message = (exception instanceof BadCredentialsException) ? exception.getMessage() : "E-mail ou senha inválidos";
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(buildBody(HttpStatus.UNAUTHORIZED, UNAUTHORIZED_ERROR, message));
+    }
+
+    @ExceptionHandler(RefreshTokenAuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleRefreshTokenAuthentication(
+            RefreshTokenAuthenticationException exception) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.UNAUTHORIZED);
+        if (exception.shouldClearRefreshCookie()) {
+            response.header(HttpHeaders.SET_COOKIE, refreshTokenCookieService.clearRefreshCookie().toString());
+        }
+        return response.body(buildBody(
+                HttpStatus.UNAUTHORIZED,
+                UNAUTHORIZED_ERROR,
+                exception.getMessage()
+        ));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

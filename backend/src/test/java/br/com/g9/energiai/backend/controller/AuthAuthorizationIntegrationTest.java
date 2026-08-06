@@ -3,6 +3,7 @@ package br.com.g9.energiai.backend.controller;
 import br.com.g9.energiai.backend.config.JwtProperties;
 import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.enums.UserRole;
+import br.com.g9.energiai.backend.repository.RefreshTokenRepository;
 import br.com.g9.energiai.backend.repository.UserRepository;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
@@ -47,10 +48,14 @@ class AuthAuthorizationIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private JwtProperties jwtProperties;
 
     @BeforeEach
     void setUp() {
+        refreshTokenRepository.deleteAllInBatch();
         userRepository.deleteAll();
     }
 

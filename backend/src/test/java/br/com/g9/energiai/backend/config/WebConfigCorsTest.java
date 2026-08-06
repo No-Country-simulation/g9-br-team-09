@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +22,15 @@ class WebConfigCorsTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private RefreshTokenProperties refreshTokenProperties;
+
+    @Test
+    @DisplayName("Deve permitir cookie sem Secure somente no profile local")
+    void shouldDisableSecureCookieForLocalHttp() {
+        assertFalse(refreshTokenProperties.cookieSecure());
+    }
 
     @Test
     @DisplayName("Deve permitir CORS para origem autorizada http://localhost:5173 e não retornar wildcard")
@@ -72,6 +82,21 @@ class WebConfigCorsTest {
                 .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
                 .andExpect(header().string("Access-Control-Allow-Methods", containsString("POST")))
                 .andExpect(header().string("Access-Control-Allow-Headers", containsString("Content-Type")))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    @Test
+    @DisplayName("Deve permitir e expor X-XSRF-TOKEN no fluxo com credenciais")
+    void shouldAllowCsrfHeaderForRefreshPreflight() throws Exception {
+        mockMvc.perform(options("/api/v1/auth/refresh")
+                        .contextPath("/api/v1")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "X-XSRF-TOKEN"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
+                .andExpect(header().string("Access-Control-Allow-Headers", containsString("X-XSRF-TOKEN")))
+                .andExpect(header().string("Access-Control-Expose-Headers", containsString("X-XSRF-TOKEN")))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
