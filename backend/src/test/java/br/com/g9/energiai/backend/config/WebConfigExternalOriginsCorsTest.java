@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties =
-        "CORS_ALLOWED_ORIGINS=https://portal.example,https://administracao.example")
+        "CORS_ALLOWED_ORIGINS=https://portal.example, https://administracao.example")
 @AutoConfigureMockMvc
 @LocalProfileTest
 class WebConfigExternalOriginsCorsTest {
