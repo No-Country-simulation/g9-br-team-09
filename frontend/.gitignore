@@ -10,7 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-.env
+.env*
+!.env.example
 *.local
 
 # Editor directories and files
@@ -27,3 +28,4 @@ dist-ssr
 # Alternative package manager lockfiles
 pnpm-lock.yaml
 yarn.lock
+.vercel
