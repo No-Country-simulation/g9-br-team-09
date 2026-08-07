@@ -141,20 +141,50 @@ Documentação, onboarding e troubleshooting devem diferenciar o banco local H2 
 
 ---
 
-## ADR-009 — Separação entre estado atual do backend e arquitetura-alvo com Data Science
+## ADR-009 — Orquestração atual com Data Science e fallback local
 
 ### Decisão ADR-009
 
-O estado atual do backend usa classificação local baseada em regras com `fonte_classificacao = RULE_BASED`.
-
-A arquitetura-alvo prevê integração com Data Science para classificação via `ML_MODEL`, com possibilidade de `RULE_BASED_FALLBACK` em caso de erro, timeout ou resposta inválida.
+O backend tenta classificar pela integração com Data Science usando
+`fonte_classificacao = ML_MODEL`. Erro, timeout ou resposta inválida acionam o
+classificador local com `fonte_classificacao = RULE_BASED_FALLBACK`.
 
 ### Motivo ADR-009
 
-Os enums públicos já preveem `RULE_BASED`, `ML_MODEL` e `RULE_BASED_FALLBACK`, mas a integração com Data Science ainda não está implementada no backend atual.
+O fluxo preserva a disponibilidade da API sem ocultar a origem efetiva da
+classificação.
 
 ### Impacto ADR-009
 
 - O backend continua responsável pela API pública, validação, orquestração, cálculo de custo, persistência e resposta final.
-- A documentação não deve apresentar a integração HTTP com Data Science como concluída.
+- A documentação deve distinguir respostas do modelo e do fallback local.
 - A responsabilidade final pelas recomendações em cenário `ML_MODEL` deve seguir o contrato de integração validado entre as frentes.
+
+---
+
+## ADR-010 — Sessão renovável com rotação de refresh token
+
+### Decisão ADR-010
+
+O access token permanece um JWT `HS256` de curta duração. A renovação usa um
+refresh token opaco, armazenado somente como hash `SHA-256` e entregue em cookie
+`HttpOnly`. Cada uso válido rotaciona o token na mesma família de sessão.
+
+Refresh e logout são os únicos endpoints protegidos por CSRF de cookie duplo,
+com `XSRF-TOKEN` e `X-XSRF-TOKEN`. Os endpoints Bearer permanecem stateless e
+não exigem CSRF.
+
+### Motivo ADR-010
+
+A rotação limita a reutilização de credenciais longas, permite detectar reuso e
+mantém o access token fora de estado no servidor. O lock pessimista da família,
+seguido de refetch, serializa rotações e revogações concorrentes.
+
+### Impacto ADR-010
+
+- cada login cria uma nova família com expiração absoluta;
+- o token bruto nunca entra em entidade, log ou resposta JSON;
+- reutilização fora da tolerância revoga a família;
+- logout é idempotente e não cria blacklist do access token;
+- clientes web devem enviar cookies com `credentials: "include"` e o header
+  CSRF nas operações de refresh e logout.

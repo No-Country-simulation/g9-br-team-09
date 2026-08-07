@@ -24,8 +24,10 @@ public class AuthenticationService {
     private final UserMapper userMapper;
     private final JwtProperties jwtProperties;
 
-    @Transactional(readOnly = true)
-    public AuthenticationResponse login(UserLoginRequest request) {
+    private final RefreshTokenService refreshTokenService;
+
+    @Transactional
+    public LoginResult login(UserLoginRequest request) {
         String normalizedEmail = EmailNormalizer.normalize(request.email());
 
         AppUser user = userRepository.findByEmail(normalizedEmail)
@@ -35,12 +37,14 @@ public class AuthenticationService {
 
         String token = jwtTokenService.generateToken(user);
 
-        return new AuthenticationResponse(
+        AuthenticationResponse response = new AuthenticationResponse(
                 token,
                 "Bearer",
                 jwtProperties.accessTokenExpiration().toSeconds(),
                 userMapper.toAuthenticatedUserResponse(user)
         );
+
+        return new LoginResult(response, refreshTokenService.createFamily(user));
     }
 
     @Transactional(readOnly = true)
