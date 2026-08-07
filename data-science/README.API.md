@@ -2,70 +2,57 @@
 
 ## Objetivo e arquitetura
 
-Esta API FastAPI executa a inferência do modelo energético oficial e é um
-contrato interno consumido exclusivamente pelo backend Spring Boot:
+FastAPI executa inferência interna consumida exclusivamente por Spring Boot:
 
-```text
-Frontend -> Backend Spring Boot -> FastAPI -> modelo energético
-```
+~~~text
+Frontend -> Spring Boot -> FastAPI -> modelo energético
+~~~
 
-O frontend não deve chamar esta API diretamente. O backend continua responsável
-pela API pública, custo, persistência, orquestração e fallback local. Esta API
-retorna apenas classificação, probabilidade, score, recomendações e versão do
-modelo.
+Frontend não deve chamá-la diretamente. Schemas, constraints, score, probabilidade e compatibilidade Java/Python estão no [contrato normativo](../docs/api-contract.md).
 
 ## Pré-requisitos e instalação
 
-Use Python 3.14, a versão adotada pelo ambiente de Data Science do projeto.
+Use Python 3.14.
 
-```bash
+~~~bash
 cd data-science
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-api.txt
-```
+~~~
 
 ## Configuração e execução local
 
-Copie o exemplo e informe o artefato oficial disponibilizado pela issue #86:
-
-```bash
+~~~bash
 cp .env.api.example .env.api
-```
+~~~
 
-```dotenv
-MODEL_PATH=./models/modelo_energetico_v2.joblib
-MODEL_VERSION=energy-classifier-v2
-```
+~~~dotenv
+MODEL_PATH=./models/<ARTEFATO_COMPATIVEL>
+MODEL_VERSION=<VERSAO_DO_MODELO>
+~~~
 
-O modelo é carregado uma única vez durante a inicialização. Sem `MODEL_PATH`,
-`MODEL_VERSION`, ou um artefato compatível com `predict_proba` e as três classes
-oficiais, a aplicação falha ao iniciar; ela não cria modelo fake nem aplica
-fallback de classificação.
+Modelo é carregado uma vez no startup. Sem MODEL_PATH, MODEL_VERSION ou artefato compatível com predict_proba e três classes oficiais, aplicação falha ao iniciar; não cria modelo fake nem aplica fallback.
 
-```bash
+~~~bash
 cd data-science
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+~~~
 
-Os recursos OpenAPI nativos estão disponíveis em `/docs`, `/redoc` e
-`/openapi.json`.
+OpenAPI: /docs, /redoc e /openapi.json.
 
-## Endpoints
+## Operação
 
-### `GET /health`
+GET /health retorna HTTP 200 e {"status":"UP"} somente após serviço configurado, sem expor caminho do modelo ou detalhes internos:
 
-Retorna `200` e exatamente `{"status":"UP"}` depois que o serviço de
-inferência está configurado. Não expõe o caminho do modelo ou detalhes internos.
-
-```bash
+~~~bash
 curl --fail http://localhost:8000/health
-```
+~~~
 
-### `POST /predict`
+Para chamada manual de desenvolvimento:
 
-```bash
+~~~bash
 curl --fail \
   --request POST \
   --header "Content-Type: application/json" \
@@ -77,40 +64,20 @@ curl --fail \
     "horas_alto_consumo": 8
   }' \
   http://localhost:8000/predict
-```
+~~~
 
-A resposta contém `categoria`, `probabilidade`, `score`, `recomendacoes` e
-`modelo_versao`, todos em `snake_case` e compatíveis com `MlPredictionResponse`.
-
-Categoria e probabilidade vêm do `argmax` de `predict_proba`, respeitando a
-ordem declarada em `classes_`. O score é a severidade esperada:
-
-```text
-round(0 * P(EFICIENTE) + 50 * P(MODERADO) + 100 * P(INEFICIENTE))
-```
-
-O motor de recomendações usa limites operacionais próprios e constantes
-nomeadas para horário de pico, horas de alto consumo, consumo e quantidade de
-equipamentos. Esses limites não classificam a predição nem substituem a
-categoria do modelo.
+O [contrato normativo](../docs/api-contract.md) define schema, constraints, response, categoria, probabilidade, score e evolução. Produção integra pelo Spring Boot, não pelo frontend.
 
 ## Testes
 
-```bash
+~~~bash
 cd data-science
 python -m pytest tests -q
 python -m compileall app tests
-```
+~~~
 
-Os testes injetam um modelo fake determinístico somente no ambiente de teste;
-nenhum artefato fake é versionado como modelo oficial.
+Testes injetam modelo fake determinístico somente em teste; nenhum artefato fake é modelo oficial.
 
-## Dependência e itens fora de escopo
+## Dependência e limitações
 
-O artefato V2 oficial ainda depende da issue #86. Até ele estar disponível, o
-teste contra o modelo real permanece bloqueado, embora a API e seus testes de
-contrato possam ser executados com fakes injetados.
-
-Estão fora de escopo: treinamento, notebooks históricos, acesso direto pelo
-frontend, fallback `RULE_BASED_FALLBACK`, integração ponta a ponta com Spring
-Boot, credenciais Oracle, OCI e qualquer deploy.
+Artefato V2 oficial depende da Issue #86. Testes de contrato usam fakes injetados, mas teste contra modelo real permanece bloqueado até artefato compatível. Fora de escopo: treinamento, notebooks históricos, acesso frontend, fallback backend, integração ponta a ponta, credenciais Oracle, OCI e deploy.

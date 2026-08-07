@@ -1,217 +1,156 @@
-# Contrato da API — EnergIAI
+# Contrato de integração de APIs — EnergiAI
 
-Este documento é a referência principal do contrato público atual da API do EnergIAI.
+Este documento é a fonte normativa dos contratos HTTP: API pública Spring Boot e API interna FastAPI. Guias operacionais devem referenciá-lo, não redefini-lo.
 
-## Endpoint público
+## Arquitetura e responsabilidades
 
-```http
+~~~text
+Frontend
+   |
+   | API pública
+   v
+Spring Boot
 POST /api/v1/analise-energetica
-```
+   |
+   | API interna
+   v
+FastAPI
+POST /predict
+   |
+   v
+Modelo de Machine Learning
+~~~
 
-O prefixo `/api/v1` faz parte do contrato público implementado no backend.
+O frontend consome somente Spring Boot e nunca /predict. FastAPI não é API pública. Spring Boot responde por autenticação, validação pública, orquestração, custo, persistência, fallback e resposta pública. FastAPI responde por inferência, categoria, probabilidade, score, recomendações ML e versão do modelo.
 
-## Objetivo do endpoint
+## API pública — Spring Boot
 
-Receber dados de consumo energético, executar a análise e retornar classificação, custo estimado, recomendações e a fonte da classificação.
+### POST /api/v1/analise-energetica
 
-## Request oficial
+Exige Authorization: Bearer <access_token>. O request usa snake_case:
 
-```json
-{
-  "consumo_kwh": 420,
-  "uso_horario_pico": true,
-  "quantidade_equipamentos": 10,
-  "tipo_imovel": "CASA",
-  "horas_alto_consumo": 8
-}
-```
+~~~json
+{"consumo_kwh":420,"uso_horario_pico":true,"quantidade_equipamentos":10,"tipo_imovel":"CASA","horas_alto_consumo":8}
+~~~
 
-## Regras da requisição
+| Campo | Tipo | Regra |
+| --- | --- | --- |
+| consumo_kwh | number | maior que zero |
+| uso_horario_pico | boolean | obrigatório |
+| quantidade_equipamentos | integer | maior ou igual a 1 |
+| tipo_imovel | string | CASA, APARTAMENTO, COMERCIO, ESCRITORIO, INDUSTRIA ou OUTRO |
+| horas_alto_consumo | integer | entre 0 e 24 |
 
-| Campo                     | Tipo      | Obrigatório | Regra                                       |
-| ------------------------- | --------- | ----------- | ------------------------------------------- |
-| `consumo_kwh`             | `number`  | Sim         | Deve ser maior que zero                     |
-| `uso_horario_pico`        | `boolean` | Sim         | Não pode ser nulo                           |
-| `quantidade_equipamentos` | `integer` | Sim         | Deve ser maior ou igual a 1                 |
-| `tipo_imovel`             | `string`  | Sim         | Deve corresponder a um valor válido do enum |
-| `horas_alto_consumo`      | `integer` | Sim         | Deve estar entre 0 e 24                     |
+A resposta pública contém id, categoria, probabilidade, score, custo_estimado_mensal, recomendacoes e fonte_classificacao:
 
-## Enum `tipo_imovel`
+~~~json
+{"id":1,"categoria":"INEFICIENTE","probabilidade":0.75,"score":95,"custo_estimado_mensal":315.00,"recomendacoes":["Reduzir o uso de equipamentos durante horários de pico."],"fonte_classificacao":"RULE_BASED_FALLBACK"}
+~~~
 
-Valores aceitos pelo contrato atual:
+| Campo | Descrição |
+| --- | --- |
+| id | Identificador da análise persistida. |
+| categoria | Categoria final: EFICIENTE, MODERADO ou INEFICIENTE. |
+| probabilidade | Probabilidade do modelo ou confiança heurística do classificador por regras. |
+| score | Score numérico da análise. |
+| custo_estimado_mensal | Estimativa mensal em reais calculada pelo backend. |
+| recomendacoes | Recomendações da análise. |
+| fonte_classificacao | RULE_BASED, ML_MODEL ou RULE_BASED_FALLBACK. |
 
-- `CASA`
-- `APARTAMENTO`
-- `COMERCIO`
-- `ESCRITORIO`
-- `INDUSTRIA`
-- `OUTRO`
+Categorias: EFICIENTE, MODERADO e INEFICIENTE. O backend calcula custo_estimado_mensal como consumo_kwh * 0.75. RULE_BASED, ML_MODEL e RULE_BASED_FALLBACK identificam a estratégia. Em regras, 0.75 é confiança heurística, não acurácia nem probabilidade estatística.
 
-## Response oficial
+modelo_versao é exclusivo do contrato FastAPI → Spring Boot. Não integra EnergyAnalysisResponse e não é exposto ao frontend.
 
-```json
-{
-  "categoria": "INEFICIENTE",
-  "probabilidade": 0.75,
-  "score": 95,
-  "custo_estimado_mensal": 315.00,
-  "recomendacoes": [
-    "Reduzir o uso de equipamentos durante horários de pico.",
-    "Avaliar equipamentos com alto consumo energético.",
-    "Distribuir o consumo ao longo do dia.",
-    "Verificar a eficiência energética dos equipamentos."
-  ],
-  "fonte_classificacao": "RULE_BASED_FALLBACK"
-}
-```
+As operações de análise usam o usuário autenticado: a criação associa o registro a esse usuário, a listagem retorna somente seus registros, o detalhe por id exige que o registro lhe pertença e o resumo/dashboard é calculado somente sobre seus dados.
 
-## Campos da resposta
+Erros públicos Spring Boot têm timestamp, status, error e message. Códigos existentes: VALIDATION_ERROR, ENUM_TYPE_ERROR, INVALID_TYPE_ERROR, HTTP_MESSAGE_ERROR, BAD_REQUEST_ERROR, NOT_FOUND_ERROR, METHOD_NOT_ALLOWED_ERROR, UNSUPPORTED_MEDIA_TYPE_ERROR, INTERNAL_ERROR, CONFLICT_ERROR, UNAUTHORIZED_ERROR e FORBIDDEN_ERROR. Detalhes internos não são expostos.
 
-| Campo                     | Tipo      | Descrição |
-| ------------------------- | --------- | --------- |
-| `categoria`               | `string`  | Categoria energética retornada pela análise. |
-| `probabilidade`           | `number`  | Probabilidade estimada da classificação. |
-| `score`                   | `integer` | Score calculado pela classificação. |
-| `custo_estimado_mensal`   | `number`  | Estimativa mensal em reais com base na tarifa de referência. |
-| `recomendacoes`           | `array`   | Recomendações geradas para o perfil analisado. |
-| `fonte_classificacao`     | `string`  | Origem da classificação retornada. |
+### Autenticação, refresh e logout
 
-## Enum `categoria`
+O access token é JWT assinado com HS256, de curta duração, retornado no JSON de login e refresh e usado como Authorization: Bearer <access_token>. Ele não é persistido nem recebe blacklist no logout atual; um token já emitido pode continuar válido até expirar após logout da sessão de refresh.
 
-Valores públicos atuais:
+POST /api/v1/auth/login retorna access_token, token_type, expires_in e usuario, além de emitir refresh_token somente em cookie HttpOnly, cookie XSRF-TOKEN não HttpOnly e header X-XSRF-TOKEN. O refresh token é opaco, tem ao menos 256 bits de entropia, não aparece no JSON, não deve ser lido por JavaScript e somente seu hash SHA-256 é persistido. GET /api/v1/auth/me retorna os dados do usuário autenticado.
 
-- `EFICIENTE`
-- `MODERADO`
-- `INEFICIENTE`
+Cada login cria uma família de sessão. Refresh válido rotaciona obrigatoriamente o token e mantém o sucessor na mesma família. A família tem expiração absoluta; a validade efetiva do sucessor é o menor valor entre a duração configurada e o fim da família.
 
-## `fonte_classificacao`
+POST /api/v1/auth/refresh não recebe body; exige os cookies refresh_token e XSRF-TOKEN e o header X-XSRF-TOKEN correspondente. Retorna 200 com novo access token e cookie de refresh rotacionado; falha de autenticação retorna HTTP 401 com UNAUTHORIZED_ERROR e CSRF ausente ou inválido retorna HTTP 403 com FORBIDDEN_ERROR. Reutilização concorrente do predecessor dentro de AUTH_REFRESH_REUSE_GRACE_PERIOD retorna 401 sem revogar a família nem remover cookie que possa conter sucessor de outra requisição. Após essa janela, a reutilização é tratada como reuso indevido e revoga a família.
 
-Valores possíveis no contrato:
+POST /api/v1/auth/logout usa a mesma proteção CSRF, é idempotente, retorna 204 e remove os cookies. O logout revoga a sessão de refresh apresentada, sem invalidar antecipadamente access token já emitido. CSRF é aplicado a POST /api/v1/auth/refresh e POST /api/v1/auth/logout, não aos endpoints protegidos por Bearer em geral.
 
-- `RULE_BASED`: classificação realizada diretamente pelo classificador local do backend.
-- `ML_MODEL`: classificação retornada pelo modelo ou API de Data Science.
-- `RULE_BASED_FALLBACK`: a aplicação tentou usar a integração com Data Science, mas utilizou o classificador local por erro, timeout ou resposta inválida.
+O cliente web deve usar credentials: "include". CORS usa origens explícitas, credenciais e permite/exibe X-XSRF-TOKEN; wildcard não é aceito com credenciais. AUTH_REFRESH_* configura duração do token, duração da família, janela de tolerância e atributos do cookie.
 
-O valor `0.75` é uma confiança heurística convencional do classificador baseado
-em regras. Ele não representa uma taxa de acurácia medida, uma probabilidade
-estatística nem um valor obtido por calibração.
+No profile local, HTTP usa cookie com Secure=false. Fora do cenário cross-site, o padrão configurado é SameSite=Strict. Na OCI, quando frontend e backend estão em sites diferentes, SameSite=None exige Secure=true para envio cross-site. SameSite=None; Secure não garante que cookies de terceiros serão aceitos: Safari/WebKit e políticas restritivas podem bloqueá-los; valide em navegador real e considere topologia same-site para compatibilidade mais ampla.
 
-## Semântica de score e probabilidade
+## API interna — FastAPI
 
-O `score` é um índice de ineficiência energética de `0` a `100`; ele determina
-a categoria, mas não representa a confiança da classificação.
+### POST /predict
 
-Quando `fonte_classificacao` for `ML_MODEL`, `probabilidade` contém o valor
-produzido pelo modelo de Machine Learning. Quando for `RULE_BASED` ou
-`RULE_BASED_FALLBACK`, `probabilidade` contém a confiança heurística fixa
-`0.75`. Essa confiança não é uma probabilidade estatística produzida por um
-modelo e não deve ser calculada a partir do `score`.
+Consumidor: Spring Boot somente. Não há prefixo /api/v1.
 
-No fluxo do endpoint, `fonte_classificacao` é `ML_MODEL` quando a integração
-com Machine Learning retorna uma resposta válida e `RULE_BASED_FALLBACK` quando
-ocorre falha, timeout ou resposta inválida da API de ML.
+#### Request
 
-## Cálculo de custo estimado
+~~~json
+{"consumo_kwh":420.0,"uso_horario_pico":true,"quantidade_equipamentos":10,"tipo_imovel":"CASA","horas_alto_consumo":8}
+~~~
 
-Tarifa de referência atual:
+Campos extras são rejeitados.
 
-```text
-R$ 0,75/kWh
-```
+| Campo | Contrato FastAPI |
+| --- | --- |
+| consumo_kwh | float estrito, finito e maior que zero |
+| uso_horario_pico | boolean estrito |
+| quantidade_equipamentos | inteiro estrito e maior ou igual a 1 |
+| tipo_imovel | CASA, APARTAMENTO, COMERCIO, ESCRITORIO, INDUSTRIA ou OUTRO |
+| horas_alto_consumo | inteiro estrito entre 0 e 24 |
 
-Fórmula:
+#### Response
 
-```text
-custo_estimado_mensal = consumo_kwh * 0.75
-```
+~~~json
+{"categoria":"INEFICIENTE","probabilidade":0.81,"score":81,"recomendacoes":["Reduzir o uso de equipamentos durante horários de pico."],"modelo_versao":"energy-classifier-v2"}
+~~~
 
-## Tratamento de erros
+Números e versão são exemplos, não resultado garantido nem artefato final da Issue #86.
 
-Formato atual documentado para erros de validação:
+- categoria: EFICIENTE, MODERADO ou INEFICIENTE, definida por argmax das probabilidades das três classes; não é recalculada pelo score.
+- probabilidade: número finito de 0 a 1 associado à categoria escolhida por argmax. Não é necessariamente calibrada; pipeline final com calibração tecnicamente justificada mantém o mesmo campo.
+- score: severidade esperada de 0 a 100:
 
-```json
-{
-  "timestamp": "2026-07-10T18:30:00",
-  "status": 400,
-  "error": "VALIDATION_ERROR",
-  "message": "consumo_kwh: O consumo deve ser um valor positivo"
-}
-```
+~~~text
+round(0 * P(EFICIENTE) + 50 * P(MODERADO) + 100 * P(INEFICIENTE))
+~~~
 
-- `status` representa o status HTTP.
-- `error` contém um código estável e legível por máquina.
-- `message` contém a explicação legível para o consumidor.
-- Erros internos não devem expor stack trace ou detalhes sensíveis.
+Score não é confiança e não redefine categoria.
+- recomendacoes: lista obrigatória, não vazia, textos não vazios e sem duplicações. Em ML_MODEL, backend usa recomendações válidas FastAPI.
+- modelo_versao: string obrigatória não vazia que identifica modelo/artefato, não versão HTTP; não é pública no backend.
 
-Outros códigos de erro já previstos na implementação atual incluem `ENUM_TYPE_ERROR`, `INVALID_TYPE_ERROR`, `HTTP_MESSAGE_ERROR`, `NOT_FOUND_ERROR`, `METHOD_NOT_ALLOWED_ERROR`, `UNSUPPORTED_MEDIA_TYPE_ERROR` e `INTERNAL_ERROR`.
+### Aceitação pelo Spring Boot
 
-## Estado atual
+O orquestrador aceita response não nulo, categoria não nula, probabilidade não nula/finita/de 0 a 1, score de 0 a 100 e recomendacoes não nulas, não vazias e sem itens nulos. Não valida modelo_versao atualmente.
 
-- O backend recebe e valida o request.
-- O backend tenta obter a classificação pela integração com Machine Learning.
-- Respostas válidas da API de ML usam `fonte_classificacao = ML_MODEL`.
-- Em caso de falha, timeout ou resposta inválida, o backend utiliza o
-  classificador local com `fonte_classificacao = RULE_BASED_FALLBACK`.
-- O backend calcula o custo estimado, gera recomendações, persiste a análise e
-  retorna o contrato público.
+FastAPI é mais estrita: recomendações devem ter textos não vazios, sem duplicações, e modelo_versao não vazio. A diferença é documentada, não corrigida nesta issue.
 
-## Autenticação e renovação de sessão
+### Erros FastAPI
 
-O access token continua sendo um JWT assinado com `HS256`, enviado no JSON de
-login e refresh e utilizado como `Bearer`. Ele é de curta duração, não é
-persistido e não recebe blacklist no logout desta versão.
+Payload incompatível recebe resposta de validação Pydantic/FastAPI, HTTP 422; ela não é ApiErrorResponse Spring Boot. Erro de inferência recebe HTTP 500 sanitizado:
 
-O refresh token é um valor opaco com pelo menos 256 bits de entropia. Ele nunca
-faz parte do JSON: é enviado somente no cookie `refresh_token`, com `HttpOnly`,
-e apenas seu hash `SHA-256` é persistido. Cada login cria uma nova família de
-sessão e cada refresh válido rotaciona obrigatoriamente o token dentro da mesma
-família.
+~~~json
+{"detail":"Não foi possível executar a inferência."}
+~~~
 
-### `POST /api/v1/auth/login`
+Ausência de configuração ou artefato compatível pode impedir startup; não é response de /predict.
 
-Mantém o `AuthenticationResponse` existente no corpo e também emite:
+## Timeout e fallback
 
-- o cookie HttpOnly `refresh_token`;
-- o cookie não HttpOnly `XSRF-TOKEN`;
-- o header `X-XSRF-TOKEN`, com o valor a ser enviado pelo cliente nas operações
-  protegidas por CSRF.
+Backend usa ML_API_BASE_URL, ML_API_CONNECT_TIMEOUT e ML_API_READ_TIMEOUT, com defaults http://localhost:8000, 2s e 5s. Indisponibilidade, timeout, erro HTTP, transporte, response ausente ou incompatível acionam classificador local quando possível, com fonte_classificacao = RULE_BASED_FALLBACK.
 
-### `POST /api/v1/auth/refresh`
+RULE_BASED_FALLBACK pertence ao Spring Boot. FastAPI não o envia e não implementa fallback. fonte_classificacao = ML_MODEL só ocorre após Spring Boot aceitar response FastAPI válida.
 
-Não recebe body. Exige o cookie `refresh_token`, o cookie `XSRF-TOKEN` e o
-header `X-XSRF-TOKEN` correspondente. Uma rotação bem-sucedida retorna `200`
-com um novo access token no mesmo contrato JSON do login e substitui o cookie
-de refresh.
+## Evolução compatível
 
-Falhas de autenticação do refresh retornam `401` com `UNAUTHORIZED_ERROR` e
-mensagem genérica. CSRF ausente ou inválido retorna `403` com
-`FORBIDDEN_ERROR`. A reutilização concorrente do predecessor dentro da janela
-de tolerância retorna `401` sem apagar o cookie que pode conter o sucessor já
-emitido. Reutilização posterior à tolerância revoga a família.
+Nomes, tipos e semântica não mudam unilateralmente. Breaking changes exigem coordenação Java/Python. Algoritmo ou artefato pode mudar sem alterar HTTP se invariantes permanecerem; calibração não altera formato. modelo_versao identifica modelo, não contrato. Nenhuma evolução permite frontend consumir /predict. Mudanças atualizam esta fonte normativa antes ou junto do código.
 
-### `POST /api/v1/auth/logout`
+## Limites da Issue #86
 
-Não recebe body e exige a mesma proteção CSRF do refresh. O endpoint é
-idempotente, retorna `204` e remove os cookies de refresh e CSRF. O logout
-revoga a sessão de refresh apresentada, mas não invalida antecipadamente um
-access token já emitido.
+Contrato estável: cinco features, categorias, argmax, probabilidade da categoria, score de severidade 0–100, recomendações, modelo_versao e formato de /predict.
 
-### Cookies, CORS e expiração
-
-O cliente web deve usar `credentials: "include"`. CORS mantém
-`allowCredentials=true`, origens explícitas, o request header
-`X-XSRF-TOKEN` permitido e o response header homônimo exposto; wildcard não é
-aceito com credenciais.
-
-As validades do token e da família, a janela de tolerância e os atributos do
-cookie são configuráveis pelas variáveis `AUTH_REFRESH_*`. A validade do
-sucessor é o menor valor entre sua duração configurada e o fim absoluto da
-família. Localmente, o cookie usa `Secure=false` para HTTP. Na OCI, frontend e
-API em sites diferentes exigem `SameSite=None; Secure`; por padrão, fora desse
-cenário, usa-se `SameSite=Strict`.
-
-`SameSite=None; Secure` é necessário para o fluxo cross-site, mas não contorna
-bloqueios de cookies de terceiros impostos pelo navegador. Safari/WebKit e
-ambientes com políticas restritivas podem bloquear os cookies; valide a
-integração manualmente em navegador real. Compatibilidade ampla pode exigir no
-futuro uma topologia same-site.
+Pendente na #86: modelo vencedor, hiperparâmetros, métricas, holdout, decisão de calibração, artefato serializado final e versão concreta. Isso não bloqueia contrato HTTP.
