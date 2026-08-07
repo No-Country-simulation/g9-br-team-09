@@ -11,6 +11,14 @@ if [[ "${SMOKE_PROBE_MODE:-}" == 1 ]]; then
     [[ "${REQUEST_TIMEOUT:-}" == 15 ]]
     [[ "${VALIDATED_ARTIFACT:-}" == \
         docker.io/pxs00/energiai-backend:sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc ]]
+    [[ -f "${SMOKE_AUTH_FILE:-}" ]]
+    exec {smoke_auth_fd}<"${SMOKE_AUTH_FILE}"
+    IFS= read -r -d '' smoke_email <&"${smoke_auth_fd}"
+    IFS= read -r -d '' smoke_password <&"${smoke_auth_fd}"
+    exec {smoke_auth_fd}<&-
+    [[ "${smoke_email}" == smoke.user@example.invalid ]]
+    [[ "${smoke_password}" == test-only-smoke-password ]]
+    unset smoke_email smoke_password
     printf '[TEST] smoke environment received\n'
     exit "${SMOKE_STATUS:-0}"
 fi
@@ -69,6 +77,10 @@ run_smoke_main_case() {
     touch \
         "${fixture_dir}/backend.env" \
         "${fixture_dir}/infra/deploy/oci/compose.yaml"
+    printf '%s\0%s\0' \
+        'smoke.user@example.invalid' \
+        'test-only-smoke-password' >"${fixture_dir}/smoke-auth.credentials"
+    chmod 600 -- "${fixture_dir}/smoke-auth.credentials"
     cp -- \
         "${SCRIPT_DIR}/test-deploy-backend.sh" \
         "${fixture_dir}/infra/tests/smoke/backend-oci-smoke.sh"
@@ -81,6 +93,7 @@ run_smoke_main_case() {
         TARGET_COMMIT='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
         TARGET_IMAGE='docker.io/pxs00/energiai-backend:sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
         IMAGE_DIGEST='sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' \
+        SMOKE_AUTH_FILE="${fixture_dir}/smoke-auth.credentials" \
         EXPECTED_CLASSIFICATION_SOURCE=ML_MODEL \
         SMOKE_PROBE_MODE=1 \
         SMOKE_STATUS="${smoke_status}" \
@@ -131,6 +144,75 @@ run_smoke_main_case() {
     [[ "${status}" -eq "${expected_status}" ]] \
         || { printf 'Expected exit status %s, got %s.\n%s\n' "${expected_status}" "${status}" "${output}" >&2; return 1; }
     printf '%s' "${output}"
+}
+
+test_missing_smoke_credentials_fail_preflight() {
+    local output
+    local status
+
+    set +e
+    output="$(bash -c '
+        source "$1"
+        validate_smoke_auth_file
+    ' bash "${DEPLOY_HELPER}" 2>&1)"
+    status=$?
+    set -e
+    [[ "${status}" -ne 0 ]] \
+        || { printf 'Expected missing smoke credentials to fail.\n%s\n' "${output}" >&2; return 1; }
+    assert_contains "${output}" 'arquivo temporário de credenciais do smoke test é obrigatório'
+}
+
+test_permissive_smoke_credentials_fail_preflight() {
+    local auth_file
+    local output
+    local smoke_email='smoke.user@example.invalid'
+    local smoke_password='test-only-smoke-password'
+    local status
+
+    auth_file="$(mktemp)"
+    printf '%s\0%s\0' "${smoke_email}" "${smoke_password}" >"${auth_file}"
+    chmod 0644 -- "${auth_file}"
+    set +e
+    output="$(
+        SMOKE_AUTH_FILE="${auth_file}" \
+            bash -c '
+                source "$1"
+                validate_smoke_auth_file
+            ' bash "${DEPLOY_HELPER}" 2>&1
+    )"
+    status=$?
+    set -e
+    rm -f -- "${auth_file}"
+    [[ "${status}" -ne 0 ]] \
+        || { printf 'Expected permissive smoke credentials to fail.\n%s\n' "${output}" >&2; return 1; }
+    assert_contains "${output}" 'arquivo protegido não possui permissões restritivas'
+    assert_not_contains "${output}" "${smoke_email}"
+    assert_not_contains "${output}" "${smoke_password}"
+}
+
+test_incomplete_smoke_credentials_fail_preflight() {
+    local auth_file
+    local output
+    local status
+
+    auth_file="$(mktemp)"
+    printf '%s\0' 'smoke.user@example.invalid' >"${auth_file}"
+    chmod 600 -- "${auth_file}"
+    set +e
+    output="$(
+        SMOKE_AUTH_FILE="${auth_file}" \
+            bash -c '
+                source "$1"
+                validate_smoke_auth_file
+            ' bash "${DEPLOY_HELPER}" 2>&1
+    )"
+    status=$?
+    set -e
+    rm -f -- "${auth_file}"
+    [[ "${status}" -ne 0 ]] \
+        || { printf 'Expected incomplete smoke credentials to fail.\n%s\n' "${output}" >&2; return 1; }
+    assert_contains "${output}" 'credenciais temporárias do smoke test estão incompletas'
+    assert_not_contains "${output}" 'smoke.user@example.invalid'
 }
 
 test_fail_triggers_on_error() {
@@ -452,6 +534,7 @@ test_diagnostics_are_restricted_sanitized_retained_and_persist_after_rollback() 
                             printf "%s\\n" \
                                 "2026-08-05T12:00:00Z startup failed safely" \
                                 "JWT_SECRET=top-secret-value" \
+                                "email=smoke-user@example.invalid" \
                                 "Authorization: Bearer hidden-value" \
                                 "Cookie: session=hidden-cookie" \
                                 "-----BEGIN PRIVATE KEY-----" \
@@ -485,6 +568,7 @@ test_diagnostics_are_restricted_sanitized_retained_and_persist_after_rollback() 
                 grep -Fq "startup failed safely" "${diagnostic_file}"
                 grep -Fqx "[REDACTED SENSITIVE DIAGNOSTIC LINE]" "${diagnostic_file}"
                 ! grep -Fq "top-secret-value" "${diagnostic_file}"
+                ! grep -Fq "smoke-user@example.invalid" "${diagnostic_file}"
                 ! grep -Fq "hidden-value" "${diagnostic_file}"
                 ! grep -Fq "hidden-cookie" "${diagnostic_file}"
                 ! grep -Fq "backend-env-secret" "${diagnostic_file}"
@@ -531,6 +615,9 @@ test_on_error_delegates_to_handle_failure() {
 }
 
 test_fail_triggers_on_error
+test_missing_smoke_credentials_fail_preflight
+test_permissive_smoke_credentials_fail_preflight
+test_incomplete_smoke_credentials_fail_preflight
 test_deployment_failure_attempts_rollback
 test_pre_update_failure_emits_structured_result
 test_successful_smoke_does_not_roll_back
