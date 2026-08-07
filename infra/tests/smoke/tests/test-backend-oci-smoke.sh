@@ -2,7 +2,8 @@
 
 set -Eeuo pipefail
 
-readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 readonly SMOKE_SCRIPT="${SCRIPT_DIR}/../backend-oci-smoke.sh"
 readonly TEST_EMAIL='smoke.user@example.invalid'
 readonly TEST_PASSWORD='test-only-smoke-password'
