@@ -118,8 +118,10 @@ jobs:
           bash -n infra/deploy/oci/tests/test-deploy-backend.sh
           bash -n infra/deploy/oci/tests/test-inspect-immutable-image.sh
           bash -n infra/tests/smoke/backend-oci-smoke.sh
+          bash -n infra/tests/smoke/tests/test-backend-oci-smoke.sh
           bash infra/deploy/oci/tests/test-deploy-backend.sh
           bash infra/deploy/oci/tests/test-inspect-immutable-image.sh
+          bash infra/tests/smoke/tests/test-backend-oci-smoke.sh
           jq empty infra/tests/smoke/payload-valid.json
           jq empty infra/tests/smoke/payload-invalid.json
 
@@ -134,7 +136,8 @@ jobs:
             shellcheck \
             infra/deploy/oci/deploy-backend.sh \
             infra/deploy/oci/inspect-immutable-image.sh \
-            infra/tests/smoke/backend-oci-smoke.sh
+            infra/tests/smoke/backend-oci-smoke.sh \
+            infra/tests/smoke/tests/test-backend-oci-smoke.sh
 
       - name: Run actionlint
         shell: bash
@@ -478,6 +481,51 @@ jobs:
           fi
           printf 'DOCKERHUB_AUTH_FILE=%s\n' "${remote_auth_path}" >> "${GITHUB_ENV}"
 
+      - name: Provide smoke-test credentials securely
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+          REMOTE_DIR: ${{ steps.remote.outputs.remote_dir }}
+          OCI_SMOKE_USER_EMAIL: ${{ secrets.OCI_SMOKE_USER_EMAIL }}
+          OCI_SMOKE_USER_PASSWORD: ${{ secrets.OCI_SMOKE_USER_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${OCI_SMOKE_USER_EMAIL}" && -n "${OCI_SMOKE_USER_PASSWORD}" ]] \
+            || { printf '%s\n' 'Both dedicated smoke-test user secrets are required.' >&2; exit 1; }
+          umask 077
+          auth_file="$(mktemp)"
+          remote_auth_path="${REMOTE_DIR}/smoke-auth.credentials"
+          trap 'rm -f -- "${auth_file}"' EXIT
+          printf '%s\0%s\0' \
+            "${OCI_SMOKE_USER_EMAIL}" "${OCI_SMOKE_USER_PASSWORD}" > "${auth_file}"
+          if ! scp \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -P "${OCI_COMPUTE_PORT}" \
+            "${auth_file}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}:${remote_auth_path}" 2>/dev/null; then
+            printf '%s\n' 'Unable to transfer temporary smoke-test credentials.' >&2
+            exit 1
+          fi
+          if ! ssh \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -p "${OCI_COMPUTE_PORT}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+            "chmod 600 '${remote_auth_path}'" 2>/dev/null; then
+            printf '%s\n' 'Unable to protect temporary smoke-test credentials.' >&2
+            exit 1
+          fi
+          printf 'SMOKE_AUTH_FILE=%s\n' "${remote_auth_path}" >> "${GITHUB_ENV}"
+
       - name: Deploy, validate, and roll back on failure
         id: remote_deploy
         env:
@@ -506,7 +554,7 @@ jobs:
             -o ConnectTimeout=20 \
             -p "${OCI_COMPUTE_PORT}" \
             "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
-            "TARGET_IMAGE='${IMAGE}' TARGET_COMMIT='${COMMIT_SHA}' IMAGE_DIGEST='${IMAGE_DIGEST}' EXPECTED_CLASSIFICATION_SOURCE='${EXPECTED_CLASSIFICATION_SOURCE}' DOCKERHUB_AUTH_FILE='${DOCKERHUB_AUTH_FILE:-}' bash '${remote_path}'" \
+            "TARGET_IMAGE='${IMAGE}' TARGET_COMMIT='${COMMIT_SHA}' IMAGE_DIGEST='${IMAGE_DIGEST}' EXPECTED_CLASSIFICATION_SOURCE='${EXPECTED_CLASSIFICATION_SOURCE}' DOCKERHUB_AUTH_FILE='${DOCKERHUB_AUTH_FILE:-}' SMOKE_AUTH_FILE='${SMOKE_AUTH_FILE:-}' bash '${remote_path}'" \
             >"${remote_output}" 2>&1
           deployment_status=$?
           set -e
@@ -591,7 +639,7 @@ jobs:
               -o ConnectTimeout=20 \
               -p "${OCI_COMPUTE_PORT}" \
               "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
-              "rm -f -- '${REMOTE_DIR}/deploy-backend.sh' '${REMOTE_DIR}/dockerhub-auth.env'; rmdir -- '${REMOTE_DIR}'" \
+              "rm -f -- '${REMOTE_DIR}/deploy-backend.sh' '${REMOTE_DIR}/dockerhub-auth.env' '${REMOTE_DIR}/smoke-auth.credentials'; rmdir -- '${REMOTE_DIR}'" \
               >/dev/null 2>&1
           fi
 

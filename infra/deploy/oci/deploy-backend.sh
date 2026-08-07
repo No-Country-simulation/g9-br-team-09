@@ -23,6 +23,7 @@ readonly TARGET_IMAGE="${TARGET_IMAGE:-}"
 readonly TARGET_COMMIT="${TARGET_COMMIT:-}"
 readonly IMAGE_DIGEST="${IMAGE_DIGEST:-}"
 readonly DOCKERHUB_AUTH_FILE="${DOCKERHUB_AUTH_FILE:-}"
+readonly SMOKE_AUTH_FILE="${SMOKE_AUTH_FILE:-}"
 readonly EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE:-}"
 
 docker_config_directory=""
@@ -221,6 +222,32 @@ login_to_dockerhub() {
     unset dockerhub_username dockerhub_token DOCKERHUB_USERNAME DOCKERHUB_DEPLOY_TOKEN
 }
 
+validate_smoke_auth_file() {
+    local credential_fd
+    local smoke_user_email=""
+    local smoke_user_password=""
+    local trailing_content=""
+
+    [[ -n "${SMOKE_AUTH_FILE}" ]] \
+        || fail "O arquivo temporário de credenciais do smoke test é obrigatório."
+    require_restricted_file "${SMOKE_AUTH_FILE}"
+
+    exec {credential_fd}<"${SMOKE_AUTH_FILE}"
+    IFS= read -r -d '' smoke_user_email <&"${credential_fd}" \
+        || fail "As credenciais temporárias do smoke test estão incompletas."
+    IFS= read -r -d '' smoke_user_password <&"${credential_fd}" \
+        || fail "As credenciais temporárias do smoke test estão incompletas."
+    if IFS= read -r -d '' trailing_content <&"${credential_fd}" \
+        || [[ -n "${trailing_content}" ]]; then
+        fail "O arquivo temporário de credenciais do smoke test contém dados inesperados."
+    fi
+    exec {credential_fd}<&-
+
+    [[ -n "${smoke_user_email}" && -n "${smoke_user_password}" ]] \
+        || fail "As credenciais temporárias do smoke test estão incompletas."
+    unset smoke_user_email smoke_user_password
+}
+
 configure_temporary_docker_config() {
     docker_config_directory="$(mktemp -d /tmp/energiai-docker-config.XXXXXX)" \
         || fail "Não foi possível criar a configuração temporária do Docker."
@@ -294,7 +321,7 @@ sanitize_diagnostic_stream() {
                 inside_private_key = 1
                 next
             }
-            if (lowered ~ /(password|secret|token|authorization|bearer[[:space:]]|cookie|private[ _-]?key|db[_. -]?(url|username|password)|jdbc:oracle|ocid1)/) {
+            if (lowered ~ /(password|secret|token|authorization|bearer[[:space:]]|cookie|e-?mail|private[ _-]?key|db[_. -]?(url|username|password)|jdbc:oracle|ocid1)/) {
                 print "[REDACTED SENSITIVE DIAGNOSTIC LINE]"
             } else {
                 print
@@ -486,6 +513,7 @@ run_smoke_tests() {
     env \
         BASE_URL=http://127.0.0.1:8080/api/v1 \
         REQUEST_TIMEOUT=15 \
+        SMOKE_AUTH_FILE="${SMOKE_AUTH_FILE}" \
         EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE}" \
         VALIDATED_ARTIFACT="${TARGET_IMAGE}@${IMAGE_DIGEST}" \
         "${REPOSITORY_DIR}/infra/tests/smoke/backend-oci-smoke.sh"
@@ -502,6 +530,9 @@ cleanup() {
     fi
     if [[ -n "${DOCKERHUB_AUTH_FILE}" ]]; then
         rm -f -- "${DOCKERHUB_AUTH_FILE}"
+    fi
+    if [[ -n "${SMOKE_AUTH_FILE}" ]]; then
+        rm -f -- "${SMOKE_AUTH_FILE}"
     fi
 }
 
@@ -521,6 +552,7 @@ main() {
     esac
     require_readiness_policy
     require_dependencies
+    validate_smoke_auth_file
     [[ -d "${REPOSITORY_DIR}/.git" ]] \
         || fail "O checkout OCI esperado não foi encontrado."
     [[ -f "${REPOSITORY_DIR}/infra/deploy/oci/compose.yaml" ]] \

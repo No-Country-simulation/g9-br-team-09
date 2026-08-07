@@ -12,8 +12,12 @@ REQUEST_TIMEOUT="${REQUEST_TIMEOUT:-15}"
 EXPECTED_CLASSIFICATION_SOURCE="${EXPECTED_CLASSIFICATION_SOURCE:-}"
 NON_EXISTENT_ID="${NON_EXISTENT_ID:-9223372036854775807}"
 VALIDATED_ARTIFACT="${VALIDATED_ARTIFACT:-}"
+SMOKE_AUTH_FILE="${SMOKE_AUTH_FILE:-}"
 TEMP_DIR=""
 CURRENT_STAGE="inicialização"
+SMOKE_USER_EMAIL=""
+SMOKE_USER_PASSWORD=""
+ACCESS_TOKEN=""
 INITIAL_TOTAL=""
 TOTAL_AFTER_VALID=""
 CREATED_ID=""
@@ -37,6 +41,10 @@ fail() {
 }
 
 cleanup() {
+    ACCESS_TOKEN=""
+    SMOKE_USER_EMAIL=""
+    SMOKE_USER_PASSWORD=""
+    unset ACCESS_TOKEN SMOKE_USER_EMAIL SMOKE_USER_PASSWORD
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
         rm -rf -- "${TEMP_DIR}"
     fi
@@ -71,7 +79,7 @@ show_sanitized_excerpt() {
 check_dependencies() {
     local dependency
 
-    for dependency in bash curl jq mktemp date; do
+    for dependency in bash curl jq mktemp date stat; do
         command -v "${dependency}" >/dev/null 2>&1 \
             || fail "Dependência obrigatória ausente: ${dependency}."
     done
@@ -80,6 +88,42 @@ check_dependencies() {
     [[ -r "${INVALID_PAYLOAD}" ]] || fail "Fixture inválida não encontrada."
     jq empty "${VALID_PAYLOAD}" >/dev/null 2>&1 || fail "Fixture válida contém JSON inválido."
     jq empty "${INVALID_PAYLOAD}" >/dev/null 2>&1 || fail "Fixture inválida contém JSON inválido."
+}
+
+require_restricted_file() {
+    local path="$1"
+    local mode
+
+    [[ -f "${path}" && ! -L "${path}" ]] \
+        || fail "O arquivo temporário de credenciais do smoke test é obrigatório."
+    mode="$(stat -c '%a' -- "${path}")"
+    [[ "${mode}" =~ ^[0-7]{3,4}$ ]] \
+        || fail "Não foi possível validar as permissões das credenciais do smoke test."
+    (( (8#${mode} & 8#077) == 0 )) \
+        || fail "As credenciais do smoke test não possuem permissões restritivas."
+}
+
+load_smoke_credentials() {
+    local credential_fd
+    local trailing_content=""
+
+    [[ -n "${SMOKE_AUTH_FILE}" ]] \
+        || fail "SMOKE_AUTH_FILE é obrigatório."
+    require_restricted_file "${SMOKE_AUTH_FILE}"
+
+    exec {credential_fd}<"${SMOKE_AUTH_FILE}"
+    IFS= read -r -d '' SMOKE_USER_EMAIL <&"${credential_fd}" \
+        || fail "As credenciais do smoke test estão incompletas."
+    IFS= read -r -d '' SMOKE_USER_PASSWORD <&"${credential_fd}" \
+        || fail "As credenciais do smoke test estão incompletas."
+    if IFS= read -r -d '' trailing_content <&"${credential_fd}" \
+        || [[ -n "${trailing_content}" ]]; then
+        fail "O arquivo de credenciais do smoke test contém dados inesperados."
+    fi
+    exec {credential_fd}<&-
+
+    [[ -n "${SMOKE_USER_EMAIL}" && -n "${SMOKE_USER_PASSWORD}" ]] \
+        || fail "As credenciais do smoke test estão incompletas."
 }
 
 validate_configuration() {
@@ -123,6 +167,7 @@ http_request() {
     local payload_file="$3"
     local expected_status="$4"
     local output_file="$5"
+    local authenticated="${6:-false}"
     local response_status
     local curl_stderr="${TEMP_DIR}/curl.stderr"
     local -a curl_args=(
@@ -142,7 +187,16 @@ http_request() {
         )
     fi
 
-    if ! response_status="$(curl "${curl_args[@]}" -- "${BASE_URL}${path}" 2>"${curl_stderr}")"; then
+    if [[ "${authenticated}" == true ]]; then
+        [[ -n "${ACCESS_TOKEN}" ]] \
+            || fail "Access token ausente para a etapa protegida \"${CURRENT_STAGE}\"."
+        if ! response_status="$(
+            printf 'header = "Authorization: Bearer %s"\n' "${ACCESS_TOKEN}" \
+                | curl --config - "${curl_args[@]}" -- "${BASE_URL}${path}" 2>"${curl_stderr}"
+        )"; then
+            fail "Falha de transporte ou timeout na etapa \"${CURRENT_STAGE}\"."
+        fi
+    elif ! response_status="$(curl "${curl_args[@]}" -- "${BASE_URL}${path}" 2>"${curl_stderr}")"; then
         fail "Falha de transporte ou timeout na etapa \"${CURRENT_STAGE}\"."
     fi
 
@@ -230,10 +284,57 @@ assert_no_sensitive_content() {
     local response_file="$1"
 
     if LC_ALL=C grep -Eiq \
-        'jdbc:|db_password|password|passwd|authorization|spring[.]datasource|oracle[.]jdbc|stack[ _-]?trace|stacktrace|ocid1[.]' \
+        'jdbc:|db_password|password|passwd|access_token|refresh_token|authorization|bearer[[:space:]]|cookie|spring[.]datasource|oracle[.]jdbc|stack[ _-]?trace|stacktrace|ocid1[.]' \
         "${response_file}"; then
         fail "A etapa \"${CURRENT_STAGE}\" expôs conteúdo interno ou sensível."
     fi
+}
+
+create_login_request() {
+    local login_request="$1"
+
+    {
+        printf '{"email":'
+        printf '%s' "${SMOKE_USER_EMAIL}" | jq -Rs .
+        printf ',"senha":'
+        printf '%s' "${SMOKE_USER_PASSWORD}" | jq -Rs .
+        printf '}\n'
+    } >"${login_request}"
+    chmod 600 "${login_request}"
+}
+
+authenticate_smoke_user() {
+    local login_request="${TEMP_DIR}/login-request.json"
+    local login_response="${TEMP_DIR}/login-response.json"
+
+    CURRENT_STAGE="autenticação do usuário técnico"
+    info "Autenticando o usuário técnico dedicado pela API."
+    create_login_request "${login_request}"
+    http_request POST '/auth/login' "${login_request}" 200 "${login_response}"
+    ACCESS_TOKEN="$(jq -er '.access_token | select(type == "string" and length > 0)' \
+        "${login_response}")" \
+        || fail "Login não retornou um access_token não vazio."
+    [[ "${ACCESS_TOKEN}" =~ ^[[:alnum:]_.~-]+$ ]] \
+        || fail "Login retornou um access_token impróprio para o header Bearer."
+    SMOKE_USER_PASSWORD=""
+    unset SMOKE_USER_PASSWORD
+    pass "Usuário técnico autenticado pela API."
+}
+
+verify_authenticated_identity() {
+    local response_file="${TEMP_DIR}/authenticated-user.json"
+
+    CURRENT_STAGE="identidade autenticada"
+    info "Validando a identidade autenticada."
+    http_request GET '/auth/me' "" 200 "${response_file}" true
+    assert_positive_integer "${response_file}" '.id' 'id deve ser um inteiro positivo'
+    assert_exact_value "${response_file}" '.email' "${SMOKE_USER_EMAIL}" \
+        'email deve corresponder ao usuário técnico dedicado'
+    assert_exact_value "${response_file}" '.role' USER 'role deve ser USER'
+    assert_no_sensitive_content "${response_file}"
+    SMOKE_USER_EMAIL=""
+    unset SMOKE_USER_EMAIL
+    pass "Access token validado em /auth/me."
 }
 
 run_health_scenario() {
@@ -253,8 +354,8 @@ capture_initial_total() {
     local response_file="${TEMP_DIR}/summary-initial.json"
 
     CURRENT_STAGE="total inicial persistido"
-    info "Capturando total inicial pela API pública."
-    http_request GET '/analise-energetica/resumo' "" 200 "${response_file}"
+    info "Capturando total inicial pela API autenticada."
+    http_request GET '/analise-energetica/resumo' "" 200 "${response_file}" true
     assert_non_negative_integer "${response_file}" '.total_analises' \
         'total_analises deve ser um inteiro não negativo'
     assert_no_sensitive_content "${response_file}"
@@ -267,7 +368,7 @@ create_valid_analysis() {
 
     CURRENT_STAGE="criação de análise válida"
     info "Criando análise energética válida."
-    http_request POST '/analise-energetica' "${VALID_PAYLOAD}" 200 "${response_file}"
+    http_request POST '/analise-energetica' "${VALID_PAYLOAD}" 200 "${response_file}" true
     assert_positive_integer "${response_file}" '.id' 'id deve ser um inteiro positivo'
     assert_allowed_value "${response_file}" '.categoria' 'categoria deve ser suportada' \
         EFICIENTE MODERADO INEFICIENTE
@@ -301,8 +402,8 @@ confirm_history_persistence() {
     local created_id="${CREATED_ID}"
 
     CURRENT_STAGE="persistência no histórico"
-    info "Consultando histórico pela API pública."
-    http_request GET '/analise-energetica?page=0&size=100&sort=createdAt,desc' "" 200 "${response_file}"
+    info "Consultando histórico pela API autenticada."
+    http_request GET '/analise-energetica?page=0&size=100&sort=createdAt,desc' "" 200 "${response_file}" true
     assert_jq "${response_file}" '.analises | type == "array"' 'analises deve ser um array'
     assert_non_negative_integer "${response_file}" '.pagina_atual' \
         'pagina_atual deve ser um inteiro não negativo'
@@ -337,7 +438,7 @@ confirm_detail_persistence() {
 
     CURRENT_STAGE="persistência no detalhe"
     info "Consultando detalhe pelo ID retornado."
-    http_request GET "/analise-energetica/${CREATED_ID}" "" 200 "${response_file}"
+    http_request GET "/analise-energetica/${CREATED_ID}" "" 200 "${response_file}" true
     assert_exact_value "${response_file}" '.id' "${CREATED_ID}" 'id deve corresponder ao registro criado'
     if ! jq -e --slurpfile expected "${VALID_PAYLOAD}" \
         '.consumo_kwh == $expected[0].consumo_kwh
@@ -382,7 +483,7 @@ confirm_total_after_valid() {
 
     CURRENT_STAGE="total após análise válida"
     info "Confirmando incremento do total persistido."
-    http_request GET '/analise-energetica/resumo' "" 200 "${response_file}"
+    http_request GET '/analise-energetica/resumo' "" 200 "${response_file}" true
     assert_non_negative_integer "${response_file}" '.total_analises' \
         'total_analises deve ser um inteiro não negativo'
     assert_exact_value "${response_file}" '.total_analises' "${expected_total}" \
@@ -397,7 +498,7 @@ reject_invalid_analysis() {
 
     CURRENT_STAGE="rejeição de entrada inválida"
     info "Enviando violações determinísticas de Bean Validation."
-    http_request POST '/analise-energetica' "${INVALID_PAYLOAD}" 400 "${response_file}"
+    http_request POST '/analise-energetica' "${INVALID_PAYLOAD}" 400 "${response_file}" true
     assert_exact_value "${response_file}" '.status' 400 'status público deve ser 400'
     assert_exact_value "${response_file}" '.error' VALIDATION_ERROR \
         'error deve ser VALIDATION_ERROR'
@@ -419,7 +520,7 @@ confirm_invalid_not_persisted() {
 
     CURRENT_STAGE="não persistência da entrada inválida"
     info "Confirmando que a entrada inválida não alterou o total."
-    http_request GET '/analise-energetica/resumo' "" 200 "${response_file}"
+    http_request GET '/analise-energetica/resumo' "" 200 "${response_file}" true
     assert_non_negative_integer "${response_file}" '.total_analises' \
         'total_analises deve ser um inteiro não negativo'
     assert_exact_value "${response_file}" '.total_analises' "${TOTAL_AFTER_VALID}" \
@@ -433,7 +534,7 @@ confirm_nonexistent_resource() {
 
     CURRENT_STAGE="recurso inexistente"
     info "Consultando um ID inexistente."
-    http_request GET "/analise-energetica/${NON_EXISTENT_ID}" "" 404 "${response_file}"
+    http_request GET "/analise-energetica/${NON_EXISTENT_ID}" "" 404 "${response_file}" true
     assert_exact_value "${response_file}" '.status' 404 'status público deve ser 404'
     assert_exact_value "${response_file}" '.error' NOT_FOUND_ERROR \
         'error deve ser NOT_FOUND_ERROR'
@@ -463,6 +564,7 @@ main() {
     CURRENT_STAGE="validação de pré-requisitos"
     validate_configuration
     check_dependencies
+    load_smoke_credentials
     create_temp_dir
 
     info "Início UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
@@ -474,6 +576,8 @@ main() {
     run_health_scenario 'health geral' '/actuator/health' "${TEMP_DIR}/health.json"
     run_health_scenario 'liveness' '/actuator/health/liveness' "${TEMP_DIR}/liveness.json"
     run_health_scenario 'readiness' '/actuator/health/readiness' "${TEMP_DIR}/readiness.json"
+    authenticate_smoke_user
+    verify_authenticated_identity
     capture_initial_total
     create_valid_analysis
     confirm_history_persistence
