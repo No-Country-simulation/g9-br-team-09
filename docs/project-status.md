@@ -11,7 +11,7 @@ Este documento registra o estado do projeto observado em `develop`. Os contratos
 | Frente | Status | Estado atual e principal pendência |
 | --- | --- | --- |
 | Backend | Parcial | API Spring Boot, autenticação, persistência por usuário, cliente FastAPI e fallback local estão implementados. A validação ponta a ponta com o modelo oficial permanece pendente. |
-| Frontend | Parcial | Formulário, resultado, histórico, detalhe, dashboard e cliente HTTP estão no código. O fluxo integrado de cadastro, login, refresh, logout e rotas protegidas permanece pendente na #118. |
+| Frontend | Parcial | SPA publicada na Vercel, com formulário, resultado, histórico, detalhe, dashboard e cliente HTTP. O fluxo integrado de cadastro, login, refresh, logout e rotas protegidas permanece pendente na #118. |
 | Data Science / FastAPI | Parcial | A FastAPI interna, `GET /health`, `POST /predict` e o contrato com Spring Boot estão implementados. A modelagem V2 oficial está em desenvolvimento na #86 e o deploy está pendente na #111. |
 | Cloud / OCI | Parcial | O backend containerizado, Oracle Autonomous Database, Caddy/HTTPS, operação de deploy e smoke tests autenticados possuem documentação e automação versionadas. A FastAPI não integra esse deploy. |
 | Documentação | Parcial | O contrato de APIs foi consolidado na #70 e os guias de backend, FastAPI, OCI e smoke tests estão versionados. A consolidação de entrega e apresentação permanece para a #120. |
@@ -28,7 +28,7 @@ Os detalhes normativos da API pública e da integração interna estão em [docs
 
 ## Frontend
 
-O frontend React/Vite possui páginas e serviços para formulário de análise, exibição de resultado, histórico paginado, detalhe e painel de resumo. O cliente HTTP usa a URL configurada por `VITE_API_BASE_URL`, com estados de carregamento e erro nas telas que consomem a API.
+O frontend React/Vite está publicado na Vercel em https://energiai.vercel.app, entrega concluída na #119. A configuração de produção, o build, a URL pública e as evidências da publicação estão documentados em [frontend/DEPLOY.md](../frontend/DEPLOY.md). O código possui páginas e serviços para formulário de análise, exibição de resultado, histórico paginado, detalhe e painel de resumo. O cliente HTTP usa a URL configurada por `VITE_API_BASE_URL`, com estados de carregamento e erro nas telas que consomem a API.
 
 Ainda não há, no código atual, integração completa de cadastro, login, refresh, logout, rotas protegidas, envio de cookies de sessão ou tratamento de CSRF. Essa frente permanece pendente na [#118](https://github.com/No-Country-simulation/g9-br-team-09/issues/118).
 
@@ -112,5 +112,6 @@ As análises são persistidas pelo backend e vinculadas ao usuário autenticado.
 - [Contrato de integração de APIs](api-contract.md) — fonte normativa da API pública Spring Boot e da API interna FastAPI; a #70 está concluída.
 - [README do backend](../backend/README.md) — execução, segurança, persistência e integração de ML.
 - [README da API FastAPI](../data-science/README.API.md) — operação local e limitações do serviço interno.
+- [Publicação do frontend](../frontend/DEPLOY.md) — build, Vercel, configuração, URL pública e evidências da publicação.
 - [Implantação do backend na OCI](../infra/deploy/oci/README.md) — deploy e operação do backend.
 - [Smoke tests do backend na OCI](../infra/tests/smoke/README.md) — validação autenticada do contrato público.
