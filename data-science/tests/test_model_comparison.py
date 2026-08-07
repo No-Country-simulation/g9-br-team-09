@@ -16,7 +16,7 @@ from sklearn.ensemble import (
 )
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.tree import DecisionTreeClassifier
 
 
@@ -122,7 +122,8 @@ def _build_results(
         model_comparison.ModelComparisonResult(
             model_name=model_name,
             role=_role_for(model_name),
-            cv_f1_macro_scores=(cv_means[model_name],) * 5,
+            cv_f1_macro_scores=(cv_means[model_name],)
+            * model_comparison.CV_TOTAL_SPLITS,
             cv_f1_macro_mean=cv_means[model_name],
             cv_f1_macro_std=0.0,
             validation_f1_macro=(
@@ -154,6 +155,8 @@ def test_constantes_separam_baseline_e_candidatos() -> None:
         *model_comparison.CANDIDATE_MODEL_NAMES,
     )
     assert model_comparison.CV_N_SPLITS == 5
+    assert model_comparison.CV_N_REPEATS == 3
+    assert model_comparison.CV_TOTAL_SPLITS == 15
 
 
 def test_build_candidate_estimators_congela_contrato() -> None:
@@ -246,7 +249,7 @@ def test_compare_candidate_models_retorna_cinco_resultados() -> None:
     )
 
     for result in results:
-        assert len(result.cv_f1_macro_scores) == 5
+        assert len(result.cv_f1_macro_scores) == model_comparison.CV_TOTAL_SPLITS
         assert all(
             0.0 <= score <= 1.0
             for score in result.cv_f1_macro_scores
@@ -296,9 +299,9 @@ def test_compare_candidate_models_configura_cv_congelada(
 
     for call in observed:
         cv = call["cv"]
-        assert isinstance(cv, StratifiedKFold)
-        assert cv.n_splits == 5
-        assert cv.shuffle is True
+        assert isinstance(cv, RepeatedStratifiedKFold)
+        assert cv.n_repeats == model_comparison.CV_N_REPEATS
+        assert cv.get_n_splits() == model_comparison.CV_TOTAL_SPLITS
         assert cv.random_state == schema.RANDOM_SEED
         assert call["n_jobs"] == 1
         assert call["error_score"] == "raise"
@@ -719,7 +722,10 @@ def test_compare_candidate_models_traduz_falha_de_treinamento(
     monkeypatch.setattr(
         model_comparison,
         "cross_val_score",
-        lambda *args, **kwargs: np.full(5, 0.5),
+        lambda *args, **kwargs: np.full(
+            model_comparison.CV_TOTAL_SPLITS,
+            0.5,
+        ),
     )
     monkeypatch.setattr(
         modeling_pipeline,
@@ -763,7 +769,10 @@ def test_compare_candidate_models_promove_convergence_warning(
     monkeypatch.setattr(
         model_comparison,
         "cross_val_score",
-        lambda *args, **kwargs: np.full(5, 0.5),
+        lambda *args, **kwargs: np.full(
+            model_comparison.CV_TOTAL_SPLITS,
+            0.5,
+        ),
     )
     monkeypatch.setattr(
         modeling_pipeline,
@@ -812,7 +821,10 @@ def test_compare_candidate_models_rejeita_predicoes_instaveis(
     monkeypatch.setattr(
         model_comparison,
         "cross_val_score",
-        lambda *args, **kwargs: np.full(5, 0.5),
+        lambda *args, **kwargs: np.full(
+            model_comparison.CV_TOTAL_SPLITS,
+            0.5,
+        ),
     )
     monkeypatch.setattr(
         modeling_pipeline,

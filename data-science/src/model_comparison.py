@@ -25,7 +25,10 @@ from sklearn.ensemble import (
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import (
+    RepeatedStratifiedKFold,
+    cross_val_score,
+)
 from sklearn.tree import DecisionTreeClassifier
 
 import modeling_pipeline
@@ -46,6 +49,8 @@ MODEL_NAMES: Final[tuple[str, ...]] = (
 BASELINE_ROLE: Final[str] = "baseline"
 CANDIDATE_ROLE: Final[str] = "candidate"
 CV_N_SPLITS: Final[int] = 5
+CV_N_REPEATS: Final[int] = 3
+CV_TOTAL_SPLITS: Final[int] = CV_N_SPLITS * CV_N_REPEATS
 FINALIST_CUTOFF_GAP: Final[float] = 0.01
 PREDICTION_TIMING_REPEATS: Final[int] = 5
 
@@ -59,7 +64,9 @@ __all__ = [
     "BASELINE_ROLE",
     "CANDIDATE_MODEL_NAMES",
     "CANDIDATE_ROLE",
+    "CV_N_REPEATS",
     "CV_N_SPLITS",
+    "CV_TOTAL_SPLITS",
     "FINALIST_CUTOFF_GAP",
     "MODEL_NAMES",
     "ModelComparisonError",
@@ -328,16 +335,16 @@ def _normalize_cv_scores(
     raw_scores: np.ndarray,
     model_name: str,
 ) -> tuple[float, ...]:
-    """Normaliza e valida os cinco F1-macro produzidos pela CV."""
+    """Normaliza e valida os 15 F1-macro produzidos pela CV repetida."""
     normalized_scores = tuple(
         float(score)
         for score in np.asarray(raw_scores, dtype=float).tolist()
     )
 
-    if len(normalized_scores) != CV_N_SPLITS:
+    if len(normalized_scores) != CV_TOTAL_SPLITS:
         raise ModelComparisonError(
-            "A validação cruzada não retornou "
-            f"{CV_N_SPLITS} scores para o modelo {model_name}"
+            "A validação cruzada repetida não retornou "
+            f"{CV_TOTAL_SPLITS} scores para o modelo {model_name}"
         )
 
     if any(
@@ -405,14 +412,14 @@ def _cross_validate_candidate(
     y_train: pd.Series,
     seed: int,
 ) -> tuple[float, ...]:
-    """Executa CV estratificada exclusivamente no conjunto de treino."""
+    """Executa CV estratificada repetida somente no conjunto de treino."""
     model = modeling_pipeline.build_model_pipeline(
         estimator,
         schema.FEATURE_COLUMNS,
     )
-    cv = StratifiedKFold(
+    cv = RepeatedStratifiedKFold(
         n_splits=CV_N_SPLITS,
-        shuffle=True,
+        n_repeats=CV_N_REPEATS,
         random_state=seed,
     )
 
