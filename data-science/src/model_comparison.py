@@ -1,4 +1,4 @@
-"""Comparação inicial dos cinco modelos candidatos da issue #86.
+"""Comparação reproduzível dos modelos candidatos da issue #86.
 
 Este módulo recebe exclusivamente os conjuntos explícitos de treino e
 validação. Ele não cria splits, não gera o dataset, não consulta o conjunto
@@ -25,19 +25,27 @@ from sklearn.ensemble import (
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.tree import DecisionTreeClassifier
 
 import modeling_pipeline
 import schema
 
 
-MODEL_NAMES: Final[tuple[str, ...]] = (
-    "dummy",
+BASELINE_MODEL_NAME: Final[str] = "dummy"
+CANDIDATE_MODEL_NAMES: Final[tuple[str, ...]] = (
     "regressao_logistica",
     "arvore_decisao",
     "random_forest",
     "hist_gradient_boosting",
 )
+MODEL_NAMES: Final[tuple[str, ...]] = (
+    BASELINE_MODEL_NAME,
+    *CANDIDATE_MODEL_NAMES,
+)
+BASELINE_ROLE: Final[str] = "baseline"
+CANDIDATE_ROLE: Final[str] = "candidate"
+CV_N_SPLITS: Final[int] = 5
 FINALIST_CUTOFF_GAP: Final[float] = 0.01
 PREDICTION_TIMING_REPEATS: Final[int] = 5
 
@@ -46,8 +54,12 @@ _NUMERIC_FEATURES: Final[tuple[str, ...]] = (
     "quantidade_equipamentos",
     "horas_alto_consumo",
 )
-
 __all__ = [
+    "BASELINE_MODEL_NAME",
+    "BASELINE_ROLE",
+    "CANDIDATE_MODEL_NAMES",
+    "CANDIDATE_ROLE",
+    "CV_N_SPLITS",
     "FINALIST_CUTOFF_GAP",
     "MODEL_NAMES",
     "ModelComparisonError",
@@ -71,17 +83,21 @@ class ModelConvergenceError(ModelComparisonError):
 
 @dataclass(frozen=True)
 class ModelComparisonResult:
-    """Resultado reproduzível de um modelo na validação explícita."""
+    """Resultado reproduzível de um modelo em CV e validação fixa."""
 
     model_name: str
-    f1_macro: float
+    role: str
+    cv_f1_macro_scores: tuple[float, ...]
+    cv_f1_macro_mean: float
+    cv_f1_macro_std: float
+    validation_f1_macro: float
     fit_time_seconds: float
     prediction_time_seconds: float
 
 
 @dataclass(frozen=True)
 class ProvisionalFinalistSelection:
-    """Ranking inicial anterior à validação humana do Marco 1."""
+    """Ranking dos candidatos anterior à validação humana do Marco 1."""
 
     ranked_model_names: tuple[str, ...]
     provisional_finalists: tuple[str, str]
@@ -224,6 +240,23 @@ def _validate_target(
         )
 
 
+def _validate_cv_capacity(y_train: pd.Series) -> None:
+    """Garante pelo menos um registro de cada classe em cada fold."""
+    class_counts = y_train.value_counts()
+    insufficient_categories = sorted(
+        category
+        for category in schema.ENERGY_CATEGORIES
+        if int(class_counts.get(category, 0)) < CV_N_SPLITS
+    )
+
+    if insufficient_categories:
+        raise ValueError(
+            "y_train deve conter ao menos "
+            f"{CV_N_SPLITS} registros de cada categoria para CV: "
+            + ", ".join(insufficient_categories)
+        )
+
+
 def _validate_explicit_splits(
     x_train: pd.DataFrame,
     y_train: pd.Series,
@@ -235,6 +268,7 @@ def _validate_explicit_splits(
     _validate_seed(seed)
     _validate_feature_frame(x_train, "x_train")
     _validate_target(y_train, "y_train", x_train.index)
+    _validate_cv_capacity(y_train)
     _validate_feature_frame(x_validation, "x_validation")
     _validate_target(
         y_validation,
@@ -290,10 +324,50 @@ def _validate_elapsed_time(
     return normalized_elapsed
 
 
+def _normalize_cv_scores(
+    raw_scores: np.ndarray,
+    model_name: str,
+) -> tuple[float, ...]:
+    """Normaliza e valida os cinco F1-macro produzidos pela CV."""
+    normalized_scores = tuple(
+        float(score)
+        for score in np.asarray(raw_scores, dtype=float).tolist()
+    )
+
+    if len(normalized_scores) != CV_N_SPLITS:
+        raise ModelComparisonError(
+            "A validação cruzada não retornou "
+            f"{CV_N_SPLITS} scores para o modelo {model_name}"
+        )
+
+    if any(
+        not isfinite(score) or not 0.0 <= score <= 1.0
+        for score in normalized_scores
+    ):
+        raise ModelComparisonError(
+            f"A validação cruzada retornou score inválido para {model_name}"
+        )
+
+    return normalized_scores
+
+
+def _model_role(model_name: str) -> str:
+    """Retorna o papel metodológico congelado do modelo."""
+    if model_name == BASELINE_MODEL_NAME:
+        return BASELINE_ROLE
+
+    if model_name in CANDIDATE_MODEL_NAMES:
+        return CANDIDATE_ROLE
+
+    raise ModelComparisonError(
+        f"Nome de modelo inválido: {model_name}"
+    )
+
+
 def build_candidate_estimators(
     seed: int = schema.RANDOM_SEED,
 ) -> dict[str, BaseEstimator]:
-    """Cria novas instâncias dos cinco candidatos não ajustados."""
+    """Cria a baseline e os quatro candidatos não ajustados."""
     _validate_seed(seed)
 
     return {
@@ -324,15 +398,59 @@ def build_candidate_estimators(
     }
 
 
-def _evaluate_candidate(
+def _cross_validate_candidate(
+    model_name: str,
+    estimator: BaseEstimator,
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    seed: int,
+) -> tuple[float, ...]:
+    """Executa CV estratificada exclusivamente no conjunto de treino."""
+    model = modeling_pipeline.build_model_pipeline(
+        estimator,
+        schema.FEATURE_COLUMNS,
+    )
+    cv = StratifiedKFold(
+        n_splits=CV_N_SPLITS,
+        shuffle=True,
+        random_state=seed,
+    )
+
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", ConvergenceWarning)
+            raw_scores = cross_val_score(
+                model,
+                x_train,
+                y_train,
+                scoring="f1_macro",
+                cv=cv,
+                n_jobs=1,
+                error_score="raise",
+            )
+    except ConvergenceWarning as error:
+        raise ModelConvergenceError(
+            "Falha de convergência na validação cruzada do modelo "
+            f"{model_name}: {error}"
+        ) from error
+    except Exception as error:
+        raise ModelComparisonError(
+            "Falha na validação cruzada do modelo "
+            f"{model_name}: {error}"
+        ) from error
+
+    return _normalize_cv_scores(raw_scores, model_name)
+
+
+def _fit_and_validate_candidate(
     model_name: str,
     estimator: BaseEstimator,
     x_train: pd.DataFrame,
     y_train: pd.Series,
     x_validation: pd.DataFrame,
     y_validation: pd.Series,
-) -> ModelComparisonResult:
-    """Ajusta e avalia um candidato com o pipeline comum."""
+) -> tuple[float, float, float]:
+    """Ajusta no treino e avalia separadamente na validação fixa."""
     model = modeling_pipeline.build_model_pipeline(
         estimator,
         schema.FEATURE_COLUMNS,
@@ -385,22 +503,63 @@ def _evaluate_candidate(
             f"Falha ao avaliar o modelo {model_name}: {error}"
         ) from error
 
-    return ModelComparisonResult(
-        model_name=model_name,
-        f1_macro=_calculate_f1_macro(
+    return (
+        _calculate_f1_macro(
             y_validation,
             reference_predictions,
         ),
-        fit_time_seconds=_validate_elapsed_time(
+        _validate_elapsed_time(
             fit_elapsed,
             "Tempo de ajuste",
             model_name,
         ),
-        prediction_time_seconds=_validate_elapsed_time(
+        _validate_elapsed_time(
             median(prediction_durations),
             "Tempo mediano de predição",
             model_name,
         ),
+    )
+
+
+def _evaluate_candidate(
+    model_name: str,
+    estimator: BaseEstimator,
+    x_train: pd.DataFrame,
+    y_train: pd.Series,
+    x_validation: pd.DataFrame,
+    y_validation: pd.Series,
+    seed: int,
+) -> ModelComparisonResult:
+    """Produz CV no treino e avaliação separada na validação fixa."""
+    cv_scores = _cross_validate_candidate(
+        model_name,
+        estimator,
+        x_train,
+        y_train,
+        seed,
+    )
+    (
+        validation_f1_macro,
+        fit_time_seconds,
+        prediction_time_seconds,
+    ) = _fit_and_validate_candidate(
+        model_name,
+        estimator,
+        x_train,
+        y_train,
+        x_validation,
+        y_validation,
+    )
+
+    return ModelComparisonResult(
+        model_name=model_name,
+        role=_model_role(model_name),
+        cv_f1_macro_scores=cv_scores,
+        cv_f1_macro_mean=float(np.mean(cv_scores)),
+        cv_f1_macro_std=float(np.std(cv_scores, ddof=0)),
+        validation_f1_macro=validation_f1_macro,
+        fit_time_seconds=fit_time_seconds,
+        prediction_time_seconds=prediction_time_seconds,
     )
 
 
@@ -411,7 +570,7 @@ def compare_candidate_models(
     y_validation: pd.Series,
     seed: int = schema.RANDOM_SEED,
 ) -> tuple[ModelComparisonResult, ...]:
-    """Compara os cinco modelos somente em treino e validação."""
+    """Compara a baseline e os candidatos sem acessar o conjunto reservado."""
     _validate_explicit_splits(
         x_train,
         y_train,
@@ -434,6 +593,7 @@ def compare_candidate_models(
             y_train,
             x_validation,
             y_validation,
+            seed,
         )
         for model_name, estimator in estimators.items()
     )
@@ -473,12 +633,58 @@ def _validate_comparison_results(
 
         observed_names.append(result.model_name)
 
+        expected_role = _model_role(result.model_name)
+        if result.role != expected_role:
+            raise ValueError(
+                f"Papel inválido para {result.model_name}: {result.role}"
+            )
+
+        if not isinstance(result.cv_f1_macro_scores, tuple):
+            raise TypeError(
+                "cv_f1_macro_scores deve ser uma tupla"
+            )
+
+        normalized_scores = _normalize_cv_scores(
+            np.asarray(result.cv_f1_macro_scores, dtype=float),
+            result.model_name,
+        )
+        expected_mean = float(np.mean(normalized_scores))
+        expected_std = float(np.std(normalized_scores, ddof=0))
+
         if (
-            not isfinite(result.f1_macro)
-            or not 0.0 <= result.f1_macro <= 1.0
+            not isfinite(result.cv_f1_macro_mean)
+            or not 0.0 <= result.cv_f1_macro_mean <= 1.0
+            or not isclose(
+                result.cv_f1_macro_mean,
+                expected_mean,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
         ):
             raise ValueError(
-                f"F1-macro inválido para {result.model_name}"
+                f"Média de CV inválida para {result.model_name}"
+            )
+
+        if (
+            not isfinite(result.cv_f1_macro_std)
+            or result.cv_f1_macro_std < 0.0
+            or not isclose(
+                result.cv_f1_macro_std,
+                expected_std,
+                rel_tol=0.0,
+                abs_tol=1e-12,
+            )
+        ):
+            raise ValueError(
+                f"Estabilidade de CV inválida para {result.model_name}"
+            )
+
+        if (
+            not isfinite(result.validation_f1_macro)
+            or not 0.0 <= result.validation_f1_macro <= 1.0
+        ):
+            raise ValueError(
+                f"F1-macro de validação inválido para {result.model_name}"
             )
 
         for metric_name, value in (
@@ -502,24 +708,29 @@ def _validate_comparison_results(
 def select_provisional_finalists(
     results: tuple[ModelComparisonResult, ...],
 ) -> ProvisionalFinalistSelection:
-    """Ordena por F1-macro e sinaliza revisão no corte 2º/3º."""
+    """Ordena somente candidatos pela média do F1-macro da CV."""
     _validate_comparison_results(results)
     canonical_position = {
         model_name: position
-        for position, model_name in enumerate(MODEL_NAMES)
+        for position, model_name in enumerate(CANDIDATE_MODEL_NAMES)
     }
+    candidate_results = tuple(
+        result
+        for result in results
+        if result.model_name in CANDIDATE_MODEL_NAMES
+    )
     ranked_results = tuple(
         sorted(
-            results,
+            candidate_results,
             key=lambda result: (
-                -result.f1_macro,
+                -result.cv_f1_macro_mean,
                 canonical_position[result.model_name],
             ),
         )
     )
     cutoff_f1_gap = float(
-        ranked_results[1].f1_macro
-        - ranked_results[2].f1_macro
+        ranked_results[1].cv_f1_macro_mean
+        - ranked_results[2].cv_f1_macro_mean
     )
 
     if not isfinite(cutoff_f1_gap) or cutoff_f1_gap < 0.0:

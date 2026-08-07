@@ -1,8 +1,9 @@
-"""Testes da comparação inicial dos cinco modelos candidatos."""
+"""Testes da comparação da baseline e dos quatro candidatos."""
 
 import inspect
 import sys
 import warnings
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +16,7 @@ from sklearn.ensemble import (
 )
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold
 from sklearn.tree import DecisionTreeClassifier
 
 
@@ -101,16 +103,33 @@ def _build_explicit_splits(
     return x_train, y_train, x_validation, y_validation
 
 
+def _role_for(model_name: str) -> str:
+    return (
+        model_comparison.BASELINE_ROLE
+        if model_name == model_comparison.BASELINE_MODEL_NAME
+        else model_comparison.CANDIDATE_ROLE
+    )
+
+
 def _build_results(
-    scores: dict[str, float],
+    cv_means: dict[str, float],
     *,
+    validation_scores: dict[str, float] | None = None,
     fit_times: dict[str, float] | None = None,
 ) -> tuple[model_comparison.ModelComparisonResult, ...]:
     """Cria resultados sintéticos para testar somente o ranking."""
     return tuple(
         model_comparison.ModelComparisonResult(
             model_name=model_name,
-            f1_macro=scores[model_name],
+            role=_role_for(model_name),
+            cv_f1_macro_scores=(cv_means[model_name],) * 5,
+            cv_f1_macro_mean=cv_means[model_name],
+            cv_f1_macro_std=0.0,
+            validation_f1_macro=(
+                validation_scores[model_name]
+                if validation_scores is not None
+                else cv_means[model_name]
+            ),
             fit_time_seconds=(
                 fit_times[model_name]
                 if fit_times is not None
@@ -120,6 +139,21 @@ def _build_results(
         )
         for model_name in model_comparison.MODEL_NAMES
     )
+
+
+def test_constantes_separam_baseline_e_candidatos() -> None:
+    assert model_comparison.BASELINE_MODEL_NAME == "dummy"
+    assert model_comparison.CANDIDATE_MODEL_NAMES == (
+        "regressao_logistica",
+        "arvore_decisao",
+        "random_forest",
+        "hist_gradient_boosting",
+    )
+    assert model_comparison.MODEL_NAMES == (
+        "dummy",
+        *model_comparison.CANDIDATE_MODEL_NAMES,
+    )
+    assert model_comparison.CV_N_SPLITS == 5
 
 
 def test_build_candidate_estimators_congela_contrato() -> None:
@@ -191,60 +225,84 @@ def test_build_candidate_estimators_rejeita_seed_invalida(
         )
 
 
-def test_compare_candidate_models_retorna_cinco_resultados(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    splits = _build_explicit_splits()
-    original_builder = (
-        modeling_pipeline.build_model_pipeline
+def test_compare_candidate_models_retorna_cinco_resultados() -> None:
+    results = model_comparison.compare_candidate_models(
+        *_build_explicit_splits()
     )
-    observed_estimators: list[type[object]] = []
-    observed_features: list[tuple[str, ...]] = []
-
-    def recording_builder(
-        estimator: object,
-        feature_columns: tuple[str, ...],
-    ) -> object:
-        observed_estimators.append(type(estimator))
-        observed_features.append(tuple(feature_columns))
-
-        return original_builder(
-            estimator,
-            feature_columns,
-        )
-
-    monkeypatch.setattr(
-        modeling_pipeline,
-        "build_model_pipeline",
-        recording_builder,
-    )
-
-    results = model_comparison.compare_candidate_models(*splits)
 
     assert tuple(
         result.model_name
         for result in results
     ) == model_comparison.MODEL_NAMES
-    assert observed_features == [
-        schema.FEATURE_COLUMNS
-    ] * len(model_comparison.MODEL_NAMES)
-    assert observed_estimators == [
-        DummyClassifier,
-        LogisticRegression,
-        DecisionTreeClassifier,
-        RandomForestClassifier,
-        HistGradientBoostingClassifier,
-    ]
+    assert tuple(
+        result.role
+        for result in results
+    ) == (
+        model_comparison.BASELINE_ROLE,
+        model_comparison.CANDIDATE_ROLE,
+        model_comparison.CANDIDATE_ROLE,
+        model_comparison.CANDIDATE_ROLE,
+        model_comparison.CANDIDATE_ROLE,
+    )
 
     for result in results:
-        assert isinstance(result.f1_macro, float)
-        assert 0.0 <= result.f1_macro <= 1.0
+        assert len(result.cv_f1_macro_scores) == 5
+        assert all(
+            0.0 <= score <= 1.0
+            for score in result.cv_f1_macro_scores
+        )
+        assert 0.0 <= result.cv_f1_macro_mean <= 1.0
+        assert result.cv_f1_macro_std >= 0.0
+        assert 0.0 <= result.validation_f1_macro <= 1.0
         assert np.isfinite(result.fit_time_seconds)
         assert result.fit_time_seconds >= 0.0
         assert np.isfinite(
             result.prediction_time_seconds
         )
         assert result.prediction_time_seconds >= 0.0
+
+
+def test_compare_candidate_models_configura_cv_congelada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[dict[str, object]] = []
+    original_cross_val_score = model_comparison.cross_val_score
+
+    def recording_cross_val_score(
+        estimator: object,
+        features: pd.DataFrame,
+        target: pd.Series,
+        **kwargs: object,
+    ) -> np.ndarray:
+        observed.append(dict(kwargs))
+        return original_cross_val_score(
+            estimator,
+            features,
+            target,
+            **kwargs,
+        )
+
+    monkeypatch.setattr(
+        model_comparison,
+        "cross_val_score",
+        recording_cross_val_score,
+    )
+
+    model_comparison.compare_candidate_models(
+        *_build_explicit_splits()
+    )
+
+    assert len(observed) == len(model_comparison.MODEL_NAMES)
+
+    for call in observed:
+        cv = call["cv"]
+        assert isinstance(cv, StratifiedKFold)
+        assert cv.n_splits == 5
+        assert cv.shuffle is True
+        assert cv.random_state == schema.RANDOM_SEED
+        assert call["n_jobs"] == 1
+        assert call["error_score"] == "raise"
+        assert call["scoring"] == "f1_macro"
 
 
 def test_compare_candidate_models_e_reprodutivel_e_preserva_entradas(
@@ -263,10 +321,17 @@ def test_compare_candidate_models_e_reprodutivel_e_preserva_entradas(
     )
 
     assert [
-        result.f1_macro
+        result.cv_f1_macro_scores
         for result in first_results
     ] == [
-        result.f1_macro
+        result.cv_f1_macro_scores
+        for result in second_results
+    ]
+    assert [
+        result.validation_f1_macro
+        for result in first_results
+    ] == [
+        result.validation_f1_macro
         for result in second_results
     ]
     assert (
@@ -347,7 +412,6 @@ def test_compare_candidate_models_rejeita_features_invalidas(
         )
 
 
-
 def test_compare_candidate_models_rejeita_colunas_duplicadas() -> None:
     x_train, y_train, x_validation, y_validation = (
         _build_explicit_splits()
@@ -389,6 +453,7 @@ def test_compare_candidate_models_rejeita_categoria_invalida() -> None:
             x_validation,
             y_validation,
         )
+
 
 def test_compare_candidate_models_rejeita_indices_sobrepostos() -> None:
     x_train, y_train, x_validation, y_validation = (
@@ -449,6 +514,53 @@ def test_compare_candidate_models_rejeita_target_incompleto() -> None:
         )
 
 
+def test_compare_candidate_models_rejeita_classe_insuficiente_para_cv(
+) -> None:
+    x_train, y_train = _build_feature_frame(100, 12)
+    x_validation, y_validation = _build_feature_frame(1_000, 18)
+
+    with pytest.raises(
+        ValueError,
+        match="ao menos 5 registros de cada categoria para CV",
+    ):
+        model_comparison.compare_candidate_models(
+            x_train,
+            y_train,
+            x_validation,
+            y_validation,
+        )
+
+
+def test_select_provisional_finalists_exclui_dummy_do_ranking() -> None:
+    results = _build_results(
+        {
+            "dummy": 1.00,
+            "regressao_logistica": 0.91,
+            "arvore_decisao": 0.80,
+            "random_forest": 0.90,
+            "hist_gradient_boosting": 0.70,
+        }
+    )
+
+    selection = (
+        model_comparison.select_provisional_finalists(
+            results
+        )
+    )
+
+    assert "dummy" not in selection.ranked_model_names
+    assert selection.ranked_model_names == (
+        "regressao_logistica",
+        "random_forest",
+        "arvore_decisao",
+        "hist_gradient_boosting",
+    )
+    assert selection.provisional_finalists == (
+        "regressao_logistica",
+        "random_forest",
+    )
+
+
 def test_select_provisional_finalists_sinaliza_gap_menor_que_limite(
 ) -> None:
     results = _build_results(
@@ -497,10 +609,48 @@ def test_select_provisional_finalists_nao_sinaliza_gap_igual_ao_limite(
     assert selection.requires_cutoff_review is False
 
 
+def test_select_provisional_finalists_ordena_pela_media_da_cv() -> None:
+    cv_means = {
+        "dummy": 0.20,
+        "regressao_logistica": 0.90,
+        "arvore_decisao": 0.80,
+        "random_forest": 0.70,
+        "hist_gradient_boosting": 0.60,
+    }
+    validation_scores = {
+        "dummy": 0.20,
+        "regressao_logistica": 0.10,
+        "arvore_decisao": 0.99,
+        "random_forest": 0.98,
+        "hist_gradient_boosting": 0.97,
+    }
+    results = _build_results(
+        cv_means,
+        validation_scores=validation_scores,
+    )
+
+    selection = (
+        model_comparison.select_provisional_finalists(
+            results
+        )
+    )
+
+    assert selection.ranked_model_names[0] == (
+        "regressao_logistica"
+    )
+    assert selection.provisional_finalists == (
+        "regressao_logistica",
+        "arvore_decisao",
+    )
+
+
 def test_select_provisional_finalists_ignora_tempos_no_ranking() -> None:
     scores = {
-        model_name: 0.80
-        for model_name in model_comparison.MODEL_NAMES
+        "dummy": 0.99,
+        "regressao_logistica": 0.80,
+        "arvore_decisao": 0.80,
+        "random_forest": 0.80,
+        "hist_gradient_boosting": 0.80,
     }
     fit_times = {
         "dummy": 50.0,
@@ -522,11 +672,40 @@ def test_select_provisional_finalists_ignora_tempos_no_ranking() -> None:
 
     assert (
         selection.ranked_model_names
-        == model_comparison.MODEL_NAMES
+        == model_comparison.CANDIDATE_MODEL_NAMES
     )
     assert selection.provisional_finalists == (
-        "dummy",
         "regressao_logistica",
+        "arvore_decisao",
+    )
+
+
+def test_compare_candidate_models_traduz_falha_de_cv(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_cross_validation(*args: object, **kwargs: object) -> None:
+        raise ValueError("falha simulada na CV")
+
+    monkeypatch.setattr(
+        model_comparison,
+        "cross_val_score",
+        failing_cross_validation,
+    )
+
+    with pytest.raises(
+        model_comparison.ModelComparisonError,
+        match=(
+            "Falha na validação cruzada do modelo dummy: "
+            "falha simulada na CV"
+        ),
+    ) as captured_error:
+        model_comparison.compare_candidate_models(
+            *_build_explicit_splits()
+        )
+
+    assert isinstance(
+        captured_error.value.__cause__,
+        ValueError,
     )
 
 
@@ -537,6 +716,11 @@ def test_compare_candidate_models_traduz_falha_de_treinamento(
         def fit(self, features: object, target: object) -> None:
             raise ValueError("falha simulada")
 
+    monkeypatch.setattr(
+        model_comparison,
+        "cross_val_score",
+        lambda *args, **kwargs: np.full(5, 0.5),
+    )
     monkeypatch.setattr(
         modeling_pipeline,
         "build_model_pipeline",
@@ -576,6 +760,11 @@ def test_compare_candidate_models_promove_convergence_warning(
             )
             return self
 
+    monkeypatch.setattr(
+        model_comparison,
+        "cross_val_score",
+        lambda *args, **kwargs: np.full(5, 0.5),
+    )
     monkeypatch.setattr(
         modeling_pipeline,
         "build_model_pipeline",
@@ -621,6 +810,11 @@ def test_compare_candidate_models_rejeita_predicoes_instaveis(
             return np.full(len(features), category)
 
     monkeypatch.setattr(
+        model_comparison,
+        "cross_val_score",
+        lambda *args, **kwargs: np.full(5, 0.5),
+    )
+    monkeypatch.setattr(
         modeling_pipeline,
         "build_model_pipeline",
         lambda estimator, feature_columns: AlternatingModel(),
@@ -636,25 +830,77 @@ def test_compare_candidate_models_rejeita_predicoes_instaveis(
 
 
 @pytest.mark.parametrize(
+    ("mutation", "expected_exception"),
+    (
+        (
+            lambda result: replace(
+                result,
+                role="invalid",
+            ),
+            ValueError,
+        ),
+        (
+            lambda result: replace(
+                result,
+                cv_f1_macro_scores=(0.5,) * 4,
+            ),
+            model_comparison.ModelComparisonError,
+        ),
+        (
+            lambda result: replace(
+                result,
+                cv_f1_macro_mean=float("nan"),
+            ),
+            ValueError,
+        ),
+        (
+            lambda result: replace(
+                result,
+                cv_f1_macro_std=-1.0,
+            ),
+            ValueError,
+        ),
+        (
+            lambda result: replace(
+                result,
+                validation_f1_macro=float("nan"),
+            ),
+            ValueError,
+        ),
+    ),
+)
+def test_select_provisional_finalists_rejeita_resultado_invalido(
+    mutation: object,
+    expected_exception: type[Exception],
+) -> None:
+    results = list(
+        _build_results(
+            {
+                "dummy": 0.20,
+                "regressao_logistica": 0.90,
+                "arvore_decisao": 0.80,
+                "random_forest": 0.70,
+                "hist_gradient_boosting": 0.60,
+            }
+        )
+    )
+    results[0] = mutation(results[0])
+
+    with pytest.raises(expected_exception):
+        model_comparison.select_provisional_finalists(
+            tuple(results)
+        )
+
+
+@pytest.mark.parametrize(
     "invalid_results",
     (
         (),
-        (
-            model_comparison.ModelComparisonResult(
-                model_name="dummy",
-                f1_macro=float("nan"),
-                fit_time_seconds=1.0,
-                prediction_time_seconds=0.1,
-            ),
-        )
-        * 5,
+        [],
     ),
 )
-def test_select_provisional_finalists_rejeita_resultados_invalidos(
-    invalid_results: tuple[
-        model_comparison.ModelComparisonResult,
-        ...,
-    ],
+def test_select_provisional_finalists_rejeita_colecao_invalida(
+    invalid_results: object,
 ) -> None:
     with pytest.raises((TypeError, ValueError)):
         model_comparison.select_provisional_finalists(
@@ -676,4 +922,20 @@ def test_compare_candidate_models_expoe_somente_splits_permitidos(
         "x_validation",
         "y_validation",
         "seed",
+    )
+
+
+def test_model_comparison_nao_referencia_conjunto_reservado() -> None:
+    source = inspect.getsource(model_comparison).lower()
+
+    forbidden_tokens = (
+        "x_test",
+        "y_test",
+        "test_size",
+        "holdout",
+    )
+
+    assert all(
+        token not in source
+        for token in forbidden_tokens
     )
