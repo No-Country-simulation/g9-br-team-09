@@ -36,6 +36,14 @@ energiai-backend:local
 
 ## Executar a aplicação
 
+### Docker local
+
+O `compose.yaml` exige `JWT_SECRET`. Gere um segredo local antes de iniciar:
+
+```bash
+export JWT_SECRET="$(openssl rand -base64 32)"
+```
+
 ```bash
 docker compose up
 ```
@@ -103,6 +111,7 @@ docker run --rm \
   --name energiai-backend \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=local \
+  -e JWT_SECRET \
   energiai-backend:local
 ```
 
@@ -123,6 +132,7 @@ docker run --rm \
   --name energiai-backend \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=local \
+  -e JWT_SECRET \
   pxs00/energiai-backend:develop
 ```
 
@@ -141,10 +151,11 @@ Não há publicação automática da tag `latest`. Pull Requests apenas constroe
 validam a imagem; pushes para `develop` publicam as duas tags; e execuções por
 `workflow_dispatch` executam somente a validação.
 
-As credenciais Oracle não fazem parte da imagem. Em um futuro deploy na OCI
-Compute, a instância poderá obter a imagem diretamente do Docker Hub e receber
-`DB_URL`, `DB_USERNAME` e `DB_PASSWORD` somente em runtime, com o profile
-`oci`. O deploy automático na OCI permanece fora do escopo deste workflow.
+As credenciais Oracle não fazem parte da imagem. A implantação operacional do
+backend na OCI já usa configuração externa em runtime e imagens imutáveis; ela
+é diferente da execução Docker local e está documentada no
+[runbook OCI](../infra/deploy/oci/README.md). A publicação de uma imagem no
+Docker Hub não equivale, por si só, a uma implantação na OCI.
 
 ## Variáveis de ambiente
 
@@ -153,6 +164,7 @@ As configurações devem ser fornecidas durante a execução do container.
 | Variável | Descrição | Valor padrão |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | Profile ativo do Spring Boot | `local` no Compose |
+| `JWT_SECRET` | Segredo Base64 usado para assinar e validar JWT. | Obrigatório; sem valor padrão. |
 | `ML_API_BASE_URL` | URL-base da API de Machine Learning | `http://localhost:8000` |
 | `ML_API_CONNECT_TIMEOUT` | Timeout de conexão com a API de ML | `2s` |
 | `ML_API_READ_TIMEOUT` | Timeout de leitura da API de ML | `5s` |

@@ -48,7 +48,7 @@ A documentação principal do projeto está organizada na pasta `docs/`.
 | Documento                                                     | Descrição                                                                    |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | [`project-status.md`](docs/project-status.md)                 | Status geral do projeto, responsáveis, pendências, riscos e próximos passos. |
-| [`api-contract.md`](docs/api-contract.md)                     | Contrato inicial da API, endpoint obrigatório e exemplos de uso.             |
+| [`api-contract.md`](docs/api-contract.md)                     | Fonte normativa dos contratos HTTP: API pública Spring Boot e integração interna FastAPI. |
 | [`architecture-decisions.md`](docs/architecture-decisions.md) | Decisões técnicas e organizacionais registradas durante o projeto.           |
 | [`meetings.md`](docs/meetings.md)                             | Atas e registros das principais reuniões da equipe.                          |
 
@@ -127,6 +127,7 @@ Exemplo de execução local com valores personalizados:
 
 ```bash
 cd backend
+export JWT_SECRET="$(openssl rand -base64 32)"
 ML_API_BASE_URL=http://localhost:8000 ML_API_CONNECT_TIMEOUT=2s ML_API_READ_TIMEOUT=5s ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
@@ -148,6 +149,7 @@ ML_API_BASE_URL=http://localhost:8000 ML_API_CONNECT_TIMEOUT=2s ML_API_READ_TIME
 
 ```bash
 cd backend
+export JWT_SECRET="$(openssl rand -base64 32)"
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
@@ -205,6 +207,12 @@ atualizados.
 
 Consulte o [runbook de implantação na OCI](infra/deploy/oci/README.md) para
 detalhes operacionais, validações e rollback.
+
+O frontend está publicado na Vercel em
+[https://energiai.vercel.app](https://energiai.vercel.app). A configuração de
+publicação está em [frontend/DEPLOY.md](frontend/DEPLOY.md). Para o estado
+atual, pendências e próximos passos do projeto, consulte
+[docs/project-status.md](docs/project-status.md).
 
 Para execução local:
 

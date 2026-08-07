@@ -157,8 +157,8 @@ classificação.
 ### Impacto ADR-009
 
 - O backend continua responsável pela API pública, validação, orquestração, cálculo de custo, persistência e resposta final.
-- A documentação deve distinguir respostas do modelo e do fallback local.
-- A responsabilidade final pelas recomendações em cenário `ML_MODEL` deve seguir o contrato de integração validado entre as frentes.
+- Em `ML_MODEL`, classificação e recomendações válidas vêm da FastAPI; em `RULE_BASED_FALLBACK`, ambas são produzidas localmente pelo backend.
+- Os detalhes normativos do contrato estão em [api-contract.md](api-contract.md).
 
 ---
 
