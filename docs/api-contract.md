@@ -63,19 +63,19 @@ modelo_versao é exclusivo do contrato FastAPI → Spring Boot. Não integra Ene
 
 As operações de análise usam o usuário autenticado: a criação associa o registro a esse usuário, a listagem retorna somente seus registros, o detalhe por id exige que o registro lhe pertença e o resumo/dashboard é calculado somente sobre seus dados.
 
-Erros públicos Spring Boot têm timestamp, status, error e message. Códigos existentes: VALIDATION_ERROR, ENUM_TYPE_ERROR, INVALID_TYPE_ERROR, HTTP_MESSAGE_ERROR, NOT_FOUND_ERROR, METHOD_NOT_ALLOWED_ERROR, UNSUPPORTED_MEDIA_TYPE_ERROR e INTERNAL_ERROR. Detalhes internos não são expostos.
+Erros públicos Spring Boot têm timestamp, status, error e message. Códigos existentes: VALIDATION_ERROR, ENUM_TYPE_ERROR, INVALID_TYPE_ERROR, HTTP_MESSAGE_ERROR, BAD_REQUEST_ERROR, NOT_FOUND_ERROR, METHOD_NOT_ALLOWED_ERROR, UNSUPPORTED_MEDIA_TYPE_ERROR, INTERNAL_ERROR, CONFLICT_ERROR, UNAUTHORIZED_ERROR e FORBIDDEN_ERROR. Detalhes internos não são expostos.
 
 ### Autenticação, refresh e logout
 
 O access token é JWT assinado com HS256, de curta duração, retornado no JSON de login e refresh e usado como Authorization: Bearer <access_token>. Ele não é persistido nem recebe blacklist no logout atual; um token já emitido pode continuar válido até expirar após logout da sessão de refresh.
 
-POST /auth/login retorna access_token, token_type, expires_in e usuario, além de emitir refresh_token somente em cookie HttpOnly, cookie XSRF-TOKEN não HttpOnly e header X-XSRF-TOKEN. O refresh token é opaco, tem ao menos 256 bits de entropia, não aparece no JSON, não deve ser lido por JavaScript e somente seu hash SHA-256 é persistido.
+POST /api/v1/auth/login retorna access_token, token_type, expires_in e usuario, além de emitir refresh_token somente em cookie HttpOnly, cookie XSRF-TOKEN não HttpOnly e header X-XSRF-TOKEN. O refresh token é opaco, tem ao menos 256 bits de entropia, não aparece no JSON, não deve ser lido por JavaScript e somente seu hash SHA-256 é persistido. GET /api/v1/auth/me retorna os dados do usuário autenticado.
 
 Cada login cria uma família de sessão. Refresh válido rotaciona obrigatoriamente o token e mantém o sucessor na mesma família. A família tem expiração absoluta; a validade efetiva do sucessor é o menor valor entre a duração configurada e o fim da família.
 
-POST /auth/refresh não recebe body; exige os cookies refresh_token e XSRF-TOKEN e o header X-XSRF-TOKEN correspondente. Retorna 200 com novo access token e cookie de refresh rotacionado; falha de autenticação retorna 401 e CSRF ausente ou inválido retorna 403. Reutilização concorrente do predecessor dentro de AUTH_REFRESH_REUSE_GRACE_PERIOD retorna 401 sem revogar a família nem remover cookie que possa conter sucessor de outra requisição. Após essa janela, a reutilização é tratada como reuso indevido e revoga a família.
+POST /api/v1/auth/refresh não recebe body; exige os cookies refresh_token e XSRF-TOKEN e o header X-XSRF-TOKEN correspondente. Retorna 200 com novo access token e cookie de refresh rotacionado; falha de autenticação retorna HTTP 401 com UNAUTHORIZED_ERROR e CSRF ausente ou inválido retorna HTTP 403 com FORBIDDEN_ERROR. Reutilização concorrente do predecessor dentro de AUTH_REFRESH_REUSE_GRACE_PERIOD retorna 401 sem revogar a família nem remover cookie que possa conter sucessor de outra requisição. Após essa janela, a reutilização é tratada como reuso indevido e revoga a família.
 
-POST /auth/logout usa a mesma proteção CSRF, é idempotente, retorna 204 e remove os cookies. O logout revoga a sessão de refresh apresentada, sem invalidar antecipadamente access token já emitido. CSRF é aplicado a POST /api/v1/auth/refresh e POST /api/v1/auth/logout, não aos endpoints protegidos por Bearer em geral.
+POST /api/v1/auth/logout usa a mesma proteção CSRF, é idempotente, retorna 204 e remove os cookies. O logout revoga a sessão de refresh apresentada, sem invalidar antecipadamente access token já emitido. CSRF é aplicado a POST /api/v1/auth/refresh e POST /api/v1/auth/logout, não aos endpoints protegidos por Bearer em geral.
 
 O cliente web deve usar credentials: "include". CORS usa origens explícitas, credenciais e permite/exibe X-XSRF-TOKEN; wildcard não é aceito com credenciais. AUTH_REFRESH_* configura duração do token, duração da família, janela de tolerância e atributos do cookie.
 
