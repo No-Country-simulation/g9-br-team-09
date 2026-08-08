@@ -31,6 +31,28 @@ GRID_N_JOBS: Final[int] = 1
 GRID_ERROR_SCORE: Final[str] = "raise"
 GRID_REFIT: Final[bool] = True
 
+_TUNED_FINALIST_PARAMS: Final[
+    tuple[tuple[str, tuple[tuple[str, object], ...]], ...]
+] = (
+    (
+        "hist_gradient_boosting",
+        (
+            ("classifier__l2_regularization", 0.0),
+            ("classifier__learning_rate", 0.10),
+            ("classifier__max_iter", 100),
+            ("classifier__max_leaf_nodes", 15),
+        ),
+    ),
+    (
+        "random_forest",
+        (
+            ("classifier__max_features", "sqrt"),
+            ("classifier__min_samples_leaf", 1),
+            ("classifier__n_estimators", 200),
+        ),
+    ),
+)
+
 __all__ = [
     "FINALIST_MODEL_NAMES",
     "GRID_ERROR_SCORE",
@@ -41,9 +63,18 @@ __all__ = [
     "ModelTuningResult",
     "build_finalist_grid_search",
     "build_finalist_param_grids",
+    "build_tuned_finalist_params",
     "tune_finalist_model",
     "tune_finalist_models",
 ]
+
+
+def build_tuned_finalist_params() -> dict[str, dict[str, object]]:
+    """Retorna cópias dos hiperparâmetros vencedores do tuning concluído."""
+    return {
+        model_name: dict(params)
+        for model_name, params in _TUNED_FINALIST_PARAMS
+    }
 
 
 class ModelTuningError(RuntimeError):

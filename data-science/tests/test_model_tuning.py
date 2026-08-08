@@ -84,6 +84,28 @@ def test_param_grids_congelam_espacos_e_contagens() -> None:
     ] == [100, 200]
 
 
+def test_tuned_finalist_params_registra_vencedores_e_isola_mutacoes() -> None:
+    params = model_tuning.build_tuned_finalist_params()
+
+    assert tuple(params) == model_tuning.FINALIST_MODEL_NAMES
+    assert params["hist_gradient_boosting"] == {
+        "classifier__l2_regularization": 0.0,
+        "classifier__learning_rate": 0.10,
+        "classifier__max_iter": 100,
+        "classifier__max_leaf_nodes": 15,
+    }
+    assert params["random_forest"] == {
+        "classifier__max_features": "sqrt",
+        "classifier__min_samples_leaf": 1,
+        "classifier__n_estimators": 200,
+    }
+
+    params["random_forest"]["classifier__n_estimators"] = 999
+
+    fresh_params = model_tuning.build_tuned_finalist_params()
+    assert fresh_params["random_forest"]["classifier__n_estimators"] == 200
+
+
 @pytest.mark.parametrize("model_name", model_tuning.FINALIST_MODEL_NAMES)
 def test_build_grid_search_congela_contrato(model_name: str) -> None:
     search = model_tuning.build_finalist_grid_search(model_name)
