@@ -733,3 +733,109 @@ GitHub.
 
 Esta ata deverá passar por nova revisão via Pull Request antes de ser
 considerada definitiva.
+
+---
+
+## 03/08/2026 — Sprint Planning
+
+### Contexto da reunião de 03/08
+
+Reunião de Sprint Planning realizada para alinhar o andamento das frentes de
+Backend e Frontend, com base no planejamento já registrado no GitHub.
+
+### Participantes da reunião de 03/08
+
+- Alan
+- Gustavo
+- Lucas
+- Rafaela
+
+### Ausências registradas em 03/08
+
+- Fábio informou antecipadamente que não poderia participar da reunião (ausência justificada).
+- Miguel e Túlio estiveram ausentes, sem justificativa registrada até o momento.
+- Adriana não participou da Sprint Planning.
+
+### Comunicação anterior à reunião de 03/08
+
+- Antes da realização da reunião, Adriana comunicou sua saída do projeto.
+- Este registro é feito separadamente da lista de participantes e das decisões
+  tomadas durante a reunião, por se tratar de uma comunicação ocorrida anteriormente ao encontro.
+
+### Backend e Infraestrutura em 03/08
+
+- O link público da API foi disponibilizado.
+- A implementação da estrutura base do controle de acesso foi iniciada, revisada
+  e está em etapa de ajustes.
+- A liberação da estrutura de controle de acesso desbloqueará as próximas tarefas
+  da frente, com expectativa de que o prazo de conclusão da função de autenticação
+  autorização seja cumprido
+- A issue de associar a análise energética ao usuário autenticado foi assumida,
+  com conclusão prevista ao longo da semana.
+
+### Frontend em 03/08
+
+- A Pull Request feat(frontend): implementa histórico e detalhamento de análises
+  já foi lançada e está aguardando merge.
+- O deploy da aplicação na plataforma Vercel está planejado para o dia seguinte
+  (04/08).
+- Após a conclusão do deploy, será feita a liberação do CORS no backend para
+  garantir a comunicação entre os ambientes.
+
+### Data-Science
+
+- O Data-Science foi citado como pendência, mas em fase de finalização, sendo
+  apontado como o principal pendência do projeto no momento.
+
+### Reviews e entregáveis em 03/08
+
+- Foram revisadas a PR do Frontend e a PR referente à estrutura base do controle
+  de acesso do Backend.
+- Os entregáveis do site da NoCountry foram revisados e atualizados no próprio
+  dia da reunião.
+- Ficou definido que a PR da frente de Data-Science também seria analisada.
+
+### Decisões registradas em 03/08
+
+- O alinhamento das frentes segue em conformidade com o planejamento prévio
+  registrado no GitHub.
+- A gestão dos entregáveis do projeto e os processos de review de código seguem
+  ativos e acompanhados.
+- Novas tarefas serão distribuídas e puxadas ao longo da semana conforme o
+  andamento das frentes.
+- Foi comentado que a semana seguinte seria mais destinada às entregas do hackathon.
+
+### Pendências identificadas em 03/08
+
+- Concluir os ajustes na estrutura base do controle de acesso e liberar as tarefas
+  pendentes.
+- Concluir a associação da análise energética ao usuário autenticado.
+- Realizar o merge da PR de histórico e detalhamento de análises do Frontend.
+- Executar o deploy da aplicação no Vercel.
+- Liberar o CORS no backend após o deploy do Frontend.
+- Revisar a PR da frente de Data-Science.
+- Preparar as entregas do hackathon previstas para a semana seguinte.
+
+### Próximos passos definidos em 03/08
+
+- Finalizar a estrutura base do controle de acesso e liberar as tarefas dependentes.
+- Dar continuidade à associação da análise energética ao usuário
+  autenticado.
+- Concluir o deploy da aplicação no Vercel.
+- Liberar o CORS no backend após o deploy do Frontend.
+- Assumir novas tarefas ao longo da semana, incluindo a issue de refresh token e
+  outras issues relacionadas a usuários autenticados.
+- Revisar a PR do Data-Science.
+
+### Observações sobre a reunião de 03/08
+
+Esta ata foi revisada com base nas informações operacionais e técnicas fornecidas
+na reunião, incluindo atualizações de entregáveis, reviews de PR, distribuição
+de issues ao longo da semana e o planejamento das próximas entregas.
+
+Os registros foram consolidados sem detalhar individualmente a atribuição de cada
+ação, exceto quando a distinção foi relevante para o entendimento do andamento das
+frentes.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.
