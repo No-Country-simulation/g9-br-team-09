@@ -607,3 +607,129 @@ A transcrição completa deverá permanecer como fonte interna de apoio e não d
 A ausência de Miguel foi registrada como fato. Não foi incluída qualquer afirmação sobre abandono do projeto porque não existe confirmação formal disponível.
 
 Esta ata deverá passar por revisão via Pull Request antes de ser considerada definitiva.
+
+---
+
+## 30/07/2026 — Sprint Demo
+
+### Contexto da Sprint Demo de 30/07
+
+Sprint Demo realizada para revisar os avanços da semana nas frentes de Backend,
+infraestrutura, Frontend e Data Science, além de discutir a possibilidade de
+implementação das funcionalidades de controle de acesso sem comprometer o MVP.
+
+Esta ata foi elaborada com base na gravação da reunião, na transcrição
+estruturada disponibilizada posteriormente, no resumo publicado por Gustavo no
+Discord e nos avisos de ausência registrados pela equipe.
+
+A gravação e a transcrição integral permanecem como fontes internas de apoio. O
+repositório contém somente o registro objetivo dos pontos relevantes para o
+projeto.
+
+### Participantes da Sprint Demo de 30/07
+
+- Gustavo Kenzo
+- Alan Ryan da Silva Domingues
+- Rafaela Pereira Campos
+
+### Ausências justificadas em 30/07
+
+- Fábio Andrade informou antecipadamente que não poderia participar.
+- Lucas Rossoni Dieder informou antecipadamente que não poderia participar.
+- Adriana Firmino dos Santos informou que não participaria porque estava sem
+  energia elétrica após uma ventania ocorrida no Rio de Janeiro.
+
+### Ausências sem justificativa registrada em 30/07
+
+- Miguel Luan Tavares Leite
+- Túlio Braga
+
+### Backend e infraestrutura
+
+- Os participantes revisaram os avanços de Backend e infraestrutura registrados
+  no GitHub e atribuídos ao trabalho técnico de Lucas.
+- Foram mencionadas atividades de configuração e validação envolvendo teste em
+  Python.
+- Foi mencionado o provisionamento de uma instância Compute Free.
+- Foram mencionados avanços relacionados ao CI e ao deploy.
+- Também foi mencionada a configuração de probes de liveness e readiness.
+- Lucas havia aberto issues para organizar os próximos passos da frente.
+- Como Lucas não participou da reunião, esses pontos foram revisados pelos
+  participantes com base no estado registrado no GitHub, e não apresentados
+  diretamente por ele durante o encontro.
+
+### Frontend
+
+- A implementação do dashboard havia sido aprovada por Lucas.
+- O histórico e o detalhamento das análises ainda estavam pendentes.
+- Rafaela informou que já havia iniciado o desenvolvimento dessas duas
+  funcionalidades.
+- Rafaela também informou que sua disponibilidade diminuiria na semana seguinte
+  devido ao retorno das aulas da faculdade.
+- Essa redução de disponibilidade foi identificada como um possível bloqueio
+  para novas telas relacionadas a cadastro e controle de acesso.
+- Rafaela se comprometeu a revisar a documentação já produzida e registrar
+  eventuais dúvidas no Discord.
+
+### Data Science
+
+- A equipe relatou que aguardava a entrega da frente de Data Science.
+- Não houve decisão técnica de modelagem durante a reunião.
+- Este registro representa exclusivamente o estado relatado em 30/07/2026 e não
+  substitui atualizações posteriores registradas no GitHub ou no Discord.
+
+### Controle de acesso
+
+- A equipe discutiu a possibilidade de implementar cadastro e controle de
+  acesso.
+- A funcionalidade foi considerada útil, mas o prazo restante foi identificado
+  como uma limitação relevante.
+- Alan e Rafaela avaliaram que seria possível tentar a implementação, desde que
+  ela não comprometesse o MVP.
+- A equipe registrou uma intenção condicional de prosseguir com essa frente.
+- O início, a organização e a distribuição das respectivas issues permaneceram
+  dependentes de novo alinhamento com Lucas e com o restante da equipe.
+- A discussão deveria continuar no Discord.
+- Caso não houvesse tempo suficiente, o MVP deveria ser preservado sem essa
+  ampliação de escopo.
+
+### Cronograma e gestão
+
+- O prazo restante do projeto foi identificado como um ponto de atenção.
+- A equipe considerou que ainda possuía a semana da reunião e a semana seguinte
+  para concluir as entregas técnicas.
+- A última semana do cronograma da No Country estaria direcionada
+  principalmente à preparação e ao envio das entregas.
+- A disponibilidade reduzida do Frontend poderia afetar o desenvolvimento de
+  funcionalidades adicionais.
+- O GitHub permaneceu como fonte principal para acompanhamento das issues e dos
+  avanços técnicos.
+
+### Próximos passos definidos em 30/07
+
+- Continuar o histórico e o detalhamento das análises no Frontend.
+- Revisar a documentação já produzida e encaminhar dúvidas pelo Discord.
+- Discutir com Lucas e com o restante da equipe a organização das issues de
+  cadastro e controle de acesso.
+- Avaliar o início dessas issues somente quando a execução não colocar o MVP em
+  risco.
+- Continuar acompanhando os avanços e bloqueios por meio do GitHub e do Discord.
+
+### Observações sobre a Sprint Demo de 30/07
+
+Esta ata registra somente os pontos técnicos, operacionais e de gestão
+sustentados pelas fontes disponíveis.
+
+A gravação contém falas informais, repetições e trechos próprios de uma conversa
+de alinhamento. Por esse motivo, a transcrição literal não foi adicionada ao
+repositório.
+
+A menção ao trabalho técnico de Lucas não representa sua participação na
+reunião. Sua ausência havia sido informada antecipadamente.
+
+Os estados de tarefas e Pull Requests descritos nesta seção representam a
+situação relatada em 30/07/2026 e não substituem atualizações posteriores do
+GitHub.
+
+Esta ata deverá passar por nova revisão via Pull Request antes de ser
+considerada definitiva.
