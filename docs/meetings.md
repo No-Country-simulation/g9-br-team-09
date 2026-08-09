@@ -769,7 +769,7 @@ Backend e Frontend, com base no planejamento já registrado no GitHub.
   e está em etapa de ajustes.
 - A liberação da estrutura de controle de acesso desbloqueará as próximas tarefas
   da frente, com expectativa de que o prazo de conclusão da função de autenticação
-  autorização seja cumprido
+  e autorização seja cumprido
 - A issue de associar a análise energética ao usuário autenticado foi assumida,
   com conclusão prevista ao longo da semana.
 
@@ -785,7 +785,7 @@ Backend e Frontend, com base no planejamento já registrado no GitHub.
 ### Data-Science
 
 - O Data-Science foi citado como pendência, mas em fase de finalização, sendo
-  apontado como o principal pendência do projeto no momento.
+  apontado como a principal pendência do projeto no momento.
 
 ### Reviews e entregáveis em 03/08
 
@@ -823,8 +823,8 @@ Backend e Frontend, com base no planejamento já registrado no GitHub.
   autenticado.
 - Concluir o deploy da aplicação no Vercel.
 - Liberar o CORS no backend após o deploy do Frontend.
-- Assumir novas tarefas ao longo da semana, incluindo a issue de refresh token e
-  outras issues relacionadas a usuários autenticados.
+- Assumir novas tarefas ao longo da semana, com a possibilidade de incluir a issue
+  de refresh token e outras issues relacionadas a usuários autenticados.
 - Revisar a PR do Data-Science.
 
 ### Observações sobre a reunião de 03/08
