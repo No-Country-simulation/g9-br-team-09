@@ -839,3 +839,126 @@ frentes.
 
 Esta ata deverá passar por revisão via Pull Request antes de ser considerada
 definitiva.
+
+---
+
+## 06/08/2026 — Sprint Demo
+
+### Contexto da Sprint Demo de 06/08
+
+Sprint Demo realizada para revisar o andamento das frentes de Backend, Data Science
+e Frontend, além de alinhar a organização da apresentação final do projeto.
+
+Esta ata foi elaborada a partir da transcrição bruta da gravação da reunião.
+
+A gravação e a transcrição integral permanecem como fontes internas de apoio.
+O repositório contém somente o registro objetivo dos pontos técnicos e operacionais
+sustentados pela transcrição.
+
+### Participantes da Sprint Demo de 06/08
+
+- Fábio
+- Gustavo
+- Lucas
+- Rafaela
+- Alan
+
+### Data Science
+
+- Foi relatado que a finalização da frente de Data Science está travada,
+  especificamente na geração dos snapshots.
+- A dificuldade foi atribuída à falta de dimensionamento do esforço necessário
+  para essa etapa.
+- Foi mencionado que a causa do atraso está relacionada à divisão insuficiente
+  de tarefas dentro da frente.
+- Foi mencionada a geração de um dataset simples para rodar um teste específico,
+  como parte anterior do trabalho na frente.
+- Foi mencionada a configuração de um projeto de IA (GPT) com instruções de boas
+  práticas de validação, com o objetivo de evitar retrabalho.
+- O atraso na frente de Data Science foi identificado como o principal ponto de
+  atenção do projeto no momento, ainda que dentro do que era esperado para o
+  andamento geral.
+
+### Backend
+
+- Foi relatado avanço na autenticação do usuário na parte de front, com revisão
+  de Pull Request a ser realizada.
+- Foi informado que os testes relacionados à autenticação estavam em fase de
+  finalização.
+- Foi relatado que uma versão anterior da aplicação, já havia sido testada com
+  sucesso na Vercel e via IP.
+- Foi relatado que a inclusão do acesso de usuário voltou a travar a integração
+  com o Frontend, com expectativa de resolução até o final de semana.
+- Foi atualizada a versão registrada no site da NoCountry.
+
+### Frontend
+
+- Foi informado que o Frontend deveria ser concluído ainda durante a semana da
+  reunião.
+
+### Autenticação e disponibilidade
+
+- Foi sinalizado o risco de não conseguir concluir a parte de autenticação no
+  frontend sob responsabilidade de Rafaela devido à disponibilidade, com
+  necessidade de verificação posterior.
+- Foi sinalizada a possibilidade de dividir essa tarefa com outro membro da equipe.
+
+### Cronograma e apresentação final
+
+- Foi confirmado que a entrega da documentação obrigatória da NoCountry deveria
+  ocorrer ainda durante a semana da reunião.
+- Foi definido que a apresentação final ocorreria na semana 6 do cronograma.
+- Ficou definido que um dos participantes conduziria a apresentação da demo, mas
+  não estabelecido formalmente quem seria designado para esse fim.
+- Foi esclarecido que a apresentação final é dividida em duas etapas: a primeira,
+  apenas de apresentação, sem espaço para perguntas; a segunda, realizada na
+  semana seguinte, com 5 minutos de apresentação e 5 minutos destinados a
+  perguntas técnicas.
+- Foi esclarecido que, na segunda etapa, apenas quem estiver apresentando poderá
+  responder verbalmente às perguntas, podendo o restante da equipe apoiar apenas
+  pelo chat.
+
+### Decisões registradas em 06/08
+
+- A equipe decidiu manter o acompanhamento do andamento das frentes por meio das
+  próprias reuniões, sem abertura de novos canais formais de reporte.
+- Ficou definida a criação de uma nova enquete de horários para as próximas
+  reuniões, a partir da segunda-feira seguinte.
+
+### Pendências identificadas em 06/08
+
+- Concluir a geração dos snapshots da frente de Data Science.
+- Finalizar os testes de autenticação em andamento.
+- Resolver o travamento de integração entre o acesso de usuário e o Frontend.
+- Concluir o Frontend ainda durante a semana da reunião.
+- Confirmar a viabilidade de conclusão da parte de autenticação sob
+  disponibilidade reduzida, com possível divisão de tarefas.
+- Enviar a documentação obrigatória da NoCountry ainda durante a semana da reunião.
+
+### Próximos passos definidos em 06/08
+
+- Revisar a Pull Request relacionada à autenticação do usuário no Frontend.
+- Finalizar os testes de autenticação e resolver o travamento de integração até
+  o final de semana.
+- Concluir o Frontend ainda durante a semana da reunião.
+- Verificar a disponibilidade para conclusão da parte de autenticação e, se
+  necessário, dividir a tarefa com outro membro da equipe.
+- Enviar a documentação obrigatória da NoCountry.
+- Preparar a apresentação final, com definição de responsável pela condução e
+  alinhamento do formato em duas etapas.
+- Criar uma nova enquete de horários para as reuniões seguintes.
+
+### Observações sobre a Sprint Demo de 06/08
+
+Esta ata registra somente os pontos técnicos e operacionais sustentados pela
+transcrição disponibilizada.
+
+A transcrição contém falas informais, trechos de conversa pessoal e passagens de
+difícil compreensão. A transcrição literal não foi adicionada ao repositório.
+
+Os estados de tarefas descritos nesta seção representam a situação relatada em
+06/08/2026 e não substituem atualizações posteriores registradas no GitHub ou no
+Discord.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.
