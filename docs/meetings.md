@@ -850,12 +850,18 @@ Sprint Demo realizada para revisar o andamento das frentes de Backend, Data Scie
 e Frontend, além de alinhar a organização da apresentação final do projeto.
 
 Esta ata foi elaborada a partir da transcrição bruta da gravação da reunião.
+A identificação desta reunião como Sprint Demo segue o cronograma do projeto e o
+registro de reuniões anteriores, já que a transcrição de 06/08 não nomeia
+explicitamente o tipo da reunião.
 
 A gravação e a transcrição integral permanecem como fontes internas de apoio.
 O repositório contém somente o registro objetivo dos pontos técnicos e operacionais
 sustentados pela transcrição.
 
 ### Participantes da Sprint Demo de 06/08
+
+Participantes e ausências identificados a partir de confirmação de participante(s)
+presente(s), já que a transcrição não identifica nominalmente os presentes.
 
 - Fábio
 - Gustavo
@@ -866,7 +872,9 @@ sustentados pela transcrição.
 ### Data Science
 
 - Foi relatado que a finalização da frente de Data Science está travada,
-  especificamente na geração dos snapshots.
+  especificamente em uma etapa técnica cujo termo exato não pôde
+  ser confirmado na transcrição (registrada de forma imprecisa como
+  "snapshots").
 - A dificuldade foi atribuída à falta de dimensionamento do esforço necessário
   para essa etapa.
 - Foi mencionado que a causa do atraso está relacionada à divisão insuficiente
@@ -899,35 +907,35 @@ sustentados pela transcrição.
 ### Autenticação e disponibilidade
 
 - Foi sinalizado o risco de não conseguir concluir a parte de autenticação no
-  frontend sob responsabilidade de Rafaela devido à disponibilidade, com
-  necessidade de verificação posterior.
+  frontend devido à disponibilidade reduzida, sem fonte que confirme a atribuição
+  nominal dessa fala, com necessidade de verificação posterior.
 - Foi sinalizada a possibilidade de dividir essa tarefa com outro membro da equipe.
 
 ### Cronograma e apresentação final
 
-- Foi confirmado que a entrega da documentação obrigatória da NoCountry deveria
+- Foi mencionado que a entrega da documentação obrigatória da NoCountry deveria
   ocorrer ainda durante a semana da reunião.
-- Foi definido que a apresentação final ocorreria na semana 6 do cronograma.
-- Ficou definido que um dos participantes conduziria a apresentação da demo, mas
-  não estabelecido formalmente quem seria designado para esse fim.
-- Foi esclarecido que a apresentação final é dividida em duas etapas: a primeira,
-  apenas de apresentação, sem espaço para perguntas; a segunda, realizada na
-  semana seguinte, com 5 minutos de apresentação e 5 minutos destinados a
-  perguntas técnicas.
-- Foi esclarecido que, na segunda etapa, apenas quem estiver apresentando poderá
-  responder verbalmente às perguntas, podendo o restante da equipe apoiar apenas
-  pelo chat.
+- Foi mencionado que a apresentação final estava prevista para a semana 6 do
+  cronograma.
+- Foi mencionado que um dos participantes conduziria a apresentação da demo,
+  sem que o responsável tivesse sido formalmente definido até o momento.
+- Foi mencionado que a apresentação final seria dividida em duas etapas: a
+  primeira, apenas de apresentação, sem espaço para perguntas; a segunda,
+  realizada na semana seguinte, com 5 minutos de apresentação e 5 minutos
+  destinados a perguntas técnicas.
+- Foi mencionado que, na segunda etapa, apenas quem estiver apresentando
+  poderia responder verbalmente às perguntas, podendo o restante da equipe
+  apoiar apenas pelo chat.
 
 ### Decisões registradas em 06/08
 
-- A equipe decidiu manter o acompanhamento do andamento das frentes por meio das
-  próprias reuniões, sem abertura de novos canais formais de reporte.
 - Ficou definida a criação de uma nova enquete de horários para as próximas
   reuniões, a partir da segunda-feira seguinte.
 
 ### Pendências identificadas em 06/08
 
-- Concluir a geração dos snapshots da frente de Data Science.
+- Concluir a etapa técnica que travava a finalização da frente de Data Science
+  (termo registrado de forma imprecisa na transcrição como "snapshots").
 - Finalizar os testes de autenticação em andamento.
 - Resolver o travamento de integração entre o acesso de usuário e o Frontend.
 - Concluir o Frontend ainda durante a semana da reunião.
@@ -944,6 +952,7 @@ sustentados pela transcrição.
 - Verificar a disponibilidade para conclusão da parte de autenticação e, se
   necessário, dividir a tarefa com outro membro da equipe.
 - Enviar a documentação obrigatória da NoCountry.
+- Definir responsável pela apresentação do projeto
 - Preparar a apresentação final, com definição de responsável pela condução e
   alinhamento do formato em duas etapas.
 - Criar uma nova enquete de horários para as reuniões seguintes.
