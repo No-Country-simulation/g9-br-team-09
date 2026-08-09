@@ -3,16 +3,10 @@ import type { ReactNode } from 'react'
 import { Logo } from '@/shared/components/Logo'
 
 interface AuthLayoutProps {
-  asideTitle: string
-  asideDescription: string
   children: ReactNode
 }
 
-export function AuthLayout({
-  asideTitle,
-  asideDescription,
-  children,
-}: AuthLayoutProps) {
+export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="bg-linear-to-b flex min-h-screen flex-col from-slate-950 to-emerald-700 md:flex-row">
       <aside className="flex-col justify-center gap-6  px-16 py-12 text-slate-50 md:flex md:w-1/2 xl:px-48">
@@ -24,10 +18,11 @@ export function AuthLayout({
           textSizeClassName="text-[22px] sm:text-[28px]"
         />
         <h1 className="mt-6 text-wrap text-center text-3xl font-bold md:mt-0 md:text-4xl lg:text-left">
-          {asideTitle}
+          Descubra a eficiência energética do seu imóvel
         </h1>
         <p className="mt-5 text-wrap text-center text-sm text-slate-200 sm:text-base md:mt-0 lg:text-left">
-          {asideDescription}
+          O EnergiAI analisa o perfil energético do seu imóvel e traz
+          recomendações práticas para reduzir custos.
         </p>
       </aside>
 
