@@ -8,8 +8,8 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="bg-linear-to-b flex min-h-screen flex-col from-slate-950 to-emerald-700 md:flex-row">
-      <aside className="flex-col justify-center gap-6  px-16 py-12 text-slate-50 md:flex md:w-1/2 xl:px-48">
+    <div className="bg-linear-to-b flex min-h-screen flex-col from-slate-950 to-emerald-700 md:flex-row md:overflow-hidden">
+      <aside className="auth-enter flex-col justify-center gap-6 px-16 py-12 text-slate-50 md:flex md:w-1/2 xl:px-48">
         <Logo
           className="justify-center lg:justify-start"
           textClassName="text-white"
@@ -27,7 +27,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       </aside>
 
       <main className="bg-background shadow-card flex flex-1 items-center justify-center rounded-t-[35px] p-6 md:rounded-l-[60px] md:rounded-tr-none">
-        <div className="w-full max-w-md">{children}</div>
+        <div className="auth-enter auth-enter-delayed w-full max-w-md">
+          {children}
+        </div>
       </main>
     </div>
   )

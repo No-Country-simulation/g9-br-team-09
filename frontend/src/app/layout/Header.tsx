@@ -1,10 +1,12 @@
 import {
   Clock,
+  LogIn,
   LogOut,
   LucideLayoutDashboard,
   Moon,
   Sun,
   TrendingUp,
+  UserPlus,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,30 +39,61 @@ export function Header() {
           <Logo />
         </div>
         <div className="flex items-center sm:gap-1">
-          <Button
-            variant="ghost"
-            icon={LucideLayoutDashboard}
-            aria-label="Abrir painel"
-            onClick={() => void navigate('/painel')}
-          >
-            <span className="hidden sm:inline">Painel</span>
-          </Button>
-          <Button
-            variant="ghost"
-            icon={Clock}
-            aria-label="Abrir histórico de análises"
-            onClick={() => void navigate('/historico')}
-          >
-            <span className="hidden sm:inline">Histórico</span>
-          </Button>
-          <Button
-            variant="secondary"
-            icon={TrendingUp}
-            aria-label="Iniciar nova análise energética"
-            onClick={() => void navigate('/analise-energetica')}
-          >
-            <span className="hidden sm:inline">Nova análise</span>
-          </Button>
+          {status === 'authenticated' ? (
+            <>
+              <Button
+                variant="ghost"
+                icon={LucideLayoutDashboard}
+                aria-label="Abrir painel"
+                onClick={() => void navigate('/painel')}
+              >
+                <span className="hidden sm:inline">Painel</span>
+              </Button>
+              <Button
+                variant="ghost"
+                icon={Clock}
+                aria-label="Abrir histórico de análises"
+                onClick={() => void navigate('/historico')}
+              >
+                <span className="hidden sm:inline">Histórico</span>
+              </Button>
+              <Button
+                variant="secondary"
+                icon={TrendingUp}
+                aria-label="Iniciar nova análise energética"
+                onClick={() => void navigate('/analise-energetica')}
+              >
+                <span className="hidden sm:inline">Nova análise</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                icon={LogIn}
+                aria-label="Entrar"
+                onClick={() => void navigate('/login')}
+              >
+                <span className="hidden sm:inline">Entrar</span>
+              </Button>
+              <Button
+                variant="ghost"
+                icon={UserPlus}
+                aria-label="Cadastre-se"
+                onClick={() => void navigate('/cadastro')}
+              >
+                <span className="hidden sm:inline">Cadastre-se</span>
+              </Button>
+              <Button
+                variant="secondary"
+                icon={TrendingUp}
+                aria-label="Começar análise"
+                onClick={() => void navigate('/analise-energetica')}
+              >
+                <span className="hidden sm:inline">Começar análise</span>
+              </Button>
+            </>
+          )}
           <Divider orientation="vertical" />
           <Button
             variant="ghost"
