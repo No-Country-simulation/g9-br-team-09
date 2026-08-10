@@ -1,6 +1,7 @@
 import iconeLogo from '@/shared/assets/images/energiai-icone.png'
 
 interface LogoProps {
+  orientation?: 'horizontal' | 'vertical'
   className?: string
   textClassName?: string
   imgWidth?: number
@@ -8,27 +9,42 @@ interface LogoProps {
   textSizeClassName?: string
 }
 
-const DEFAULT_IMG_WIDTH = 32
-const DEFAULT_IMG_HEIGHT = 40
-const DEFAULT_TEXT_SIZE_CLASSNAME = 'text-[16px] sm:text-[20px]'
-
 export function Logo({
+  orientation = 'horizontal',
   className,
   textClassName = 'text-foreground',
-  imgWidth = DEFAULT_IMG_WIDTH,
-  imgHeight = DEFAULT_IMG_HEIGHT,
-  textSizeClassName = DEFAULT_TEXT_SIZE_CLASSNAME,
+  imgWidth,
+  imgHeight,
+  textSizeClassName,
 }: LogoProps) {
+  const isVertical = orientation === 'vertical'
+  const resolvedImgWidth = imgWidth ?? (isVertical ? 94 : 32)
+  const resolvedImgHeight = imgHeight ?? (isVertical ? 119 : 40)
+  const imageClassName =
+    isVertical && imgWidth === undefined && imgHeight === undefined
+      ? 'h-[119px] w-[94px] sm:h-[190px] sm:w-[150px]'
+      : undefined
+  const resolvedTextSizeClassName =
+    textSizeClassName ??
+    (isVertical ? 'text-[32px] sm:text-[48px]' : 'text-[16px] sm:text-[20px]')
+
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div
+      className={`flex ${isVertical ? 'flex-col items-center gap-4' : 'items-center gap-2'} ${className}`}
+    >
       <img
         src={iconeLogo}
         alt="EnergiAI logo"
-        width={imgWidth}
-        height={imgHeight}
-        style={{ width: imgWidth, height: imgHeight }}
+        width={resolvedImgWidth}
+        height={resolvedImgHeight}
+        className={imageClassName}
+        style={
+          imageClassName
+            ? undefined
+            : { width: resolvedImgWidth, height: resolvedImgHeight }
+        }
       />
-      <span className={`${textSizeClassName} ${textClassName}`}>
+      <span className={`${resolvedTextSizeClassName} ${textClassName}`}>
         Energi<span className="font-bold">AI</span>
       </span>
     </div>

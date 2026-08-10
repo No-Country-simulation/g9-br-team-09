@@ -2,8 +2,8 @@ import { ArrowLeft, ArrowRight, type LucideIcon } from 'lucide-react'
 import { type SyntheticEvent, useState } from 'react'
 
 import { Button } from '@/shared/components/Button'
+import { Input, type InputProps } from '@/shared/components/Input'
 
-import { Input, type InputProps } from '../../../shared/components/Input'
 import {
   type AnalysisFieldKey,
   analysisFieldSchemas,

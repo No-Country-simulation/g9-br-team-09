@@ -15,7 +15,7 @@ export function PasswordInput(props: PasswordInputProps) {
         <button
           type="button"
           onClick={() => setIsVisible((prev) => !prev)}
-          className="text-muted-foreground ml-3 cursor-pointer"
+          className="text-muted-foreground ml-3 cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           aria-label={isVisible ? 'Ocultar senha' : 'Mostrar senha'}
           aria-pressed={isVisible}
         >

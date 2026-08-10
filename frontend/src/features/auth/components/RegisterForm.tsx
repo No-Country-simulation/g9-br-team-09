@@ -112,7 +112,7 @@ export function RegisterForm() {
 
       <p className="text-muted-foreground text-center text-sm">
         Já possui uma conta?{' '}
-        <Link to="/" className="text-primary font-medium">
+        <Link to="/login" className="text-primary font-medium">
           Entrar
         </Link>
       </p>

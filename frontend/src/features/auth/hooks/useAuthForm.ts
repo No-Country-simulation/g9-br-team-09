@@ -1,5 +1,5 @@
 import type { ChangeEvent, SubmitEvent } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { z } from 'zod'
 
 import type { FormErrors } from '../types/form'
@@ -38,6 +38,7 @@ export function useAuthForm<TValues extends AuthFormValues>({
   const [errors, setErrors] = useState<FormErrors<TValues>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmittingRef = useRef(false)
 
   function handleChange(field: keyof TValues) {
     return (event: ChangeEvent<HTMLInputElement>) => {
@@ -47,6 +48,7 @@ export function useAuthForm<TValues extends AuthFormValues>({
         ...previousValues,
         [field]: nextValue,
       }))
+      setFormError(null)
 
       setErrors((previousErrors) => {
         if (!previousErrors[field]) {
@@ -70,6 +72,10 @@ export function useAuthForm<TValues extends AuthFormValues>({
     if (!validationResult.success) {
       const { fieldErrors } = z.flattenError(validationResult.error)
       setErrors(mapFieldErrors<TValues>(fieldErrors))
+
+      const [firstInvalidField] = Object.keys(fieldErrors)
+      document.getElementById(firstInvalidField ?? '')?.focus()
+
       return
     }
 
@@ -79,10 +85,16 @@ export function useAuthForm<TValues extends AuthFormValues>({
       return
     }
 
+    if (isSubmittingRef.current) {
+      return
+    }
+
+    isSubmittingRef.current = true
     setIsSubmitting(true)
     try {
       await onValidSubmit(validationResult.data)
     } finally {
+      isSubmittingRef.current = false
       setIsSubmitting(false)
     }
   }

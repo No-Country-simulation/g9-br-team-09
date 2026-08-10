@@ -16,7 +16,7 @@ export function NotFoundPage() {
         </p>
         <Button
           variant="primary"
-          onClick={() => void navigate('/analise-energetica')}
+          onClick={() => void navigate('/')}
         >
           Voltar ao início
         </Button>

@@ -6,6 +6,7 @@ import { AnalysisHistoryPage } from '@/features/analysis-history/pages/HistoryPa
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { RegisterPage } from '@/features/auth/pages/RegisterPage'
 import { AnalysisFormPage } from '@/features/energy-analysis/pages/EnergyAnalysisFormPage'
+import { EnergyAnalysisHomePage } from '@/features/energy-analysis/pages/EnergyAnalysisHomePage'
 import { AnalysisResultsPage } from '@/features/energy-analysis/pages/EnergyAnalysisResultsPage'
 import { SummaryDashboardPage } from '@/features/summary-dashboard/pages/DashboardPage'
 
@@ -14,10 +15,20 @@ import { NotFoundPage } from './pages/NotFoundPage'
 const router = createBrowserRouter([
   {
     path: '/',
+    element: <MainLayout />,
+    children: [
+      {
+        index: true,
+        element: <EnergyAnalysisHomePage />,
+      },
+    ],
+  },
+  {
+    path: '/login',
     element: <LoginPage />,
   },
   {
-    path: 'cadastro',
+    path: '/cadastro',
     element: <RegisterPage />,
   },
   {
