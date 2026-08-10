@@ -33,6 +33,8 @@ class OciSecurityConfigurationTest {
         assertEquals("true", properties.getProperty("auth.refresh.cookie-secure"));
         assertEquals("${AUTH_REFRESH_COOKIE_SAME_SITE:None}",
                 properties.getProperty("auth.refresh.cookie-same-site"));
+        assertEquals("${CORS_ALLOWED_ORIGINS:https://energiai.vercel.app}",
+                properties.getProperty("cors.allowed-origins"));
         assertEquals("framework", properties.getProperty("server.forward-headers-strategy"));
 
         String allowedOrigins = properties.getProperty("cors.allowed-origins");

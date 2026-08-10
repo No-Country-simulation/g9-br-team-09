@@ -141,7 +141,7 @@ class AuthControllerTest {
                 .andReturn();
 
         assertNotNull(cookieValue(result, "refresh_token"));
-        assertNotNull(cookieValue(result, "XSRF-TOKEN"));
+        assertEquals(result.getResponse().getHeader("X-XSRF-TOKEN"), cookieValue(result, "XSRF-TOKEN"));
         assertTrue(setCookie(result, "refresh_token").contains("HttpOnly"));
         assertEquals(1, refreshTokenRepository.count());
     }
