@@ -1,20 +1,25 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '@/app/providers/auth/useAuth'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 
+import { getRegisterFormErrorMessage } from '../api/auth-api'
 import { useAuthForm } from '../hooks/useAuthForm'
 import { registerSchema } from '../schemas/register'
 import { FormField } from './FormField'
 import { PasswordInput } from './PasswordInput'
 
 export function RegisterForm() {
+  const navigate = useNavigate()
+  const { register } = useAuth()
   const {
     errors,
     formError,
     handleChange,
     handleSubmit,
     isSubmitting,
+    setFormError,
     values,
   } = useAuthForm({
     initialValues: {
@@ -24,6 +29,14 @@ export function RegisterForm() {
       confirmPassword: '',
     },
     schema: registerSchema,
+    onValidSubmit: async (values) => {
+      try {
+        await register(values)
+        void navigate('/login', { replace: true })
+      } catch (error) {
+        setFormError(getRegisterFormErrorMessage(error))
+      }
+    },
   })
 
   return (

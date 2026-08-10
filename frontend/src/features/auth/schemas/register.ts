@@ -19,21 +19,3 @@ export const registerSchema = z
   })
 
 export type RegisterFormValues = z.infer<typeof registerSchema>
-
-export interface RegisterRequest {
-  nome: string
-  email: string
-  senha: string
-}
-
-export function toRegisterRequest({
-  fullName,
-  email,
-  password,
-}: RegisterFormValues): RegisterRequest {
-  return {
-    nome: fullName,
-    email,
-    senha: password,
-  }
-}

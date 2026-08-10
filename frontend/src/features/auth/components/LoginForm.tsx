@@ -1,20 +1,26 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
+import { useAuth } from '@/app/providers/auth/useAuth'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 
+import { getLoginFormErrorMessage } from '../api/auth-api'
 import { useAuthForm } from '../hooks/useAuthForm'
 import { loginSchema } from '../schemas/login'
 import { FormField } from './FormField'
 import { PasswordInput } from './PasswordInput'
 
 export function LoginForm() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
   const {
     errors,
     formError,
     handleChange,
     handleSubmit,
     isSubmitting,
+    setFormError,
     values,
   } = useAuthForm({
     initialValues: {
@@ -22,6 +28,14 @@ export function LoginForm() {
       password: '',
     },
     schema: loginSchema,
+    onValidSubmit: async (values) => {
+      try {
+        await login(values)
+        void navigate(getPostLoginPath(location.state), { replace: true })
+      } catch (error) {
+        setFormError(getLoginFormErrorMessage(error))
+      }
+    },
   })
 
   return (
@@ -79,4 +93,35 @@ export function LoginForm() {
       </p>
     </form>
   )
+}
+
+function getPostLoginPath(state: unknown): string {
+  if (!state || typeof state !== 'object' || !('from' in state)) {
+    return '/analise-energetica'
+  }
+
+  const from = state.from
+  if (!from || typeof from !== 'object' || !('pathname' in from)) {
+    return '/analise-energetica'
+  }
+
+  const {
+    pathname,
+    search = '',
+    hash = '',
+  } = from as {
+    pathname?: unknown
+    search?: unknown
+    hash?: unknown
+  }
+
+  if (
+    typeof pathname !== 'string' ||
+    !pathname.startsWith('/') ||
+    pathname.startsWith('//')
+  ) {
+    return '/analise-energetica'
+  }
+
+  return `${pathname}${typeof search === 'string' ? search : ''}${typeof hash === 'string' ? hash : ''}`
 }

@@ -11,6 +11,7 @@ import { AnalysisResultsPage } from '@/features/energy-analysis/pages/EnergyAnal
 import { SummaryDashboardPage } from '@/features/summary-dashboard/pages/DashboardPage'
 
 import { NotFoundPage } from './pages/NotFoundPage'
+import { ProtectedRoute, PublicOnlyRoute } from './routes/AuthRoute'
 
 const router = createBrowserRouter([
   {
@@ -24,41 +25,51 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: '/login',
-    element: <LoginPage />,
-  },
-  {
-    path: '/cadastro',
-    element: <RegisterPage />,
-  },
-  {
-    element: <MainLayout />,
+    element: <PublicOnlyRoute />,
     children: [
       {
-        path: 'analise-energetica',
-        element: <AnalysisFormPage />,
+        path: '/login',
+        element: <LoginPage />,
       },
       {
-        path: 'resultado',
-        element: <AnalysisResultsPage />,
-      },
-      {
-        path: 'painel',
-        element: <SummaryDashboardPage />,
-      },
-      {
-        path: 'historico',
-        element: <AnalysisHistoryPage />,
-      },
-      {
-        path: 'detalhes/:id',
-        element: <AnalysisDetailsPage />,
-      },
-      {
-        path: '*',
-        element: <NotFoundPage />,
+        path: '/cadastro',
+        element: <RegisterPage />,
       },
     ],
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        element: <MainLayout />,
+        children: [
+          {
+            path: 'analise-energetica',
+            element: <AnalysisFormPage />,
+          },
+          {
+            path: 'resultado',
+            element: <AnalysisResultsPage />,
+          },
+          {
+            path: 'painel',
+            element: <SummaryDashboardPage />,
+          },
+          {
+            path: 'historico',
+            element: <AnalysisHistoryPage />,
+          },
+          {
+            path: 'detalhes/:id',
+            element: <AnalysisDetailsPage />,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ])
 

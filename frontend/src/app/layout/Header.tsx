@@ -1,5 +1,6 @@
 import {
   Clock,
+  LogOut,
   LucideLayoutDashboard,
   Moon,
   Sun,
@@ -7,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
+import { useAuth } from '@/app/providers/auth/useAuth'
 import { useTheme } from '@/app/providers/theme'
 
 import { Button } from '../../shared/components/Button'
@@ -16,6 +18,18 @@ import { Logo } from '../../shared/components/Logo'
 export function Header() {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
+  const { status, logout } = useAuth()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch {
+      // The provider clears the local session even if the request fails.
+    } finally {
+      navigate('/login', { replace: true })
+    }
+  }
+
   return (
     <header className="border-(--border) border-b px-5 py-6 sm:px-10">
       <nav className="flex items-center justify-between">
@@ -57,6 +71,16 @@ export function Header() {
             aria-pressed={theme === 'dark'}
             onClick={toggleTheme}
           />
+          {status === 'authenticated' && (
+            <Button
+              variant="ghost"
+              icon={LogOut}
+              aria-label="Encerrar sessão"
+              onClick={() => void handleLogout()}
+            >
+              <span className="hidden sm:inline">Sair</span>
+            </Button>
+          )}
         </div>
       </nav>
     </header>
