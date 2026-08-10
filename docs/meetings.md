@@ -971,3 +971,148 @@ Discord.
 
 Esta ata deverá passar por revisão via Pull Request antes de ser considerada
 definitiva.
+
+---
+
+## 10/08/2026 — Sprint Planning Meet
+
+### Contexto da Sprint Planning de 10/08
+
+Sprint Planning realizada para revisar o andamento das frentes de Back-end,
+Data-Science e front-end, além de alinhar a organização da apresentação final do
+projeto (Demo Day) e dos entregáveis.
+
+Esta ata foi elaborada a partir da descrição da reunião fornecida, sem
+transcrição bruta associada.
+
+O repositório contém somente o registro objetivo dos pontos técnicos e
+operacionais sustentados por essa fonte.
+
+### Participantes da Sprint Planning de 10/08
+
+- Alan
+- Gustavo
+- Lucas
+
+### Ausências
+
+**Justificadas**
+- Rafaela (compromisso que surgiu coincidindo com o horário da reunião).
+
+**Não justificadas**
+- Fabio
+- Túlio
+- Miguel
+
+### Back-end
+
+- Lucas relatou que já realizou o deploy das funcionalidades de autenticação
+  e autorização do back-end.
+- Informou também que testou o front-end com essas funcionalidades
+  (autenticação, autorização, refresh token e demais itens relacionados) e
+  que funcionou localmente.
+- Ficou registrado que ainda falta integrar tudo em conjunto, com
+  possibilidade de erros nessa integração.
+
+### Front-end
+
+- Apontou-se a necessidade de fazer o deploy na Vercel do front-end com as
+  novas alterações, já que atualmente elas estão apenas locais.
+
+### Data-Science
+
+- Registrou-se que a finalização da frente de data-science está em
+  andamento, sendo conduzida por Fabio com apoio de Lucas.
+- Lucas indicou que, ao concluir a frente de data-science, pretende publicar
+  a API correspondente no Render, por considerar o deploy mais rápido do que
+  na OCI.
+
+### Documentação e testes
+
+- Ficou registrada a pendência de atualização das documentações do projeto.
+- Indicou-se que, após a conclusão das documentações e do projeto, será
+  necessário testar tudo em funcionamento conjunto.
+- Discutiu-se que os testes gerais de integração entre front-end, back-end e
+  data-science (produto final), possivelmente, serão feitos manualmente, e não
+  de forma automatizada como os testes unitários e de camada de controller
+  feitos anteriormente, devido ao tempo necessário para aprender e aplicar a
+  automação.
+- Ficou definido que os entregáveis devem ser atualizados, principalmente o
+  link da Vercel do front-end e as pendências principais na Tarefa 1
+  (documentação), preferencialmente após a conclusão de todas as
+  alterações.
+
+### Cronograma e prazos
+
+- Informou-se que a entrega de demonstração do Demo Day está prevista para
+  terça-feira (18/08).
+- Ficou definido que o vídeo de demonstração deve ser gravado ainda durante
+  a semana da reunião.
+- Comunicou-se que o feedback entre colegas já está liberado, com prazo até
+  domingo (16/08).
+- Esclareceu-se que as entregas do projeto e o vídeo podem ser enviados até
+  domingo (16/08), às 23h59.
+- Registrou-se a existência de uma reunião de pré-demo ("Pre Demo Meet"),
+  correspondente à reunião de quinta-feira.
+
+### Apresentação final
+
+- Não foi definido quem gravará o vídeo nem quem fará a apresentação, mas os
+  participantes demonstraram interesse em indicar Fabio para essa função,
+  com decisão a ser tomada pelo chat assíncrono do Discord ou na próxima
+  reunião.
+- Indicou-se que o vídeo deve ser gravado e disponibilizado no YouTube e, em
+  seguida, enviado à plataforma.
+- Esclareceu-se a dúvida sobre a possibilidade de duas pessoas apresentarem
+  em dias diferentes (uma no primeiro dia e outra no segundo): a resposta
+  obtida foi de que isso é permitido, mas não ficou decidido se essa será a
+  forma adotada.
+- Levantou-se que as perguntas feitas na segunda apresentação talvez não sejam
+  tão técnicas e com possibilidade ainda de apoio dos demais integrantes do grupo
+  pelo chat.
+
+### Decisões registradas em 10/08
+
+- Nenhuma decisão formal foi registrada como definitiva; os pontos relativos
+  a responsável pelo vídeo/apresentação e ao formato de apresentação em dois
+  dias permanecem em aberto.
+
+### Pendências identificadas em 10/08
+
+- Integrar as funcionalidades de autenticação e autorização entre back-end e
+  front-end.
+- Realizar o deploy do front-end na Vercel com as novas alterações.
+- Concluir a frente de data-science.
+- Publicar a API de data-science no Render após sua conclusão.
+- Concluir as documentações do projeto.
+- Testar o funcionamento conjunto de front-end, back-end e data-science.
+- Atualizar os entregáveis, incluindo o link da Vercel do front-end e as
+  pendências da Tarefa 1 (documentação).
+- Definir responsável pela gravação do vídeo e pela apresentação.
+- Gravar e enviar o vídeo de demonstração.
+- Enviar as entregas do projeto até domingo (16/08), às 23h59.
+
+### Próximos passos definidos em 10/08
+
+- Lucas e Fabio seguirem na finalização da frente de data-science.
+- Realizar o deploy do front-end na Vercel com as alterações locais.
+    - Publicar a API de data-science no Render após sua conclusão.
+- Concluir as documentações pendentes e, em seguida, testar o funcionamento
+  conjunto.
+- Definir, via Discord ou na próxima reunião, o responsável pela gravação do
+  vídeo e pela apresentação.
+- Gravar o vídeo no YouTube e enviá-lo à plataforma.
+- Atualizar os entregáveis.
+- Publicar a enquete de horários no grupo.
+
+### Observações sobre a Sprint Planning de 10/08
+
+Esta ata registra somente os pontos técnicos e operacionais sustentados pela
+descrição da reunião disponibilizada.
+
+Os estados de tarefas descritos nesta seção representam a situação relatada
+em 10/08/2026 e não substituem atualizações posteriores registradas no
+GitHub ou no Discord.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.
