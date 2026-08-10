@@ -7,6 +7,7 @@ type SessionInvalidHandler = () => void
 
 let refreshPromise: Promise<AuthenticationResponse> | null = null
 let sessionInvalidHandler: SessionInvalidHandler | null = null
+let sessionGeneration = 0
 
 export function setSessionInvalidHandler(
   handler: SessionInvalidHandler | null,
@@ -15,6 +16,7 @@ export function setSessionInvalidHandler(
 }
 
 export function clearSession(): void {
+  sessionGeneration += 1
   clearAccessToken()
   clearCsrfToken()
   sessionInvalidHandler?.()
@@ -22,13 +24,22 @@ export function clearSession(): void {
 
 export function refreshAccessToken(): Promise<AuthenticationResponse> {
   if (!refreshPromise) {
+    const refreshGeneration = sessionGeneration
+
     refreshPromise = refresh()
       .then((authentication) => {
+        if (refreshGeneration !== sessionGeneration) {
+          throw new Error('A sessão foi encerrada durante a renovação.')
+        }
+
         setAccessToken(authentication.access_token)
         return authentication
       })
       .catch((error: unknown) => {
-        clearSession()
+        if (refreshGeneration === sessionGeneration) {
+          clearSession()
+        }
+
         throw error
       })
       .finally(() => {
