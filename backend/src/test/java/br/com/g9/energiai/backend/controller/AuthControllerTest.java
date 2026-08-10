@@ -216,6 +216,21 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("Refresh sem header CSRF deve devolver o token do cookie para bootstrap")
+    void shouldExposeCsrfTokenWhenRefreshHeaderIsMissing() throws Exception {
+        register("csrf-bootstrap@email.com");
+        MvcResult login = login("csrf-bootstrap@email.com");
+        String csrf = login.getResponse().getHeader("X-XSRF-TOKEN");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contextPath("/api/v1")
+                        .cookie(new Cookie("refresh_token", cookieValue(login, "refresh_token")),
+                                new Cookie("XSRF-TOKEN", csrf)))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string("X-XSRF-TOKEN", csrf));
+    }
+
+    @Test
     @DisplayName("CSRF inválido deve preservar o contrato 403")
     void shouldRejectInvalidCsrf() throws Exception {
         register("csrf-invalido@email.com");
