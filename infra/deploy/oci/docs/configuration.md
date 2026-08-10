@@ -51,10 +51,10 @@ Confirme sob carga real. Para fallback sem FastAPI, use `ML_API_BASE_URL=http://
 
 Para IP efêmero, use `<CURRENT_OCI_PUBLIC_IP>.sslip.io` somente em `API_PUBLIC_HOSTNAME` externo. Caddy usa essa variável e pode gerir redirect HTTP e certificados quando DNS, TCP 80/443 e ACME estiverem acessíveis. Troca de IP exige revisar hostname, links e certificado. O profile `oci` usa headers de proxy para Swagger/OpenAPI HTTPS.
 
-Após conhecer a URL Vercel, defina origem exata sem caminho:
+Para o frontend público atual, defina a origem exata sem caminho. Se o hostname da Vercel mudar, atualize apenas o arquivo externo de ambiente:
 
 ```text
-CORS_ALLOWED_ORIGINS=https://<FINAL_VERCEL_HOSTNAME>
+CORS_ALLOWED_ORIGINS=https://energiai.vercel.app
 VITE_API_BASE_URL=https://<API_PUBLIC_HOSTNAME>/api/v1
 ```
 

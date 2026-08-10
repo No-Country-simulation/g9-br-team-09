@@ -141,7 +141,7 @@ class AuthControllerTest {
                 .andReturn();
 
         assertNotNull(cookieValue(result, "refresh_token"));
-        assertNotNull(cookieValue(result, "XSRF-TOKEN"));
+        assertEquals(result.getResponse().getHeader("X-XSRF-TOKEN"), cookieValue(result, "XSRF-TOKEN"));
         assertTrue(setCookie(result, "refresh_token").contains("HttpOnly"));
         assertEquals(1, refreshTokenRepository.count());
     }
@@ -213,6 +213,21 @@ class AuthControllerTest {
         mockMvc.perform(post("/api/v1/auth/logout").contextPath("/api/v1"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("FORBIDDEN_ERROR"));
+    }
+
+    @Test
+    @DisplayName("Refresh sem header CSRF deve devolver o token do cookie para bootstrap")
+    void shouldExposeCsrfTokenWhenRefreshHeaderIsMissing() throws Exception {
+        register("csrf-bootstrap@email.com");
+        MvcResult login = login("csrf-bootstrap@email.com");
+        String csrf = login.getResponse().getHeader("X-XSRF-TOKEN");
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contextPath("/api/v1")
+                        .cookie(new Cookie("refresh_token", cookieValue(login, "refresh_token")),
+                                new Cookie("XSRF-TOKEN", csrf)))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string("X-XSRF-TOKEN", csrf));
     }
 
     @Test

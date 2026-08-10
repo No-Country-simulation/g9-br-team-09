@@ -2,12 +2,12 @@ import { ArrowLeft, ArrowRight, type LucideIcon } from 'lucide-react'
 import { type SyntheticEvent, useState } from 'react'
 
 import { Button } from '@/shared/components/Button'
+import { Input, type InputProps } from '@/shared/components/Input'
 
 import {
   type AnalysisFieldKey,
   analysisFieldSchemas,
 } from '../schemas/analysis'
-import { Input, type InputProps } from './Input'
 import { RadioCard } from './RadioCard'
 
 interface DefaultValueProps {
