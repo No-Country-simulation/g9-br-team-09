@@ -974,7 +974,7 @@ definitiva.
 
 ---
 
-## 10/08/2026 — Sprint Planning Meet
+## 10/08/2026 — Sprint Planning
 
 ### Contexto da Sprint Planning de 10/08
 
@@ -982,8 +982,8 @@ Sprint Planning realizada para revisar o andamento das frentes de Back-end,
 Data-Science e front-end, além de alinhar a organização da apresentação final do
 projeto (Demo Day) e dos entregáveis.
 
-Esta ata foi elaborada a partir da descrição da reunião fornecida, sem
-transcrição bruta associada.
+Esta ata foi elaborada a partir da descrição da reunião fornecida e
+posteriormente revisada com base na transcrição original da reunião.
 
 O repositório contém somente o registro objetivo dos pontos técnicos e
 operacionais sustentados por essa fonte.
@@ -1006,8 +1006,8 @@ operacionais sustentados por essa fonte.
 
 ### Back-end
 
-- Lucas relatou que já realizou o deploy das funcionalidades de autenticação
-  e autorização do back-end.
+- Lucas relatou que o JWT já estava finalizado, assim como o refresh token,
+  e ambos já implementados e com o deploy correspondente já realizado.
 - Informou também que testou o front-end com essas funcionalidades
   (autenticação, autorização, refresh token e demais itens relacionados) e
   que funcionou localmente.
@@ -1038,9 +1038,9 @@ operacionais sustentados por essa fonte.
   feitos anteriormente, devido ao tempo necessário para aprender e aplicar a
   automação.
 - Ficou definido que os entregáveis devem ser atualizados, principalmente o
-  link da Vercel do front-end e as pendências principais na Tarefa 1
-  (documentação), preferencialmente após a conclusão de todas as
-  alterações.
+  link da Vercel do front-end e a seção "Pendências principais" na documentação
+  publicada na No-Country (projeto > Entregáveis > Tarefa 1: Documentação do 
+  projeto, preferencialmente após a conclusão de todas as alterações.
 
 ### Cronograma e prazos
 
@@ -1073,9 +1073,10 @@ operacionais sustentados por essa fonte.
 
 ### Decisões registradas em 10/08
 
-- Nenhuma decisão formal foi registrada como definitiva; os pontos relativos
-  a responsável pelo vídeo/apresentação e ao formato de apresentação em dois
-  dias permanecem em aberto.
+- Não houve decisão formal sobre dois pontos específicos: o responsável
+  pela gravação do vídeo/apresentação e o formato de participação entre as
+  duas etapas da apresentação (dias diferentes). Os demais próximos passos
+  discutidos na reunião foram alinhados entre os participantes.
 
 ### Pendências identificadas em 10/08
 
@@ -1096,13 +1097,14 @@ operacionais sustentados por essa fonte.
 
 - Lucas e Fabio seguirem na finalização da frente de data-science.
 - Realizar o deploy do front-end na Vercel com as alterações locais.
-    - Publicar a API de data-science no Render após sua conclusão.
+- Publicar a API de data-science no Render após sua conclusão.
 - Concluir as documentações pendentes e, em seguida, testar o funcionamento
   conjunto.
 - Definir, via Discord ou na próxima reunião, o responsável pela gravação do
   vídeo e pela apresentação.
-- Gravar o vídeo no YouTube e enviá-lo à plataforma.
-- Atualizar os entregáveis.
+- Gravar o vídeo de demonstração, publicá-lo no YouTube e enviar o link na plataforma.
+- Atualizar os entregáveis, o que inclui o link da Vercel do front-end e as 
+  pendências de documentação do site do hackathon
 - Publicar a enquete de horários no grupo.
 
 ### Observações sobre a Sprint Planning de 10/08
