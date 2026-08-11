@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/app/providers/auth/useAuth'
+import { getPostLoginPath } from '@/features/auth/navigation/post-login-path'
 
 function SessionLoading() {
   return (
@@ -30,13 +31,14 @@ export function ProtectedRoute() {
 
 export function PublicOnlyRoute() {
   const { status } = useAuth()
+  const location = useLocation()
 
   if (status === 'loading') {
     return <SessionLoading />
   }
 
   if (status === 'authenticated') {
-    return <Navigate to="/analise-energetica" replace />
+    return <Navigate to={getPostLoginPath(location.state)} replace />
   }
 
   return <Outlet />
