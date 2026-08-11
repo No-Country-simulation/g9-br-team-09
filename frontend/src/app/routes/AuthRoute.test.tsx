@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { type ReactNode, useState } from 'react'
 import {
   createMemoryRouter,
   RouterProvider,
@@ -9,20 +10,12 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AuthContextValue } from '@/app/providers/auth/auth.types'
+import { AuthContext } from '@/app/providers/auth/AuthContext'
+import { LoginForm } from '@/features/auth/components/LoginForm'
 
-const authState = vi.hoisted(() => ({
+const authState = {
   value: null as AuthContextValue | null,
-}))
-
-vi.mock('@/app/providers/auth/useAuth', () => ({
-  useAuth: () => {
-    if (!authState.value) {
-      throw new Error('Auth state not configured for test')
-    }
-
-    return authState.value
-  },
-}))
+}
 
 import { ProtectedRoute, PublicOnlyRoute } from './AuthRoute'
 
@@ -69,7 +62,11 @@ function renderProtectedRoute(initialPath = '/historico') {
     { initialEntries: [initialPath] },
   )
 
-  render(<RouterProvider router={router} />)
+  render(
+    <AuthContext value={authState.value}>
+      <RouterProvider router={router} />
+    </AuthContext>,
+  )
 }
 
 function renderPublicOnlyRoute() {
@@ -84,7 +81,73 @@ function renderPublicOnlyRoute() {
     { initialEntries: ['/login'] },
   )
 
-  render(<RouterProvider router={router} />)
+  render(
+    <AuthContext value={authState.value}>
+      <RouterProvider router={router} />
+    </AuthContext>,
+  )
+}
+
+function AuthHarness({ children }: { children: ReactNode }) {
+  const [status, setStatus] = useState<AuthContextValue['status']>('anonymous')
+
+  const value: AuthContextValue = {
+    status,
+    user:
+      status === 'authenticated'
+        ? {
+            id: 1,
+            nome: 'Test User',
+            email: 'user@example.test',
+            role: 'USER',
+          }
+        : null,
+    login: async () => {
+      setStatus('authenticated')
+    },
+    register: vi.fn(),
+    logout: vi.fn(),
+    restoreSession: vi.fn(),
+  }
+
+  return <AuthContext value={value}>{children}</AuthContext>
+}
+
+function CurrentLocation() {
+  const location = useLocation()
+
+  return <p>{`${location.pathname}${location.search}`}</p>
+}
+
+function renderPostLoginFlow(initialPath = '/historico') {
+  const router = createMemoryRouter(
+    [
+      {
+        element: <PublicOnlyRoute />,
+        children: [{ path: '/login', element: <LoginForm /> }],
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: '/historico',
+            element: <CurrentLocation />,
+          },
+        ],
+      },
+      {
+        path: '/analise-energetica',
+        element: <p>análise protegida</p>,
+      },
+    ],
+    { initialEntries: [initialPath] },
+  )
+
+  render(
+    <AuthHarness>
+      <RouterProvider router={router} />
+    </AuthHarness>,
+  )
 }
 
 describe('auth routes', () => {
@@ -138,5 +201,20 @@ describe('auth routes', () => {
     renderPublicOnlyRoute()
 
     expect(await screen.findByText('análise protegida')).toBeInTheDocument()
+  })
+
+  it('retorna à rota protegida originalmente solicitada após login', async () => {
+    renderPostLoginFlow('/historico?page=2')
+
+    fireEvent.change(await screen.findByLabelText('Email'), {
+      target: { value: 'user@example.test' },
+    })
+    fireEvent.change(screen.getByLabelText('Senha'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('/historico?page=2')).toBeInTheDocument()
+    expect(screen.queryByText('análise protegida')).not.toBeInTheDocument()
   })
 })
