@@ -1040,7 +1040,7 @@ operacionais sustentados por essa fonte.
 - Ficou definido que os entregáveis devem ser atualizados, principalmente o
   link da Vercel do front-end e a seção "Pendências principais" na documentação
   publicada na No-Country (projeto > Entregáveis > Tarefa 1: Documentação do 
-  projeto, preferencialmente após a conclusão de todas as alterações.
+  projeto), preferencialmente após a conclusão de todas as alterações.
 
 ### Cronograma e prazos
 
@@ -1110,7 +1110,8 @@ operacionais sustentados por essa fonte.
 ### Observações sobre a Sprint Planning de 10/08
 
 Esta ata registra somente os pontos técnicos e operacionais sustentados pela
-descrição da reunião disponibilizada.
+descrição da reunião disponibilizada e revisada com base na transcrição original
+da reunião.
 
 Os estados de tarefas descritos nesta seção representam a situação relatada
 em 10/08/2026 e não substituem atualizações posteriores registradas no
