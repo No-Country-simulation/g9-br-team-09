@@ -1,0 +1,25 @@
+{
+  "branch": "feature/86/dataset-modelagem-v2",
+  "dataset": {
+    "name": "EnergIAI Dataset V2",
+    "seed": 42,
+    "sha256": "6c147517fce6108f0f663d72c41428736325e248db171a8357050ab02c8a73a3",
+    "source_commit": "5aba82b5f465501cc00b22d96e510b50f112e95e",
+    "version": "2.0.0-candidate"
+  },
+  "environment": {
+    "joblib": "1.5.3",
+    "pandas": "3.0.5",
+    "python": "3.12.10",
+    "scikit_learn": "1.9.0"
+  },
+  "frozen_solution": {
+    "model": "random_forest",
+    "probability_method": "isotonic"
+  },
+  "guardrail": "A presença deste arquivo bloqueia qualquer nova execução oficial do holdout.",
+  "purpose": "single_official_holdout_evaluation",
+  "source_commit": "38bc6371fd67fcf90b3f9cbbff45665b7e5fe667",
+  "started_at_utc": "2026-08-11T05:02:45.809827+00:00",
+  "status": "OFFICIAL_EVALUATION_STARTED"
+}
