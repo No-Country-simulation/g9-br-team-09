@@ -1,0 +1,210 @@
+{
+  "model_name": "random_forest",
+  "model_version": "energy-classifier-v2",
+  "metadata_generated_at_utc": "2026-08-11T06:07:02.932794+00:00",
+  "provenance": {
+    "artifact_source_commit": "38bc6371fd67fcf90b3f9cbbff45665b7e5fe667",
+    "holdout_evidence_commit": "7a2d6ec12a082e014fdec2dd641e1e0357025d88",
+    "dataset_source_commit": "5aba82b5f465501cc00b22d96e510b50f112e95e",
+    "branch": "feature/86/dataset-modelagem-v2"
+  },
+  "artifact": {
+    "path": "models/modelo_energetico_v2.joblib",
+    "sha256": "ba4a2d8df87d0e0d6f4226a7b782f193a16c9722029c45cf2ab17a707532380e",
+    "size_bytes": 2142851,
+    "serialization_format": "joblib"
+  },
+  "dataset": {
+    "name": "EnergIAI Dataset V2",
+    "version": "2.0.0-candidate",
+    "generated_at_utc": "2026-08-01T00:01:43.910061+00:00",
+    "seed": 42,
+    "record_count": 5000,
+    "schema": [
+      "consumo_kwh",
+      "uso_horario_pico",
+      "quantidade_equipamentos",
+      "tipo_imovel",
+      "horas_alto_consumo",
+      "categoria",
+      "score_referencia",
+      "tipo_cenario",
+      "caso_fronteira",
+      "caso_raro",
+      "outlier_plausivel",
+      "lote_geracao"
+    ],
+    "class_distribution": {
+      "EFICIENTE": 1543,
+      "INEFICIENTE": 1481,
+      "MODERADO": 1976
+    },
+    "property_distribution": {
+      "APARTAMENTO": 1600,
+      "CASA": 1600,
+      "COMERCIO": 800,
+      "ESCRITORIO": 500,
+      "INDUSTRIA": 250,
+      "OUTRO": 250
+    },
+    "generation_formula": {
+      "baseline_type": "deterministic_synthetic_oracle",
+      "category_source": "reference_score_ranges",
+      "reference_score_category_ranges": {
+        "EFICIENTE": {
+          "maximum": 30,
+          "minimum": 0
+        },
+        "INEFICIENTE": {
+          "maximum": 100,
+          "minimum": 61
+        },
+        "MODERADO": {
+          "maximum": 60,
+          "minimum": 31
+        }
+      },
+      "score_source": "five_observable_features"
+    },
+    "numeric_limits": {
+      "consumo_kwh": {
+        "maximum": 2500.0,
+        "minimum": 60.0
+      },
+      "horas_alto_consumo": {
+        "maximum": 24,
+        "minimum": 0
+      },
+      "quantidade_equipamentos": {
+        "maximum": 60,
+        "minimum": 1
+      },
+      "score_referencia": {
+        "maximum": 100,
+        "minimum": 0
+      }
+    },
+    "repairs": 24,
+    "rejections": 0,
+    "sha256": "6c147517fce6108f0f663d72c41428736325e248db171a8357050ab02c8a73a3",
+    "features": [
+      "consumo_kwh",
+      "uso_horario_pico",
+      "quantidade_equipamentos",
+      "tipo_imovel",
+      "horas_alto_consumo"
+    ],
+    "classes": [
+      "EFICIENTE",
+      "MODERADO",
+      "INEFICIENTE"
+    ],
+    "python_version": "3.14.4",
+    "library_versions": {
+      "numpy": "2.5.1",
+      "pandas": "3.0.5"
+    }
+  },
+  "model": {
+    "algorithm": "RandomForestClassifier",
+    "selected_model_name": "random_forest",
+    "features": [
+      "consumo_kwh",
+      "uso_horario_pico",
+      "quantidade_equipamentos",
+      "tipo_imovel",
+      "horas_alto_consumo"
+    ],
+    "classes": [
+      "EFICIENTE",
+      "INEFICIENTE",
+      "MODERADO"
+    ],
+    "hyperparameters": {
+      "bootstrap": true,
+      "ccp_alpha": 0.0,
+      "class_weight": null,
+      "criterion": "gini",
+      "max_depth": null,
+      "max_features": "sqrt",
+      "max_leaf_nodes": null,
+      "max_samples": null,
+      "min_impurity_decrease": 0.0,
+      "min_samples_leaf": 1,
+      "min_samples_split": 2,
+      "min_weight_fraction_leaf": 0.0,
+      "monotonic_cst": null,
+      "n_estimators": 200,
+      "n_jobs": 1,
+      "oob_score": false,
+      "random_state": 42,
+      "verbose": 0,
+      "warm_start": false
+    },
+    "calibration": {
+      "method": "isotonic",
+      "ensemble": false,
+      "n_jobs": 1,
+      "cv": {
+        "type": "StratifiedKFold",
+        "n_splits": 5,
+        "shuffle": true,
+        "random_state": 42
+      }
+    },
+    "preprocessing": {
+      "pipeline_type": "Pipeline",
+      "preprocessor_type": "ColumnTransformer",
+      "remainder": "drop",
+      "numerical_features": [
+        "consumo_kwh",
+        "uso_horario_pico",
+        "quantidade_equipamentos",
+        "horas_alto_consumo"
+      ],
+      "numerical_transformer": {
+        "type": "StandardScaler",
+        "with_mean": true,
+        "with_std": true
+      },
+      "categorical_features": [
+        "tipo_imovel"
+      ],
+      "categorical_transformer": {
+        "type": "OneHotEncoder",
+        "handle_unknown": "ignore",
+        "sparse_output": false
+      }
+    }
+  },
+  "evaluation": {
+    "status": "OFFICIAL_HOLDOUT_EVALUATED",
+    "started_at_utc": "2026-08-11T05:02:45.809827+00:00",
+    "completed_at_utc": "2026-08-11T05:02:50.194738+00:00",
+    "holdout": {
+      "brier_multiclass": 0.052660778071399746,
+      "f1_macro": 0.9611680646163405,
+      "log_loss": 0.12529593017111162,
+      "official_evaluation_count": 1,
+      "size": 750
+    },
+    "evidence": {
+      "result_path": "docs/holdout-evaluation-v2.json",
+      "result_sha256": "c148ec7091053a4aceb2760512eee06be720d6b72583939b140ea4a14069b0fc",
+      "execution_marker_path": "docs/holdout-evaluation-v2.execution.json",
+      "execution_marker_sha256": "ccc1436d6aa9b7e761291f2be81d56a43e3878ef479f45da3b65717ff5ccb257",
+      "guardrail": "A presença deste arquivo bloqueia qualquer nova execução oficial do holdout."
+    }
+  },
+  "environment": {
+    "joblib": "1.5.3",
+    "pandas": "3.0.5",
+    "python": "3.12.10",
+    "scikit_learn": "1.9.0"
+  },
+  "limitations": [
+    "Dataset integralmente sintético, sem validação com dados reais.",
+    "As métricas não comprovam desempenho real, causalidade ou validade externa."
+  ],
+  "methodology_statement": "O resultado mede a capacidade do modelo de reproduzir padrões da base sintética sob as condições testadas."
+}
