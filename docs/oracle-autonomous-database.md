@@ -20,7 +20,7 @@ A criação do usuário e as concessões devem ser feitas por um administrador d
 
 `.env.example` é somente um modelo versionado com placeholders seguros. Credenciais reais devem ficar fora do repositório: em Linux, WSL e macOS, use `~/.config/energiai/oci.env`; no Windows PowerShell, use `$HOME\.config\energiai\oci.env`. Nunca copie ou versione credenciais reais.
 
-Forneça externamente `SPRING_PROFILES_ACTIVE=oci`, `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`. A URL deve ser a string TLS sem wallet fornecida pelo OCI Console, com o prefixo JDBC Thin. Não publique senhas, URL completa, host, service name, OCIDs, tokens, wallets, keystores ou truststores.
+Forneça externamente `SPRING_PROFILES_ACTIVE=oci`, `JWT_SECRET`, `DB_URL`, `DB_USERNAME` e `DB_PASSWORD`. `JWT_SECRET` deve ser um segredo Base64 com pelo menos 256 bits; gere-o fora do repositório, por exemplo com `openssl rand -base64 32`. A URL deve ser a string TLS sem wallet fornecida pelo OCI Console, com o prefixo JDBC Thin. Não publique senhas, URL completa, host, service name, OCIDs, tokens, wallets, keystores ou truststores.
 
 As regras `.env`, `.env.*` e `!.env.example` no `.gitignore` são defesa em profundidade contra a criação acidental de arquivos sensíveis no repositório.
 
@@ -152,21 +152,13 @@ docker run --rm `
 
 ## Verificação pela API
 
-Após a aplicação iniciar, a verificação de persistência usa somente a API pública.
-
-Linux / WSL / macOS (requer `curl` e `jq`):
-
-```bash
-bash infra/scripts/verify-oracle-adb.sh
-```
-
-Windows PowerShell:
-
-```powershell
-.\infra\scripts\verify-oracle-adb.ps1
-```
-
-Os scripts fazem `POST /api/v1/analise-energetica`, extraem o ID e consultam `GET /api/v1/analise-energetica/{id}`, validando todos os campos persistidos. No Bash, defina opcionalmente `BASE_URL`; no PowerShell, passe opcionalmente `-BaseUrl`.
+As operações de análise exigem Bearer. A validação operacional do ambiente
+implantado deve usar o [smoke test autenticado](../infra/tests/smoke/README.md),
+que faz login com usuário técnico, valida health/liveness/readiness, cria uma
+análise, consulta histórico e detalhe no contexto desse usuário e comprova a
+persistência pelo caminho público. Ele substitui os verificadores legados
+`verify-oracle-adb.sh` e `verify-oracle-adb.ps1`, que não incluíam a
+autenticação hoje exigida e duplicavam essa cobertura.
 
 O health check disponível é:
 
@@ -222,7 +214,7 @@ Não foram alterados:
 
 ## Teste real opt-in
 
-`OracleAutonomousDatabaseIntegrationTest` fica desativado por padrão e só executa com `RUN_ORACLE_IT=true`, usando as credenciais externas já autorizadas no ambiente. Ele confirma o produto Oracle via JDBC, a migration V1/Flyway, a tabela `ENERGY_ANALYSIS` no schema atual da conexão, um `POST` e o `GET` do mesmo registro. A integração ML é mockada e o registro criado é removido ao fim do teste.
+`OracleAutonomousDatabaseIntegrationTest` fica desativado por padrão e só executa com `RUN_ORACLE_IT=true`, usando as credenciais externas já autorizadas no ambiente. Ele confirma o produto Oracle via JDBC, Flyway e a tabela `ENERGY_ANALYSIS` no schema atual da conexão, além de um `POST` e um `GET` autenticados do mesmo registro. A integração ML é mockada e o registro criado é removido ao fim do teste.
 
 Não o execute sem autorização explícita para uso do banco real.
 

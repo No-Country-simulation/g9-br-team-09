@@ -58,4 +58,4 @@ Para compreender os detalhes, boas práticas e comandos de terminal recomendados
 ## 🛠️ Validação Automática
 
 > [!NOTE]
-> Enquanto validações automáticas por meio de pipelines de CI (GitHub Actions) não estiverem ativas, é dever de todo desenvolvedor seguir esses padrões manualmente e de todo revisor auditar esses formatos durante a aprovação do Pull Request.
+> As validações automatizadas disponíveis no GitHub Actions verificam parte das convenções e da qualidade do projeto. Regras não cobertas automaticamente continuam sendo responsabilidade do autor e do revisor; CI não substitui code review.

@@ -14,7 +14,10 @@ export function NotFoundPage() {
         <p className="text-muted-foreground">
           O endereço acessado não existe ou foi movido.
         </p>
-        <Button variant="primary" onClick={() => void navigate('/')}>
+        <Button
+          variant="primary"
+          onClick={() => void navigate('/')}
+        >
           Voltar ao início
         </Button>
       </div>

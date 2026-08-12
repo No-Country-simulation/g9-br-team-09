@@ -5,6 +5,7 @@ import { Logo } from '@/shared/components/Logo'
 
 export function EnergyAnalysisHomePage() {
   const navigate = useNavigate()
+
   return (
     <main className="mx-auto max-w-xl px-5 py-10 sm:py-20 lg:max-w-3xl">
       <div className="flex-col text-center sm:flex sm:flex-row sm:gap-12 sm:text-left">

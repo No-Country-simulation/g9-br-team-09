@@ -607,3 +607,515 @@ A transcrição completa deverá permanecer como fonte interna de apoio e não d
 A ausência de Miguel foi registrada como fato. Não foi incluída qualquer afirmação sobre abandono do projeto porque não existe confirmação formal disponível.
 
 Esta ata deverá passar por revisão via Pull Request antes de ser considerada definitiva.
+
+---
+
+## 30/07/2026 — Sprint Demo
+
+### Contexto da Sprint Demo de 30/07
+
+Sprint Demo realizada para revisar os avanços da semana nas frentes de Backend,
+infraestrutura, Frontend e Data Science, além de discutir a possibilidade de
+implementação das funcionalidades de controle de acesso sem comprometer o MVP.
+
+Esta ata foi elaborada com base na gravação da reunião, na transcrição
+estruturada disponibilizada posteriormente, no resumo publicado por Gustavo no
+Discord e nos avisos de ausência registrados pela equipe.
+
+A gravação e a transcrição integral permanecem como fontes internas de apoio. O
+repositório contém somente o registro objetivo dos pontos relevantes para o
+projeto.
+
+### Participantes da Sprint Demo de 30/07
+
+- Gustavo Kenzo
+- Alan Ryan da Silva Domingues
+- Rafaela Pereira Campos
+
+### Ausências justificadas em 30/07
+
+- Fábio Andrade informou antecipadamente que não poderia participar.
+- Lucas Rossoni Dieder informou antecipadamente que não poderia participar.
+- Adriana Firmino dos Santos informou que não participaria porque estava sem
+  energia elétrica após uma ventania ocorrida no Rio de Janeiro.
+
+### Ausências sem justificativa registrada em 30/07
+
+- Miguel Luan Tavares Leite
+- Túlio Braga
+
+### Backend e infraestrutura
+
+- Os participantes revisaram os avanços de Backend e infraestrutura registrados
+  no GitHub e atribuídos ao trabalho técnico de Lucas.
+- Foram mencionadas atividades de configuração e validação envolvendo teste em
+  Python.
+- Foi mencionado o provisionamento de uma instância Compute Free.
+- Foram mencionados avanços relacionados ao CI e ao deploy.
+- Também foi mencionada a configuração de probes de liveness e readiness.
+- Lucas havia aberto issues para organizar os próximos passos da frente.
+- Como Lucas não participou da reunião, esses pontos foram revisados pelos
+  participantes com base no estado registrado no GitHub, e não apresentados
+  diretamente por ele durante o encontro.
+
+### Frontend
+
+- A implementação do dashboard havia sido aprovada por Lucas.
+- O histórico e o detalhamento das análises ainda estavam pendentes.
+- Rafaela informou que já havia iniciado o desenvolvimento dessas duas
+  funcionalidades.
+- Rafaela também informou que sua disponibilidade diminuiria na semana seguinte
+  devido ao retorno das aulas da faculdade.
+- Essa redução de disponibilidade foi identificada como um possível bloqueio
+  para novas telas relacionadas a cadastro e controle de acesso.
+- Rafaela se comprometeu a revisar a documentação já produzida e registrar
+  eventuais dúvidas no Discord.
+
+### Data Science
+
+- A equipe relatou que aguardava a entrega da frente de Data Science.
+- Não houve decisão técnica de modelagem durante a reunião.
+- Este registro representa exclusivamente o estado relatado em 30/07/2026 e não
+  substitui atualizações posteriores registradas no GitHub ou no Discord.
+
+### Controle de acesso
+
+- A equipe discutiu a possibilidade de implementar cadastro e controle de
+  acesso.
+- A funcionalidade foi considerada útil, mas o prazo restante foi identificado
+  como uma limitação relevante.
+- Alan e Rafaela avaliaram que seria possível tentar a implementação, desde que
+  ela não comprometesse o MVP.
+- A equipe registrou uma intenção condicional de prosseguir com essa frente.
+- O início, a organização e a distribuição das respectivas issues permaneceram
+  dependentes de novo alinhamento com Lucas e com o restante da equipe.
+- A discussão deveria continuar no Discord.
+- Caso não houvesse tempo suficiente, o MVP deveria ser preservado sem essa
+  ampliação de escopo.
+
+### Cronograma e gestão
+
+- O prazo restante do projeto foi identificado como um ponto de atenção.
+- A equipe considerou que ainda possuía a semana da reunião e a semana seguinte
+  para concluir as entregas técnicas.
+- A última semana do cronograma da No Country estaria direcionada
+  principalmente à preparação e ao envio das entregas.
+- A disponibilidade reduzida do Frontend poderia afetar o desenvolvimento de
+  funcionalidades adicionais.
+- O GitHub permaneceu como fonte principal para acompanhamento das issues e dos
+  avanços técnicos.
+
+### Próximos passos definidos em 30/07
+
+- Continuar o histórico e o detalhamento das análises no Frontend.
+- Revisar a documentação já produzida e encaminhar dúvidas pelo Discord.
+- Discutir com Lucas e com o restante da equipe a organização das issues de
+  cadastro e controle de acesso.
+- Avaliar o início dessas issues somente quando a execução não colocar o MVP em
+  risco.
+- Continuar acompanhando os avanços e bloqueios por meio do GitHub e do Discord.
+
+### Observações sobre a Sprint Demo de 30/07
+
+Esta ata registra somente os pontos técnicos, operacionais e de gestão
+sustentados pelas fontes disponíveis.
+
+A gravação contém falas informais, repetições e trechos próprios de uma conversa
+de alinhamento. Por esse motivo, a transcrição literal não foi adicionada ao
+repositório.
+
+A menção ao trabalho técnico de Lucas não representa sua participação na
+reunião. Sua ausência havia sido informada antecipadamente.
+
+Os estados de tarefas e Pull Requests descritos nesta seção representam a
+situação relatada em 30/07/2026 e não substituem atualizações posteriores do
+GitHub.
+
+Esta ata deverá passar por nova revisão via Pull Request antes de ser
+considerada definitiva.
+
+---
+
+## 03/08/2026 — Sprint Planning
+
+### Contexto da reunião de 03/08
+
+Reunião de Sprint Planning realizada para alinhar o andamento das frentes de
+Backend e Frontend, com base no planejamento já registrado no GitHub.
+
+### Participantes da reunião de 03/08
+
+- Alan
+- Gustavo
+- Lucas
+- Rafaela
+
+### Ausências registradas em 03/08
+
+- Fábio informou antecipadamente que não poderia participar da reunião (ausência justificada).
+- Miguel e Túlio estiveram ausentes, sem justificativa registrada até o momento.
+- Adriana não participou da Sprint Planning.
+
+### Comunicação anterior à reunião de 03/08
+
+- Antes da realização da reunião, Adriana comunicou sua saída do projeto.
+- Este registro é feito separadamente da lista de participantes e das decisões
+  tomadas durante a reunião, por se tratar de uma comunicação ocorrida anteriormente ao encontro.
+
+### Backend e Infraestrutura em 03/08
+
+- O link público da API foi disponibilizado.
+- A implementação da estrutura base do controle de acesso foi iniciada, revisada
+  e está em etapa de ajustes.
+- A liberação da estrutura de controle de acesso desbloqueará as próximas tarefas
+  da frente, com expectativa de que o prazo de conclusão da função de autenticação
+  e autorização seja cumprido
+- A issue de associar a análise energética ao usuário autenticado foi assumida,
+  com conclusão prevista ao longo da semana.
+
+### Frontend em 03/08
+
+- A Pull Request feat(frontend): implementa histórico e detalhamento de análises
+  já foi lançada e está aguardando merge.
+- O deploy da aplicação na plataforma Vercel está planejado para o dia seguinte
+  (04/08).
+- Após a conclusão do deploy, será feita a liberação do CORS no backend para
+  garantir a comunicação entre os ambientes.
+
+### Data-Science
+
+- O Data-Science foi citado como pendência, mas em fase de finalização, sendo
+  apontado como a principal pendência do projeto no momento.
+
+### Reviews e entregáveis em 03/08
+
+- Foram revisadas a PR do Frontend e a PR referente à estrutura base do controle
+  de acesso do Backend.
+- Os entregáveis do site da NoCountry foram revisados e atualizados no próprio
+  dia da reunião.
+- Ficou definido que a PR da frente de Data-Science também seria analisada.
+
+### Decisões registradas em 03/08
+
+- O alinhamento das frentes segue em conformidade com o planejamento prévio
+  registrado no GitHub.
+- A gestão dos entregáveis do projeto e os processos de review de código seguem
+  ativos e acompanhados.
+- Novas tarefas serão distribuídas e puxadas ao longo da semana conforme o
+  andamento das frentes.
+- Foi comentado que a semana seguinte seria mais destinada às entregas do hackathon.
+
+### Pendências identificadas em 03/08
+
+- Concluir os ajustes na estrutura base do controle de acesso e liberar as tarefas
+  pendentes.
+- Concluir a associação da análise energética ao usuário autenticado.
+- Realizar o merge da PR de histórico e detalhamento de análises do Frontend.
+- Executar o deploy da aplicação no Vercel.
+- Liberar o CORS no backend após o deploy do Frontend.
+- Revisar a PR da frente de Data-Science.
+- Preparar as entregas do hackathon previstas para a semana seguinte.
+
+### Próximos passos definidos em 03/08
+
+- Finalizar a estrutura base do controle de acesso e liberar as tarefas dependentes.
+- Dar continuidade à associação da análise energética ao usuário
+  autenticado.
+- Concluir o deploy da aplicação no Vercel.
+- Liberar o CORS no backend após o deploy do Frontend.
+- Assumir novas tarefas ao longo da semana, com a possibilidade de incluir a issue
+  de refresh token e outras issues relacionadas a usuários autenticados.
+- Revisar a PR do Data-Science.
+
+### Observações sobre a reunião de 03/08
+
+Esta ata foi revisada com base nas informações operacionais e técnicas fornecidas
+na reunião, incluindo atualizações de entregáveis, reviews de PR, distribuição
+de issues ao longo da semana e o planejamento das próximas entregas.
+
+Os registros foram consolidados sem detalhar individualmente a atribuição de cada
+ação, exceto quando a distinção foi relevante para o entendimento do andamento das
+frentes.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.
+
+---
+
+## 06/08/2026 — Sprint Demo
+
+### Contexto da Sprint Demo de 06/08
+
+Sprint Demo realizada para revisar o andamento das frentes de Backend, Data Science
+e Frontend, além de alinhar a organização da apresentação final do projeto.
+
+Esta ata foi elaborada a partir da transcrição bruta da gravação da reunião.
+A identificação desta reunião como Sprint Demo segue o cronograma do projeto e o
+registro de reuniões anteriores, já que a transcrição de 06/08 não nomeia
+explicitamente o tipo da reunião.
+
+A gravação e a transcrição integral permanecem como fontes internas de apoio.
+O repositório contém somente o registro objetivo dos pontos técnicos e operacionais
+sustentados pela transcrição.
+
+### Participantes da Sprint Demo de 06/08
+
+Participantes e ausências identificados a partir de confirmação de participante(s)
+presente(s), já que a transcrição não identifica nominalmente os presentes.
+
+- Fábio
+- Gustavo
+- Lucas
+- Rafaela
+- Alan
+
+### Data Science
+
+- Foi relatado que a finalização da frente de Data Science está travada,
+  especificamente em uma etapa técnica cujo termo exato não pôde
+  ser confirmado na transcrição (registrada de forma imprecisa como
+  "snapshots").
+- A dificuldade foi atribuída à falta de dimensionamento do esforço necessário
+  para essa etapa.
+- Foi mencionado que a causa do atraso está relacionada à divisão insuficiente
+  de tarefas dentro da frente.
+- Foi mencionada a geração de um dataset simples para rodar um teste específico,
+  como parte anterior do trabalho na frente.
+- Foi mencionada a configuração de um projeto de IA (GPT) com instruções de boas
+  práticas de validação, com o objetivo de evitar retrabalho.
+- O atraso na frente de Data Science foi identificado como o principal ponto de
+  atenção do projeto no momento, ainda que dentro do que era esperado para o
+  andamento geral.
+
+### Backend
+
+- Foi relatado avanço na autenticação do usuário na parte de front, com revisão
+  de Pull Request a ser realizada.
+- Foi informado que os testes relacionados à autenticação estavam em fase de
+  finalização.
+- Foi relatado que uma versão anterior da aplicação, já havia sido testada com
+  sucesso na Vercel e via IP.
+- Foi relatado que a inclusão do acesso de usuário voltou a travar a integração
+  com o Frontend, com expectativa de resolução até o final de semana.
+- Foi atualizada a versão registrada no site da NoCountry.
+
+### Frontend
+
+- Foi informado que o Frontend deveria ser concluído ainda durante a semana da
+  reunião.
+
+### Autenticação e disponibilidade
+
+- Foi sinalizado o risco de não conseguir concluir a parte de autenticação no
+  frontend devido à disponibilidade reduzida, sem fonte que confirme a atribuição
+  nominal dessa fala, com necessidade de verificação posterior.
+- Foi sinalizada a possibilidade de dividir essa tarefa com outro membro da equipe.
+
+### Cronograma e apresentação final
+
+- Foi mencionado que a entrega da documentação obrigatória da NoCountry deveria
+  ocorrer ainda durante a semana da reunião.
+- Foi mencionado que a apresentação final estava prevista para a semana 6 do
+  cronograma.
+- Foi mencionado que um dos participantes conduziria a apresentação da demo,
+  sem que o responsável tivesse sido formalmente definido até o momento.
+- Foi mencionado que a apresentação final seria dividida em duas etapas: a
+  primeira, apenas de apresentação, sem espaço para perguntas; a segunda,
+  realizada na semana seguinte, com 5 minutos de apresentação e 5 minutos
+  destinados a perguntas técnicas.
+- Foi mencionado que, na segunda etapa, apenas quem estiver apresentando
+  poderia responder verbalmente às perguntas, podendo o restante da equipe
+  apoiar apenas pelo chat.
+
+### Decisões registradas em 06/08
+
+- Ficou definida a criação de uma nova enquete de horários para as próximas
+  reuniões, a partir da segunda-feira seguinte.
+
+### Pendências identificadas em 06/08
+
+- Concluir a etapa técnica que travava a finalização da frente de Data Science
+  (termo registrado de forma imprecisa na transcrição como "snapshots").
+- Finalizar os testes de autenticação em andamento.
+- Resolver o travamento de integração entre o acesso de usuário e o Frontend.
+- Concluir o Frontend ainda durante a semana da reunião.
+- Confirmar a viabilidade de conclusão da parte de autenticação sob
+  disponibilidade reduzida, com possível divisão de tarefas.
+- Enviar a documentação obrigatória da NoCountry ainda durante a semana da reunião.
+
+### Próximos passos definidos em 06/08
+
+- Revisar a Pull Request relacionada à autenticação do usuário no Frontend.
+- Finalizar os testes de autenticação e resolver o travamento de integração até
+  o final de semana.
+- Concluir o Frontend ainda durante a semana da reunião.
+- Verificar a disponibilidade para conclusão da parte de autenticação e, se
+  necessário, dividir a tarefa com outro membro da equipe.
+- Enviar a documentação obrigatória da NoCountry.
+- Definir responsável pela apresentação do projeto
+- Preparar a apresentação final, com definição de responsável pela condução e
+  alinhamento do formato em duas etapas.
+- Criar uma nova enquete de horários para as reuniões seguintes.
+
+### Observações sobre a Sprint Demo de 06/08
+
+Esta ata registra somente os pontos técnicos e operacionais sustentados pela
+transcrição disponibilizada.
+
+A transcrição contém falas informais, trechos de conversa pessoal e passagens de
+difícil compreensão. A transcrição literal não foi adicionada ao repositório.
+
+Os estados de tarefas descritos nesta seção representam a situação relatada em
+06/08/2026 e não substituem atualizações posteriores registradas no GitHub ou no
+Discord.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.
+
+---
+
+## 10/08/2026 — Sprint Planning
+
+### Contexto da Sprint Planning de 10/08
+
+Sprint Planning realizada para revisar o andamento das frentes de Back-end,
+Data-Science e front-end, além de alinhar a organização da apresentação final do
+projeto (Demo Day) e dos entregáveis.
+
+Esta ata foi elaborada a partir da descrição da reunião fornecida e
+posteriormente revisada com base na transcrição original da reunião.
+
+O repositório contém somente o registro objetivo dos pontos técnicos e
+operacionais sustentados por essa fonte.
+
+### Participantes da Sprint Planning de 10/08
+
+- Alan
+- Gustavo
+- Lucas
+
+### Ausências
+
+**Justificadas**
+- Rafaela (compromisso que surgiu coincidindo com o horário da reunião).
+
+**Não justificadas**
+- Fabio
+- Túlio
+- Miguel
+
+### Back-end
+
+- Lucas relatou que o JWT já estava finalizado, assim como o refresh token,
+  e ambos já implementados e com o deploy correspondente já realizado.
+- Informou também que testou o front-end com essas funcionalidades
+  (autenticação, autorização, refresh token e demais itens relacionados) e
+  que funcionou localmente.
+- Ficou registrado que ainda falta integrar tudo em conjunto, com
+  possibilidade de erros nessa integração.
+
+### Front-end
+
+- Apontou-se a necessidade de fazer o deploy na Vercel do front-end com as
+  novas alterações, já que atualmente elas estão apenas locais.
+
+### Data-Science
+
+- Registrou-se que a finalização da frente de data-science está em
+  andamento, sendo conduzida por Fabio com apoio de Lucas.
+- Lucas indicou que, ao concluir a frente de data-science, pretende publicar
+  a API correspondente no Render, por considerar o deploy mais rápido do que
+  na OCI.
+
+### Documentação e testes
+
+- Ficou registrada a pendência de atualização das documentações do projeto.
+- Indicou-se que, após a conclusão das documentações e do projeto, será
+  necessário testar tudo em funcionamento conjunto.
+- Discutiu-se que os testes gerais de integração entre front-end, back-end e
+  data-science (produto final), possivelmente, serão feitos manualmente, e não
+  de forma automatizada como os testes unitários e de camada de controller
+  feitos anteriormente, devido ao tempo necessário para aprender e aplicar a
+  automação.
+- Ficou definido que os entregáveis devem ser atualizados, principalmente o
+  link da Vercel do front-end e a seção "Pendências principais" na documentação
+  publicada na No-Country (projeto > Entregáveis > Tarefa 1: Documentação do 
+  projeto), preferencialmente após a conclusão de todas as alterações.
+
+### Cronograma e prazos
+
+- Informou-se que a entrega de demonstração do Demo Day está prevista para
+  terça-feira (18/08).
+- Ficou definido que o vídeo de demonstração deve ser gravado ainda durante
+  a semana da reunião.
+- Comunicou-se que o feedback entre colegas já está liberado, com prazo até
+  domingo (16/08).
+- Esclareceu-se que as entregas do projeto e o vídeo podem ser enviados até
+  domingo (16/08), às 23h59.
+- Registrou-se a existência de uma reunião de pré-demo ("Pre Demo Meet"),
+  correspondente à reunião de quinta-feira.
+
+### Apresentação final
+
+- Não foi definido quem gravará o vídeo nem quem fará a apresentação, mas os
+  participantes demonstraram interesse em indicar Fabio para essa função,
+  com decisão a ser tomada pelo chat assíncrono do Discord ou na próxima
+  reunião.
+- Indicou-se que o vídeo deve ser gravado e disponibilizado no YouTube e, em
+  seguida, enviado à plataforma.
+- Esclareceu-se a dúvida sobre a possibilidade de duas pessoas apresentarem
+  em dias diferentes (uma no primeiro dia e outra no segundo): a resposta
+  obtida foi de que isso é permitido, mas não ficou decidido se essa será a
+  forma adotada.
+- Levantou-se que as perguntas feitas na segunda apresentação talvez não sejam
+  tão técnicas e com possibilidade ainda de apoio dos demais integrantes do grupo
+  pelo chat.
+
+### Decisões registradas em 10/08
+
+- Não houve decisão formal sobre dois pontos específicos: o responsável
+  pela gravação do vídeo/apresentação e o formato de participação entre as
+  duas etapas da apresentação (dias diferentes). Os demais próximos passos
+  discutidos na reunião foram alinhados entre os participantes.
+
+### Pendências identificadas em 10/08
+
+- Integrar as funcionalidades de autenticação e autorização entre back-end e
+  front-end.
+- Realizar o deploy do front-end na Vercel com as novas alterações.
+- Concluir a frente de data-science.
+- Publicar a API de data-science no Render após sua conclusão.
+- Concluir as documentações do projeto.
+- Testar o funcionamento conjunto de front-end, back-end e data-science.
+- Atualizar os entregáveis, incluindo o link da Vercel do front-end e as
+  pendências da Tarefa 1 (documentação).
+- Definir responsável pela gravação do vídeo e pela apresentação.
+- Gravar e enviar o vídeo de demonstração.
+- Enviar as entregas do projeto até domingo (16/08), às 23h59.
+
+### Próximos passos definidos em 10/08
+
+- Lucas e Fabio seguirem na finalização da frente de data-science.
+- Realizar o deploy do front-end na Vercel com as alterações locais.
+- Publicar a API de data-science no Render após sua conclusão.
+- Concluir as documentações pendentes e, em seguida, testar o funcionamento
+  conjunto.
+- Definir, via Discord ou na próxima reunião, o responsável pela gravação do
+  vídeo e pela apresentação.
+- Gravar o vídeo de demonstração, publicá-lo no YouTube e enviar o link na plataforma.
+- Atualizar os entregáveis, o que inclui o link da Vercel do front-end e as 
+  pendências de documentação do site do hackathon
+- Publicar a enquete de horários no grupo.
+
+### Observações sobre a Sprint Planning de 10/08
+
+Esta ata registra somente os pontos técnicos e operacionais sustentados pela
+descrição da reunião disponibilizada e revisada com base na transcrição original
+da reunião.
+
+Os estados de tarefas descritos nesta seção representam a situação relatada
+em 10/08/2026 e não substituem atualizações posteriores registradas no
+GitHub ou no Discord.
+
+Esta ata deverá passar por revisão via Pull Request antes de ser considerada
+definitiva.

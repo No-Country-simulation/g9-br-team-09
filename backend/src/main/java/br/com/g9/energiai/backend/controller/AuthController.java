@@ -63,12 +63,15 @@ public class AuthController {
                     + "cookie XSRF-TOKEN não HttpOnly. O cliente deve ler preferencialmente o token CSRF no header "
                     + "X-XSRF-TOKEN exposto por CORS; o refresh token nunca aparece no JSON."
     )
-    public ResponseEntity<AuthenticationResponse> login(@RequestBody @Valid UserLoginRequest request) {
+    public ResponseEntity<AuthenticationResponse> login(@RequestBody @Valid UserLoginRequest request,
+                                                         HttpServletRequest servletRequest,
+                                                         HttpServletResponse servletResponse) {
         LoginResult result = authenticationService.login(request);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE,
-                        refreshTokenCookieService.createRefreshCookie(result.refreshToken()).toString())
-                .body(result.response());
+        csrfCookieService.issue(servletRequest, servletResponse);
+        servletResponse.addHeader(HttpHeaders.SET_COOKIE,
+                refreshTokenCookieService.createRefreshCookie(result.refreshToken()).toString());
+
+        return ResponseEntity.ok(result.response());
     }
 
     @PostMapping("/refresh")
@@ -90,13 +93,14 @@ public class AuthController {
             @ApiResponse(responseCode = "403", description = "Token CSRF ausente ou inválido",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-    public ResponseEntity<AuthenticationResponse> refresh(HttpServletRequest request) {
+    public ResponseEntity<AuthenticationResponse> refresh(HttpServletRequest request,
+                                                          HttpServletResponse response) {
         String rawToken = refreshTokenCookieService.readRawToken(request);
         RefreshResult result = refreshTokenService.refresh(rawToken);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE,
-                        refreshTokenCookieService.createRefreshCookie(result.refreshToken()).toString())
-                .body(result.response());
+        response.addHeader(HttpHeaders.SET_COOKIE,
+                refreshTokenCookieService.createRefreshCookie(result.refreshToken()).toString());
+
+        return ResponseEntity.ok(result.response());
     }
 
     @PostMapping("/logout")

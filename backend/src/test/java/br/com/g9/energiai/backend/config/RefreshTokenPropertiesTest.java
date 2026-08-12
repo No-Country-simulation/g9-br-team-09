@@ -11,6 +11,7 @@ import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(properties = {
         "AUTH_REFRESH_TOKEN_EXPIRATION=61",
@@ -49,5 +50,22 @@ class RefreshTokenPropertiesTest {
         );
 
         assertFalse(validator.validate(invalid).isEmpty());
+    }
+
+    @Test
+    void shouldRejectSameSiteNoneWithoutSecureCookie() {
+        RefreshTokenProperties invalid = new RefreshTokenProperties(
+                Duration.ofDays(7),
+                Duration.ofDays(30),
+                Duration.ofSeconds(5),
+                "refresh_token",
+                false,
+                "None",
+                "/api/v1/auth",
+                ""
+        );
+
+        assertTrue(validator.validate(invalid).stream()
+                .anyMatch(violation -> violation.getMessage().equals("SameSite=None exige cookie Secure")));
     }
 }

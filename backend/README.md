@@ -139,16 +139,18 @@ openssl rand -base64 32
 
 | Método e caminho                        | Descrição                                                                                                  |
 |-----------------------------------------|------------------------------------------------------------------------------------------------------------|
-| `POST /api/v1/analise-energetica`       | Cria, classifica e persiste uma análise.                                                                   |
-| `GET /api/v1/analise-energetica`        | Lista análises paginadas. Aceita `page`, `size` e `sort`; o padrão é página 0, 20 itens, `createdAt,DESC`. |
-| `GET /api/v1/analise-energetica/{id}`   | Obtém os detalhes de uma análise.                                                                          |
-| `GET /api/v1/analise-energetica/resumo` | Retorna indicadores agregados para o dashboard.                                                            |
+| `POST /api/v1/analise-energetica`       | Cria, classifica e persiste uma análise do usuário autenticado.                                           |
+| `GET /api/v1/analise-energetica`        | Lista análises do usuário autenticado; aceita `page`, `size` e `sort`.                                    |
+| `GET /api/v1/analise-energetica/{id}`   | Obtém detalhe pertencente ao usuário autenticado.                                                         |
+| `GET /api/v1/analise-energetica/resumo` | Retorna indicadores do dashboard do usuário autenticado.                                                  |
 | `GET /api/v1/actuator/health`           | Estado geral da aplicação.                                                                                 |
 | `GET /api/v1/actuator/health/liveness`  | Estado do processo; não depende do banco ou da API de ML.                                                  |
 | `GET /api/v1/actuator/health/readiness` | Prontidão para atender tráfego; inclui o banco obrigatório.                                                |
 | `POST /api/v1/auth/register`            | Cadastra um novo usuário.                                                                                  |
-| `POST /api/v1/auth/login`               | Autentica e emite o token JWT.                                                                             |
-| `GET /api/v1/auth/me`                   | Retorna o perfil do usuário logado.                                                                        |
+| `POST /api/v1/auth/login`               | Autentica, retorna access token e emite refresh token em cookie.                                          |
+| `POST /api/v1/auth/refresh`             | Renova a sessão por cookie, com rotação e proteção CSRF.                                                   |
+| `POST /api/v1/auth/logout`              | Encerra a sessão por cookie, com proteção CSRF.                                                            |
+| `GET /api/v1/auth/me`                   | Retorna o perfil do usuário autenticado.                                                                   |
 
 ### Exemplo de análise
 
@@ -167,14 +169,22 @@ O contrato público usa `snake_case`:
 Valores aceitos para `tipo_imovel`: `CASA`, `APARTAMENTO`, `COMERCIO`, `ESCRITORIO`, `INDUSTRIA` e `OUTRO`.
 
 ```bash
+export ACCESS_TOKEN='<access_token_obtido_no_login>'
+
 curl --fail --request POST http://localhost:8080/api/v1/analise-energetica \
+  --header "Authorization: Bearer ${ACCESS_TOKEN}" \
   --header 'Content-Type: application/json' \
   --data '{"consumo_kwh":420,"uso_horario_pico":true,"quantidade_equipamentos":10,"tipo_imovel":"CASA","horas_alto_consumo":8}'
 ```
 
+Os endpoints de análise exigem `Authorization: Bearer <access_token>`. O
+contrato completo de autenticação, refresh, logout e CSRF está em
+[docs/api-contract.md](../docs/api-contract.md); o refresh token é enviado em
+cookie e os endpoints de refresh/logout exigem o token CSRF correspondente.
+
 ### Exemplos de Autenticação
 
-#### Cadastro (POST /auth/register)
+#### Cadastro (POST /api/v1/auth/register)
 
 ```bash
 {
@@ -184,7 +194,7 @@ curl --fail --request POST http://localhost:8080/api/v1/analise-energetica \
 }
 ```
 
-#### Login (POST /auth/login)
+#### Login (POST /api/v1/auth/login)
 
 ```bash
 {
@@ -210,7 +220,7 @@ curl --fail --request POST http://localhost:8080/api/v1/analise-energetica \
 }
 ```
 
-### Perfil do Usuário (GET /auth/me)
+### Perfil do Usuário (GET /api/v1/auth/me)
 
 - Header: Authorization: Bearer <access_token>
 - Resposta:
@@ -269,11 +279,11 @@ User Name: sa
 Password: vazio
 ```
 
-Use no console exatamente a URL configurada no datasource. Nos logs de inicialização, confirme que o Flyway validou ou aplicou a migration `V1__create_energy_analysis_table.sql`. No H2 Console, confirme a existência das tabelas `energy_analysis` e `flyway_schema_history`. Para validar persistência, envie uma análise pelo `POST /api/v1/analise-energetica` e consulte o ID retornado em `GET /api/v1/analise-energetica/{id}`.
+Use no console exatamente a URL configurada no datasource. Nos logs de inicialização, confirme que o Flyway validou ou aplicou a migration `V1__create_energy_analysis_table.sql`. No H2 Console, confirme a existência das tabelas `energy_analysis` e `flyway_schema_history`. Para validar persistência, obtenha um access token, envie uma análise autenticada pelo `POST /api/v1/analise-energetica` e consulte o ID retornado com o mesmo Bearer em `GET /api/v1/analise-energetica/{id}`.
 
 No profile `oci`, o backend usa Oracle Autonomous Database por JDBC Thin com TLS. Não há credenciais no repositório: use o modelo [`.env.example`](../.env.example) e siga o [guia operacional OCI](../docs/oracle-autonomous-database.md), sem copiar credenciais para o workspace.
 
-O guia OCI concentra a criação do arquivo externo `~/.config/energiai/oci.env` (ou `$HOME\.config\energiai\oci.env` no PowerShell), o carregamento na sessão atual, Docker com `--env-file`, scripts de verificação pela API e o teste opt-in `OracleAutonomousDatabaseIntegrationTest`. Esse teste usa banco externo, confirma Oracle/Flyway/tabelas e remove o registro criado; não faz parte da suíte padrão e não deve ser executado sem autorização.
+O guia OCI concentra a criação do arquivo externo `~/.config/energiai/oci.env` (ou `$HOME\.config\energiai\oci.env` no PowerShell), o carregamento na sessão atual, Docker com `--env-file` e o teste opt-in `OracleAutonomousDatabaseIntegrationTest`. Para validar o ambiente implantado pela API pública, use o [smoke test autenticado](../infra/tests/smoke/README.md). O teste opt-in usa banco externo, confirma Oracle/Flyway/tabelas e remove o registro criado; não faz parte da suíte padrão e não deve ser executado sem autorização.
 
 ## Variáveis de ambiente
 
@@ -320,6 +330,7 @@ cd backend
 Consulte [README.Docker.md](README.Docker.md) para detalhes. A partir de `backend`:
 
 ```bash
+export JWT_SECRET="$(openssl rand -base64 32)"
 docker compose build
 docker compose up -d
 docker compose ps
@@ -336,5 +347,6 @@ docker run --rm \
   --name energiai-backend \
   -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=local \
+  -e JWT_SECRET \
   energiai-backend:local
 ```
