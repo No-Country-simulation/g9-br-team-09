@@ -112,6 +112,30 @@ class EnergyAnalysisRepositoryTest {
     }
 
     @Test
+    @DisplayName("Deve persistir e recuperar usoHorarioPico falso")
+    void shouldPersistAndLoadAnalysisWithOffPeakUsage() {
+        EnergyAnalysisEntity saved = energyAnalysisRepository.saveAndFlush(EnergyAnalysisEntity.builder()
+                .user(userA)
+                .consumoKwh(180.0)
+                .usoHorarioPico(false)
+                .quantidadeEquipamentos(4)
+                .tipoImovel(PropertyType.APARTAMENTO)
+                .horasAltoConsumo(2)
+                .categoria(EnergyCategory.EFICIENTE)
+                .probabilidade(0.80)
+                .score(80)
+                .custoEstimadoMensal(new BigDecimal("135.00"))
+                .fonteClassificacao(ClassificationSource.RULE_BASED)
+                .recomendacoes(List.of())
+                .build());
+        entityManager.clear();
+
+        EnergyAnalysisEntity reloaded = energyAnalysisRepository.findById(saved.getId()).orElseThrow();
+
+        assertFalse(reloaded.getUsoHorarioPico());
+    }
+
+    @Test
     @DisplayName("findAllByUserIdOrderByCreatedAtDesc deve retornar somente registros do proprietário informado")
     void findAllByUserId_shouldReturnOnlyOwnedRecords() {
         persist(userA, EnergyCategory.EFICIENTE, 10);
