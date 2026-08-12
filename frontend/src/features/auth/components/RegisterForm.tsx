@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/app/providers/auth/useAuth'
 import { Button } from '@/shared/components/Button'
@@ -6,12 +6,14 @@ import { Input } from '@/shared/components/Input'
 
 import { getRegisterFormErrorMessage } from '../api/auth-api'
 import { useAuthForm } from '../hooks/useAuthForm'
+import { getPostLoginPath } from '../navigation/post-login-path'
 import { registerSchema } from '../schemas/register'
 import { FormField } from './FormField'
 import { PasswordInput } from './PasswordInput'
 
 export function RegisterForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { register } = useAuth()
   const {
     errors,
@@ -32,7 +34,7 @@ export function RegisterForm() {
     onValidSubmit: async (values) => {
       try {
         await register(values)
-        void navigate('/login', { replace: true })
+        void navigate(getPostLoginPath(location.state), { replace: true })
       } catch (error) {
         setFormError(getRegisterFormErrorMessage(error))
       }
@@ -44,7 +46,7 @@ export function RegisterForm() {
       {formError && (
         <p
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+          className="border-inefficient-badge-border bg-inefficient-badge-bg text-inefficient-badge-text rounded-xl border px-4 py-3 text-sm"
         >
           {formError}
         </p>
@@ -117,7 +119,8 @@ export function RegisterForm() {
       <Button
         type="submit"
         variant="primary"
-        disabled={isSubmitting}
+        isLoading={isSubmitting}
+        loadingLabel="Criando conta..."
         className="mt-2 w-full"
       >
         {isSubmitting ? 'Criando conta...' : 'Criar conta'}
@@ -125,7 +128,11 @@ export function RegisterForm() {
 
       <p className="text-muted-foreground text-center text-sm">
         Já possui uma conta?{' '}
-        <Link to="/login" className="text-primary font-medium">
+        <Link
+          to="/login"
+          state={location.state}
+          className="text-primary font-medium"
+        >
           Entrar
         </Link>
       </p>

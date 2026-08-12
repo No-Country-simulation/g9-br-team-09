@@ -1,4 +1,6 @@
+import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Logo } from '@/shared/components/Logo'
 
@@ -28,6 +30,13 @@ export function AuthLayout({ children }: AuthLayoutProps) {
 
       <main className="bg-background shadow-card flex flex-1 items-center justify-center rounded-t-[35px] p-6 md:rounded-l-[60px] md:rounded-tr-none">
         <div className="auth-enter auth-enter-delayed w-full max-w-md">
+          <Link
+            to="/"
+            className="text-muted-foreground mb-6 inline-flex items-center gap-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+            Voltar para o início
+          </Link>
           {children}
         </div>
       </main>
