@@ -170,7 +170,9 @@ export function FormStep({
             type="submit"
             variant="primary"
             icon={!submitButtonProps ? ArrowRight : undefined}
-            disabled={!inputValue || isSubmitting}
+            disabled={!inputValue}
+            isLoading={isSubmitting}
+            loadingLabel="Enviando análise..."
             className="order-1 flex-1 sm:order-2"
           >
             {isSubmitting

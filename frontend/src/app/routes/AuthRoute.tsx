@@ -2,14 +2,12 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/app/providers/auth/useAuth'
 import { getPostLoginPath } from '@/features/auth/navigation/post-login-path'
+import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 
 function SessionLoading() {
   return (
-    <main
-      className="flex min-h-screen items-center justify-center"
-      role="status"
-    >
-      Carregando sessão...
+    <main className="flex min-h-screen items-center justify-center">
+      <LoadingSpinner label="Carregando sessão..." />
     </main>
   )
 }

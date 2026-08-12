@@ -2,6 +2,7 @@ import Skeleton, { SkeletonTheme } from 'react-loading-skeleton'
 
 import { CardSkeleton } from '@/shared/components/CardSkeleton'
 import { Divider } from '@/shared/components/Divider'
+import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 
 import { ANALYSIS_HISTORY_PAGE_SIZE } from '../constants'
 
@@ -11,6 +12,11 @@ export function HistoryCardsSkeleton() {
       baseColor="var(--skeleton-base-color)"
       highlightColor="var(--skeleton-highlight-color)"
     >
+      <LoadingSpinner
+        label="Carregando histórico de análises"
+        size="sm"
+        className="mb-4 justify-start"
+      />
       <div aria-hidden="true">
         {/* Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -61,9 +67,6 @@ export function HistoryCardsSkeleton() {
           <Skeleton width={32} height={32} borderRadius={10} />
         </div>
       </div>
-      <span className="sr-only" role="status">
-        Carregando histórico de análises
-      </span>
     </SkeletonTheme>
   )
 }
