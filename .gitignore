@@ -1,3 +1,30 @@
+HELP.md
+target/
+backend/.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -64,7 +91,11 @@ db.sqlite3-journal
 # Flask stuff:
 instance/
 .webassets-cache
+!**/src/main/**/build/
+!**/src/test/**/build/
 
+### VS Code ###
+.vscode/
 # Scrapy stuff:
 .scrapy
 
@@ -149,6 +180,12 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+!data-science/.env.api.example
+infra/deploy/oci/backend.env
+data-science/models/*.joblib
+!data-science/models/modelo_energetico_v2.joblib
 .envrc
 .venv
 env/
@@ -195,13 +232,37 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#   and can be added to the global gitignore or merged into this file. However, if you prefer,
 #   you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
+
+# Oracle Autonomous Database credentials and wallets
+**/Wallet_*/
+**/wallet/
+**/wallets/
+**/Wallet_*.zip
+**/cwallet.sso
+**/ewallet.p12
+**/keystore.jks
+**/truststore.jks
+
+# Terraform local state, plans, and local variable values
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
 # Ruff stuff:
 .ruff_cache/

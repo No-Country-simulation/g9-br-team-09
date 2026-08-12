@@ -1,0 +1,655 @@
+name: Backend OCI deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Validate, deploy an immutable develop preview, or deploy production
+        required: true
+        default: validate
+        type: choice
+        options:
+          - validate
+          - deploy-preview
+          - deploy
+      ref:
+        description: "validate: branch, tag, or commit; deploy-preview: full 40-character develop SHA; deploy: literal main"
+        required: true
+        default: develop
+        type: string
+      confirmation:
+        description: Type DEPLOY exactly to authorize preview or production deployment
+        required: false
+        default: ""
+        type: string
+      expected_classification_source:
+        description: Optional expected source for the OCI smoke test
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-oci-deploy
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.commit.outputs.commit_sha }}
+    steps:
+      - name: Checkout workflow source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Require explicit deployment confirmation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n infra/deploy/oci/resolve-deploy-source.sh
+          # shellcheck source=infra/deploy/oci/resolve-deploy-source.sh
+          source infra/deploy/oci/resolve-deploy-source.sh
+          require_deployment_confirmation
+
+      - name: Validate executing workflow with actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/work:ro" \
+            --workdir /work \
+            rhysd/actionlint:1.7.7 \
+            -color \
+            .github/workflows/backend-oci-deploy.yml
+
+      - name: Validate deployment source policy helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n infra/deploy/oci/resolve-deploy-source.sh
+          bash -n infra/deploy/oci/tests/test-resolve-deploy-source.sh
+          bash infra/deploy/oci/tests/test-resolve-deploy-source.sh
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/work:ro" \
+            --workdir /work \
+            koalaman/shellcheck-alpine:v0.10.0 \
+            shellcheck \
+            infra/deploy/oci/resolve-deploy-source.sh \
+            infra/deploy/oci/tests/test-resolve-deploy-source.sh
+          install -m 700 \
+            infra/deploy/oci/resolve-deploy-source.sh \
+            "${RUNNER_TEMP}/resolve-deploy-source.sh"
+
+      - name: Authorize operation and resolve immutable commit
+        id: commit
+        env:
+          OPERATION: ${{ inputs.operation }}
+          REQUESTED_REF: ${{ inputs.ref }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        shell: bash
+        run: bash "${RUNNER_TEMP}/resolve-deploy-source.sh"
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Validate backend
+        working-directory: backend
+        run: ./mvnw --batch-mode verify
+
+      - name: Validate Bash syntax and fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n infra/deploy/oci/deploy-backend.sh
+          bash -n infra/deploy/oci/inspect-immutable-image.sh
+          bash -n infra/deploy/oci/tests/test-deploy-backend.sh
+          bash -n infra/deploy/oci/tests/test-inspect-immutable-image.sh
+          bash -n infra/tests/smoke/backend-oci-smoke.sh
+          bash -n infra/tests/smoke/tests/test-backend-oci-smoke.sh
+          bash infra/deploy/oci/tests/test-deploy-backend.sh
+          bash infra/deploy/oci/tests/test-inspect-immutable-image.sh
+          bash infra/tests/smoke/tests/test-backend-oci-smoke.sh
+          jq empty infra/tests/smoke/payload-valid.json
+          jq empty infra/tests/smoke/payload-invalid.json
+
+      - name: Run ShellCheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/work:ro" \
+            --workdir /work \
+            koalaman/shellcheck-alpine:v0.10.0 \
+            shellcheck \
+            infra/deploy/oci/deploy-backend.sh \
+            infra/deploy/oci/inspect-immutable-image.sh \
+            infra/tests/smoke/backend-oci-smoke.sh \
+            infra/tests/smoke/tests/test-backend-oci-smoke.sh
+
+      - name: Run actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/work:ro" \
+            --workdir /work \
+            rhysd/actionlint:1.7.7 \
+            -color \
+            .github/workflows/backend-oci-deploy.yml
+
+      - name: Validate Compose with fictitious values
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          fictitious_env="$(mktemp)"
+          trap 'rm -f -- "${fictitious_env}"' EXIT
+          cp infra/deploy/oci/.env.example "${fictitious_env}"
+          sed -i \
+            -e 's|^BACKEND_IMAGE=.*|BACKEND_IMAGE=docker.io/pxs00/energiai-backend:sha-0000000000000000000000000000000000000000|' \
+            -e "s|^BACKEND_ENV_FILE=.*|BACKEND_ENV_FILE=${fictitious_env}|" \
+            "${fictitious_env}"
+          docker compose \
+            --env-file "${fictitious_env}" \
+            -f infra/deploy/oci/compose.yaml \
+            config --quiet
+
+      - name: Validate Caddyfile with pinned Caddy image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --env API_PUBLIC_HOSTNAME=api.example.invalid \
+            --volume "${GITHUB_WORKSPACE}/infra/deploy/oci/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build linux/amd64 image without publishing
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: local/energiai-backend:validation-${{ steps.commit.outputs.commit_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Validate whitespace
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved_commit="$(git rev-parse --verify 'HEAD^{commit}')"
+          [[ "${resolved_commit}" =~ ^[0-9a-f]{40}$ ]]
+          if merge_base="$(git merge-base origin/develop "${resolved_commit}" 2>/dev/null)"; then
+            [[ "${merge_base}" =~ ^[0-9a-f]{40}$ ]]
+            git diff --check "${merge_base}..${resolved_commit}"
+          else
+            git diff-tree --root --check -r "${resolved_commit}"
+          fi
+
+      - name: Write validation summary
+        if: success()
+        env:
+          COMMIT_SHA: ${{ steps.commit.outputs.commit_sha }}
+          OPERATION: ${{ inputs.operation }}
+          SOURCE_POLICY: ${{ steps.commit.outputs.source_policy }}
+          REQUESTED_REF: ${{ steps.commit.outputs.requested_ref }}
+        shell: bash
+        run: |
+          {
+            echo '## Backend OCI validation'
+            echo
+            echo "- Operation: \`${OPERATION}\`"
+            echo "- Requested ref: \`${REQUESTED_REF}\`"
+            echo "- Resolved commit: \`${COMMIT_SHA}\`"
+            echo "- Source policy: \`${SOURCE_POLICY}\`"
+            echo "- Platform: \`linux/amd64\`"
+            echo "- Maven, Bash syntax, ShellCheck, actionlint, fixtures, Compose, Caddyfile, Docker build, and whitespace: \`passed\`"
+            echo "- Publication, OCI deployment, readiness, smoke tests, and rollback: \`not run\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  publish:
+    name: publish
+    needs: validate
+    if: inputs.operation == 'deploy' || inputs.operation == 'deploy-preview'
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.image_digest.outputs.digest }}
+    env:
+      COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
+      IMAGE_REPOSITORY: docker.io/pxs00/energiai-backend
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          fetch-depth: 1
+
+      - name: Verify detached immutable checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach --quiet "${COMMIT_SHA}"
+          [[ "$(git rev-parse --verify 'HEAD^{commit}')" == "${COMMIT_SHA}" ]]
+
+      - name: Set image reference
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          image="${IMAGE_REPOSITORY}:sha-${COMMIT_SHA}"
+          printf 'image=%s\n' "${image}" >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Inspect existing immutable image
+        id: existing_image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash infra/deploy/oci/inspect-immutable-image.sh \
+            "${IMAGE}" \
+            "${COMMIT_SHA}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and publish immutable linux/amd64 image
+        id: build
+        if: steps.existing_image.outputs.exists != 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image.outputs.image }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.validate.outputs.commit_sha }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set final immutable image digest
+        id: image_digest
+        env:
+          EXISTING_DIGEST: ${{ steps.existing_image.outputs.digest }}
+          BUILT_DIGEST: ${{ steps.build.outputs.digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          digest="${EXISTING_DIGEST:-${BUILT_DIGEST:-}}"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'digest=%s\n' "${digest}" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish sanitized build summary
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          DIGEST: ${{ steps.image_digest.outputs.digest }}
+          COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          {
+            echo '## Backend OCI image published'
+            echo
+            echo "- Resolved commit: \`${COMMIT_SHA}\`"
+            echo "- Immutable image: \`${IMAGE}\`"
+            echo "- Digest: \`${DIGEST}\`"
+            echo "- Platform: \`linux/amd64\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  deploy:
+    name: deploy
+    needs:
+      - validate
+      - publish
+    if: inputs.operation == 'deploy' || inputs.operation == 'deploy-preview'
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - oci-deploy
+    environment: oci-production
+    env:
+      IMAGE: docker.io/pxs00/energiai-backend:sha-${{ needs.validate.outputs.commit_sha }}
+      IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+      COMMIT_SHA: ${{ needs.validate.outputs.commit_sha }}
+      EXPECTED_CLASSIFICATION_SOURCE: ${{ inputs.expected_classification_source }}
+      OCI_COMPUTE_HOST: ${{ secrets.OCI_COMPUTE_HOST }}
+      OCI_COMPUTE_PORT: ${{ secrets.OCI_COMPUTE_SSH_PORT }}
+      OCI_COMPUTE_USER: ${{ secrets.OCI_COMPUTE_USER }}
+      OCI_COMPUTE_PRIVATE_KEY: ${{ secrets.OCI_COMPUTE_SSH_PRIVATE_KEY }}
+      OCI_COMPUTE_KNOWN_HOSTS: ${{ secrets.OCI_COMPUTE_KNOWN_HOSTS }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_DEPLOY_TOKEN: ${{ secrets.DOCKERHUB_DEPLOY_TOKEN }}
+    steps:
+      - name: Checkout deployment helper
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
+          sparse-checkout: infra/deploy/oci/deploy-backend.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Configure strict SSH trust
+        id: ssh
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${OCI_COMPUTE_HOST}" && -n "${OCI_COMPUTE_PORT}" && -n "${OCI_COMPUTE_USER}" ]] \
+            || { printf '%s\n' 'OCI SSH host, port, and user are required.' >&2; exit 1; }
+          [[ "${OCI_COMPUTE_PORT}" =~ ^[1-9][0-9]{0,4}$ ]] \
+            || { printf '%s\n' 'OCI SSH port is invalid.' >&2; exit 1; }
+          umask 077
+          ssh_dir="$(mktemp -d /tmp/backend-oci-ssh.XXXXXX)"
+          printf 'ssh_dir=%s\n' "${ssh_dir}" >> "${GITHUB_OUTPUT}"
+          key_path="${ssh_dir}/id_ed25519"
+          known_hosts_path="${ssh_dir}/known_hosts"
+          printf '%s\n' "${OCI_COMPUTE_PRIVATE_KEY}" > "${key_path}"
+          printf '%s\n' "${OCI_COMPUTE_KNOWN_HOSTS}" > "${known_hosts_path}"
+          [[ -s "${key_path}" && -s "${known_hosts_path}" ]] \
+            || { printf '%s\n' 'OCI SSH key and known_hosts are required.' >&2; exit 1; }
+          chmod 600 "${key_path}" "${known_hosts_path}"
+
+      - name: Create restricted remote workspace
+        id: remote
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! remote_dir="$(ssh \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -p "${OCI_COMPUTE_PORT}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+            'umask 077; mktemp -d /tmp/energiai-deploy.XXXXXX' 2>/dev/null)"; then
+            printf '%s\n' 'Unable to create a restricted remote workspace.' >&2
+            exit 1
+          fi
+          [[ "${remote_dir}" =~ ^/tmp/energiai-deploy\.[A-Za-z0-9]{6,}$ ]] \
+            || { printf '%s\n' 'Unable to create a restricted remote workspace.' >&2; exit 1; }
+          printf 'remote_dir=%s\n' "${remote_dir}" >> "${GITHUB_OUTPUT}"
+
+      - name: Copy deployment helper
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+          REMOTE_DIR: ${{ steps.remote.outputs.remote_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_path="${REMOTE_DIR}/deploy-backend.sh"
+          if ! scp \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -P "${OCI_COMPUTE_PORT}" \
+            infra/deploy/oci/deploy-backend.sh \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}:${remote_path}" 2>/dev/null; then
+            printf '%s\n' 'Unable to copy the deployment helper.' >&2
+            exit 1
+          fi
+          if ! ssh \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -p "${OCI_COMPUTE_PORT}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+            "chmod 700 '${remote_path}'" 2>/dev/null; then
+            printf '%s\n' 'Unable to prepare the deployment helper.' >&2
+            exit 1
+          fi
+          printf 'remote_path=%s\n' "${remote_path}" >> "${GITHUB_ENV}"
+
+      - name: Provide Docker Hub read credentials securely
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+          REMOTE_DIR: ${{ steps.remote.outputs.remote_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${DOCKERHUB_USERNAME}" && -n "${DOCKERHUB_DEPLOY_TOKEN}" ]] \
+            || { printf '%s\n' 'Both Docker Hub deployment secrets are required.' >&2; exit 1; }
+          umask 077
+          auth_file="$(mktemp)"
+          remote_auth_path="${REMOTE_DIR}/dockerhub-auth.env"
+          trap 'rm -f -- "${auth_file}"' EXIT
+          printf 'DOCKERHUB_USERNAME=%q\nDOCKERHUB_DEPLOY_TOKEN=%q\n' \
+            "${DOCKERHUB_USERNAME}" "${DOCKERHUB_DEPLOY_TOKEN}" > "${auth_file}"
+          if ! scp \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -P "${OCI_COMPUTE_PORT}" \
+            "${auth_file}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}:${remote_auth_path}" 2>/dev/null; then
+            printf '%s\n' 'Unable to transfer temporary Docker Hub credentials.' >&2
+            exit 1
+          fi
+          if ! ssh \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -p "${OCI_COMPUTE_PORT}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+            "chmod 600 '${remote_auth_path}'" 2>/dev/null; then
+            printf '%s\n' 'Unable to protect temporary Docker Hub credentials.' >&2
+            exit 1
+          fi
+          printf 'DOCKERHUB_AUTH_FILE=%s\n' "${remote_auth_path}" >> "${GITHUB_ENV}"
+
+      - name: Provide smoke-test credentials securely
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+          REMOTE_DIR: ${{ steps.remote.outputs.remote_dir }}
+          OCI_SMOKE_USER_EMAIL: ${{ secrets.OCI_SMOKE_USER_EMAIL }}
+          OCI_SMOKE_USER_PASSWORD: ${{ secrets.OCI_SMOKE_USER_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "${OCI_SMOKE_USER_EMAIL}" && -n "${OCI_SMOKE_USER_PASSWORD}" ]] \
+            || { printf '%s\n' 'Both dedicated smoke-test user secrets are required.' >&2; exit 1; }
+          umask 077
+          auth_file="$(mktemp)"
+          remote_auth_path="${REMOTE_DIR}/smoke-auth.credentials"
+          trap 'rm -f -- "${auth_file}"' EXIT
+          printf '%s\0%s\0' \
+            "${OCI_SMOKE_USER_EMAIL}" "${OCI_SMOKE_USER_PASSWORD}" > "${auth_file}"
+          if ! scp \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -P "${OCI_COMPUTE_PORT}" \
+            "${auth_file}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}:${remote_auth_path}" 2>/dev/null; then
+            printf '%s\n' 'Unable to transfer temporary smoke-test credentials.' >&2
+            exit 1
+          fi
+          if ! ssh \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -p "${OCI_COMPUTE_PORT}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+            "chmod 600 '${remote_auth_path}'" 2>/dev/null; then
+            printf '%s\n' 'Unable to protect temporary smoke-test credentials.' >&2
+            exit 1
+          fi
+          printf 'SMOKE_AUTH_FILE=%s\n' "${remote_auth_path}" >> "${GITHUB_ENV}"
+
+      - name: Deploy, validate, and roll back on failure
+        id: remote_deploy
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${IMAGE}" =~ ^docker\.io/pxs00/energiai-backend:sha-[0-9a-f]{40}$ ]]
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${IMAGE_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          case "${EXPECTED_CLASSIFICATION_SOURCE}" in
+            ""|ML_MODEL|RULE_BASED_FALLBACK) ;;
+            *) printf '%s\n' 'Invalid expected classification source.' >&2; exit 1 ;;
+          esac
+
+          remote_output="$(mktemp)"
+          trap 'rm -f -- "${remote_output}"' EXIT
+          deployment_started_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          set +e
+          ssh \
+            -i "${SSH_DIR}/id_ed25519" \
+            -o BatchMode=yes \
+            -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -p "${OCI_COMPUTE_PORT}" \
+            "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+            "TARGET_IMAGE='${IMAGE}' TARGET_COMMIT='${COMMIT_SHA}' IMAGE_DIGEST='${IMAGE_DIGEST}' EXPECTED_CLASSIFICATION_SOURCE='${EXPECTED_CLASSIFICATION_SOURCE}' DOCKERHUB_AUTH_FILE='${DOCKERHUB_AUTH_FILE:-}' SMOKE_AUTH_FILE='${SMOKE_AUTH_FILE:-}' bash '${remote_path}'" \
+            >"${remote_output}" 2>&1
+          deployment_status=$?
+          set -e
+
+          if [[ "${deployment_status}" -ne 0 ]]; then
+            printf '%s\n' 'Remote deployment failed; sanitized diagnostics follow.' >&2
+            sed -n -E \
+              '/^\[(INFO|PASS|FAIL)\] /p; /^DEPLOY_RESULT=/p; /^READINESS_RESULT=/p; /^SMOKE_TEST_RESULT=/p; /^ROLLBACK_ATTEMPTED=/p; /^ROLLBACK_RESULT=/p' \
+              "${remote_output}" >&2
+          fi
+
+          deploy_result="$(sed -n 's/^DEPLOY_RESULT=//p' "${remote_output}" | tail -n 1)"
+          previous_image="$(sed -n 's/^PREVIOUS_IMAGE=//p' "${remote_output}" | tail -n 1)"
+          readiness_result="$(sed -n 's/^READINESS_RESULT=//p' "${remote_output}" | tail -n 1)"
+          smoke_result="$(sed -n 's/^SMOKE_TEST_RESULT=//p' "${remote_output}" | tail -n 1)"
+          rollback_attempted="$(sed -n 's/^ROLLBACK_ATTEMPTED=//p' "${remote_output}" | tail -n 1)"
+          rollback_result="$(sed -n 's/^ROLLBACK_RESULT=//p' "${remote_output}" | tail -n 1)"
+          {
+            printf 'started_at=%s\n' "${deployment_started_at}"
+            printf 'deploy_result=%s\n' "${deploy_result:-unknown}"
+            printf 'previous_image=%s\n' "${previous_image}"
+            printf 'readiness_result=%s\n' "${readiness_result:-not-run}"
+            printf 'smoke_result=%s\n' "${smoke_result:-not-run}"
+            printf 'rollback_attempted=%s\n' "${rollback_attempted:-no}"
+            printf 'rollback_result=%s\n' "${rollback_result:-not-required}"
+            printf 'ended_at=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "${GITHUB_OUTPUT}"
+
+          [[ "${deployment_status}" -eq 0 && "${deploy_result}" == success ]]
+
+      - name: Write deployment summary
+        if: always()
+        env:
+          DEPLOY_RESULT: ${{ steps.remote_deploy.outputs.deploy_result }}
+          PREVIOUS_IMAGE: ${{ steps.remote_deploy.outputs.previous_image }}
+          READINESS_RESULT: ${{ steps.remote_deploy.outputs.readiness_result }}
+          SMOKE_RESULT: ${{ steps.remote_deploy.outputs.smoke_result }}
+          ROLLBACK_ATTEMPTED: ${{ steps.remote_deploy.outputs.rollback_attempted }}
+          ROLLBACK_RESULT: ${{ steps.remote_deploy.outputs.rollback_result }}
+          DEPLOY_STARTED_AT: ${{ steps.remote_deploy.outputs.started_at }}
+          DEPLOY_ENDED_AT: ${{ steps.remote_deploy.outputs.ended_at }}
+        shell: bash
+        run: |
+          {
+            echo '## Backend OCI deployment'
+            echo
+            echo "- Operation: \`${{ inputs.operation }}\`"
+            echo "- Requested ref: \`${{ inputs.ref }}\`"
+            echo "- Resolved commit: \`${COMMIT_SHA}\`"
+            echo "- Immutable image: \`${IMAGE}\`"
+            echo "- Digest: \`${IMAGE_DIGEST}\`"
+            echo "- Platform: \`linux/amd64\`"
+            echo "- Environment: \`oci-production\`"
+            echo "- Validation: \`passed\`"
+            echo "- Deployment started: \`${DEPLOY_STARTED_AT:-not-started}\`"
+            echo "- Deployment ended: \`${DEPLOY_ENDED_AT:-not-finished}\`"
+            echo "- Readiness: \`${READINESS_RESULT:-not-run}\`"
+            echo "- Smoke tests: \`${SMOKE_RESULT:-not-run}\`"
+            echo "- Rollback attempted: \`${ROLLBACK_ATTEMPTED:-no}\`"
+            echo "- Rollback result: \`${ROLLBACK_RESULT:-not-required}\`"
+            echo "- Final workflow result: \`${DEPLOY_RESULT:-unknown}\`"
+            if [[ "${PREVIOUS_IMAGE}" =~ ^docker\.io/pxs00/energiai-backend:sha-[0-9a-f]{40}$ ]]; then
+              echo "- Previous immutable image: \`${PREVIOUS_IMAGE}\`"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Remove temporary remote files
+        if: always()
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+          REMOTE_DIR: ${{ steps.remote.outputs.remote_dir }}
+        shell: bash
+        run: |
+          set +e
+          if [[ "${REMOTE_DIR}" =~ ^/tmp/energiai-deploy\.[A-Za-z0-9]{6,}$ ]]; then
+            ssh \
+              -i "${SSH_DIR}/id_ed25519" \
+              -o BatchMode=yes \
+              -o "UserKnownHostsFile=${SSH_DIR}/known_hosts" \
+              -o StrictHostKeyChecking=yes \
+              -o IdentitiesOnly=yes \
+              -o ConnectTimeout=20 \
+              -p "${OCI_COMPUTE_PORT}" \
+              "${OCI_COMPUTE_USER}@${OCI_COMPUTE_HOST}" \
+              "rm -f -- '${REMOTE_DIR}/deploy-backend.sh' '${REMOTE_DIR}/dockerhub-auth.env' '${REMOTE_DIR}/smoke-auth.credentials'; rmdir -- '${REMOTE_DIR}'" \
+              >/dev/null 2>&1
+          fi
+
+      - name: Remove temporary SSH material
+        if: always()
+        env:
+          SSH_DIR: ${{ steps.ssh.outputs.ssh_dir }}
+        shell: bash
+        run: |
+          set +e
+          if [[ "${SSH_DIR}" == /tmp/* ]]; then
+            rm -rf -- "${SSH_DIR}"
+          fi
