@@ -1,0 +1,122 @@
+[
+  {
+    "id": "casa_eficiente",
+    "request": {
+      "consumo_kwh": 180.0,
+      "uso_horario_pico": false,
+      "quantidade_equipamentos": 4,
+      "tipo_imovel": "CASA",
+      "horas_alto_consumo": 1
+    },
+    "response": {
+      "categoria": "EFICIENTE",
+      "probabilidade": 1.0,
+      "score": 0,
+      "recomendacoes": [
+        "Acompanhar o consumo mensal e manter práticas de uso consciente de energia."
+      ],
+      "modelo_versao": "energy-classifier-v2"
+    }
+  },
+  {
+    "id": "apartamento_moderado",
+    "request": {
+      "consumo_kwh": 260.0,
+      "uso_horario_pico": false,
+      "quantidade_equipamentos": 9,
+      "tipo_imovel": "APARTAMENTO",
+      "horas_alto_consumo": 5
+    },
+    "response": {
+      "categoria": "MODERADO",
+      "probabilidade": 0.8848920863309353,
+      "score": 44,
+      "recomendacoes": [
+        "Acompanhar o consumo mensal e manter práticas de uso consciente de energia."
+      ],
+      "modelo_versao": "energy-classifier-v2"
+    }
+  },
+  {
+    "id": "comercio_ineficiente",
+    "request": {
+      "consumo_kwh": 560.0,
+      "uso_horario_pico": true,
+      "quantidade_equipamentos": 28,
+      "tipo_imovel": "COMERCIO",
+      "horas_alto_consumo": 14
+    },
+    "response": {
+      "categoria": "INEFICIENTE",
+      "probabilidade": 1.0,
+      "score": 100,
+      "recomendacoes": [
+        "Reduzir o uso de equipamentos durante horários de pico.",
+        "Distribuir atividades de alto consumo ao longo do dia.",
+        "Monitorar os principais equipamentos para reduzir o consumo mensal."
+      ],
+      "modelo_versao": "energy-classifier-v2"
+    }
+  },
+  {
+    "id": "escritorio_eficiente",
+    "request": {
+      "consumo_kwh": 180.0,
+      "uso_horario_pico": false,
+      "quantidade_equipamentos": 5,
+      "tipo_imovel": "ESCRITORIO",
+      "horas_alto_consumo": 3
+    },
+    "response": {
+      "categoria": "EFICIENTE",
+      "probabilidade": 1.0,
+      "score": 0,
+      "recomendacoes": [
+        "Acompanhar o consumo mensal e manter práticas de uso consciente de energia."
+      ],
+      "modelo_versao": "energy-classifier-v2"
+    }
+  },
+  {
+    "id": "industria_moderado",
+    "request": {
+      "consumo_kwh": 800.0,
+      "uso_horario_pico": false,
+      "quantidade_equipamentos": 25,
+      "tipo_imovel": "INDUSTRIA",
+      "horas_alto_consumo": 10
+    },
+    "response": {
+      "categoria": "MODERADO",
+      "probabilidade": 0.959866220735786,
+      "score": 48,
+      "recomendacoes": [
+        "Distribuir atividades de alto consumo ao longo do dia.",
+        "Monitorar os principais equipamentos para reduzir o consumo mensal.",
+        "Priorizar o uso de equipamentos essenciais e evitar stand-by desnecessário."
+      ],
+      "modelo_versao": "energy-classifier-v2"
+    }
+  },
+  {
+    "id": "outro_ineficiente",
+    "request": {
+      "consumo_kwh": 800.0,
+      "uso_horario_pico": true,
+      "quantidade_equipamentos": 30,
+      "tipo_imovel": "OUTRO",
+      "horas_alto_consumo": 16
+    },
+    "response": {
+      "categoria": "INEFICIENTE",
+      "probabilidade": 1.0,
+      "score": 100,
+      "recomendacoes": [
+        "Reduzir o uso de equipamentos durante horários de pico.",
+        "Distribuir atividades de alto consumo ao longo do dia.",
+        "Monitorar os principais equipamentos para reduzir o consumo mensal."
+      ],
+      "modelo_versao": "energy-classifier-v2"
+    }
+  }
+]

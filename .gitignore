@@ -185,6 +185,7 @@ activemq-data/
 !data-science/.env.api.example
 infra/deploy/oci/backend.env
 data-science/models/*.joblib
+!data-science/models/modelo_energetico_v2.joblib
 .envrc
 .venv
 env/

@@ -47,3 +47,6 @@ jobs:
 
       - name: Run tests
         run: python -m pytest
+
+      - name: Validate notebook
+        run: python scripts/validate_notebook.py --timeout 900

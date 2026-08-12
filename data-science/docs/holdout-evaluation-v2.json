@@ -1,0 +1,43 @@
+{
+  "branch": "feature/86/dataset-modelagem-v2",
+  "completed_at_utc": "2026-08-11T05:02:50.194738+00:00",
+  "dataset": {
+    "name": "EnergIAI Dataset V2",
+    "seed": 42,
+    "sha256": "6c147517fce6108f0f663d72c41428736325e248db171a8357050ab02c8a73a3",
+    "source_commit": "5aba82b5f465501cc00b22d96e510b50f112e95e",
+    "version": "2.0.0-candidate"
+  },
+  "environment": {
+    "joblib": "1.5.3",
+    "pandas": "3.0.5",
+    "python": "3.12.10",
+    "scikit_learn": "1.9.0"
+  },
+  "holdout": {
+    "brier_multiclass": 0.052660778071399746,
+    "f1_macro": 0.9611680646163405,
+    "log_loss": 0.12529593017111162,
+    "official_evaluation_count": 1,
+    "size": 750
+  },
+  "limitations": [
+    "Dataset integralmente sintético, sem validação com dados reais.",
+    "As métricas não comprovam desempenho real, causalidade ou validade externa."
+  ],
+  "methodology_statement": "O resultado mede a capacidade do modelo de reproduzir padrões da base sintética sob as condições testadas.",
+  "model": {
+    "artifact_path": "models/modelo_energetico_v2.joblib",
+    "artifact_sha256": "ba4a2d8df87d0e0d6f4226a7b782f193a16c9722029c45cf2ab17a707532380e",
+    "classes": [
+      "EFICIENTE",
+      "INEFICIENTE",
+      "MODERADO"
+    ],
+    "name": "random_forest",
+    "probability_method": "isotonic"
+  },
+  "source_commit": "38bc6371fd67fcf90b3f9cbbff45665b7e5fe667",
+  "started_at_utc": "2026-08-11T05:02:45.809827+00:00",
+  "status": "OFFICIAL_HOLDOUT_EVALUATED"
+}
