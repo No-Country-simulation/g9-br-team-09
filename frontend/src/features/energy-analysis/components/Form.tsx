@@ -47,7 +47,7 @@ export function AnalysisForm() {
       />
       {error && (
         <p
-          className="text-destructive mt-3 text-center text-sm text-red-500"
+          className="text-inefficient-badge-text mt-3 text-center text-sm"
           role="alert"
         >
           {error}

@@ -147,7 +147,7 @@ export function FormStep({
           {fieldError && (
             <p
               id={`${id}-error`}
-              className="text-destructive text-sm text-red-500"
+              className="text-inefficient-badge-text text-sm"
               role="alert"
             >
               {fieldError}
