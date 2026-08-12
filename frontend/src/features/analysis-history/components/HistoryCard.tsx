@@ -43,7 +43,7 @@ export function HistoryCard({ analysis, onViewDetails }: HistoryCardProps) {
         <Badge>
           Probabilidade: {formatPercent(analysis.probabilidade * 100)}
         </Badge>
-        <Badge>Score: {analysis.score}/100</Badge>
+        <Badge>Índice de ineficiência: {analysis.score}/100</Badge>
       </div>
       <div className="flex flex-col items-center">
         <Divider orientation="horizontal" spacing={8} />
