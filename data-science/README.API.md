@@ -12,7 +12,9 @@ Frontend não deve chamá-la diretamente. Schemas, constraints, score, probabili
 
 ## Pré-requisitos e instalação
 
-Use Python 3.14.
+Use Python 3.12.
+
+### Runtime da API
 
 ~~~bash
 cd data-science
@@ -20,6 +22,18 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-api.txt
+~~~
+
+### Ambiente completo de desenvolvimento
+
+Para testes, geração de dataset, modelagem e notebooks:
+
+~~~bash
+cd data-science
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ~~~
 
 ## Configuração e execução local
