@@ -126,7 +126,7 @@ export function FormStep({
               />
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 min-[425px]:grid-cols-2">
               {field.options.map((option) => (
                 <RadioCard
                   key={option.value}
