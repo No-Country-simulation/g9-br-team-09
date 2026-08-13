@@ -52,7 +52,7 @@ function HeaderAction({
       aria-label={ariaLabel}
       aria-current={isActive ? 'page' : undefined}
       onClick={onClick}
-      className={`group shrink-0 overflow-hidden border px-1 sm:px-3 ${
+      className={`group shrink-0 gap-0! overflow-hidden border px-1 sm:gap-2! sm:px-3 ${
         destructive
           ? 'border-transparent hover:opacity-100 hover:drop-shadow-[0_0_8px_var(--inefficient-badge-border)]'
           : isActive
