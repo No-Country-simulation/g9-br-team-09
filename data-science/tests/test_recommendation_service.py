@@ -61,6 +61,45 @@ def test_high_consumption_combined_with_many_hours_has_priority() -> None:
     assert recommendations == [_message("HIGH_CONSUMPTION_EXTENDED")]
 
 
+def test_peak_hours_generic_rule_is_preserved() -> None:
+    recommendations = _recommend(
+        tipo_imovel="ESCRITORIO",
+        uso_horario_pico=True,
+        horas_alto_consumo=2,
+    )
+
+    assert recommendations == [_message("PEAK_HOURS")]
+
+
+def test_extended_high_consumption_generic_rule_is_preserved() -> None:
+    recommendations = _recommend(
+        horas_alto_consumo=8,
+        uso_horario_pico=False,
+        consumo_kwh=300,
+    )
+
+    assert recommendations == [_message("EXTENDED_HIGH_CONSUMPTION")]
+
+
+def test_high_consumption_generic_rule_is_preserved() -> None:
+    recommendations = _recommend(
+        tipo_imovel="CASA",
+        consumo_kwh=500,
+        horas_alto_consumo=2,
+    )
+
+    assert recommendations == [_message("HIGH_CONSUMPTION")]
+
+
+def test_many_devices_generic_rule_is_preserved() -> None:
+    recommendations = _recommend(
+        tipo_imovel="ESCRITORIO",
+        quantidade_equipamentos=15,
+    )
+
+    assert recommendations == [_message("MANY_DEVICES")]
+
+
 def test_high_severity_uses_category_and_score() -> None:
     assert _recommend(EnergyCategory.INEFICIENTE, 80) == [_message("HIGH_SEVERITY")]
     assert _message("HIGH_SEVERITY") not in _recommend(EnergyCategory.INEFICIENTE, 69)
@@ -90,6 +129,10 @@ def test_rule_metadata_is_unique_and_explains_objective_conditions() -> None:
     assert len({rule.priority for rule in RECOMMENDATION_RULES}) == len(RECOMMENDATION_RULES)
     assert len({rule.message for rule in RECOMMENDATION_RULES}) == len(RECOMMENDATION_RULES)
     assert all(rule.justification and rule.trigger_variables for rule in RECOMMENDATION_RULES)
+    efficient_profile = next(
+        rule for rule in RECOMMENDATION_RULES if rule.code == "EFFICIENT_PROFILE"
+    )
+    assert "tipo_imovel" in efficient_profile.trigger_variables
 
 
 def test_recommendation_fallback_is_never_empty() -> None:

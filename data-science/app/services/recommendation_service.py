@@ -242,6 +242,7 @@ RECOMMENDATION_RULES = (
         ),
         justification="A categoria é EFICIENTE, o score é menor que 30 e não há fatores críticos.",
         trigger_variables=(
+            "tipo_imovel",
             "categoria",
             "score",
             "uso_horario_pico",
