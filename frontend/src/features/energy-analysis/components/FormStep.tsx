@@ -126,7 +126,7 @@ export function FormStep({
               />
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 min-[425px]:grid-cols-2">
               {field.options.map((option) => (
                 <RadioCard
                   key={option.value}
@@ -147,7 +147,7 @@ export function FormStep({
           {fieldError && (
             <p
               id={`${id}-error`}
-              className="text-destructive text-sm text-red-500"
+              className="text-inefficient-badge-text text-sm"
               role="alert"
             >
               {fieldError}
@@ -170,7 +170,9 @@ export function FormStep({
             type="submit"
             variant="primary"
             icon={!submitButtonProps ? ArrowRight : undefined}
-            disabled={!inputValue || isSubmitting}
+            disabled={!inputValue}
+            isLoading={isSubmitting}
+            loadingLabel="Enviando análise..."
             className="order-1 flex-1 sm:order-2"
           >
             {isSubmitting
