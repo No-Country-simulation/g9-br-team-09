@@ -26,7 +26,7 @@ test('carrega a aplicação e bloqueia dados inválidos no formulário', async (
 
   await expect(
     page.getByRole('heading', {
-      name: 'Descubra a eficiência energética do seu imóvel',
+      name: 'Entenda o perfil de consumo do seu imóvel',
     }),
   ).toBeVisible()
   await expect(
