@@ -31,7 +31,6 @@ public class EnergyAnalysisService {
     private final EnergyAnalysisMapper energyAnalysisMapper;
     private final AuthenticatedUserProvider authenticatedUserProvider;
 
-    @Transactional
     public EnergyAnalysisResponse analyze(EnergyAnalysisRequest request) {
         var currentUser = authenticatedUserProvider.getCurrentUser();
 

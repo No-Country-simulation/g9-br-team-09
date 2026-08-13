@@ -162,7 +162,8 @@ class EnergyAnalysisOrchestratorTest {
                 Arguments.of("score abaixo de zero", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, -1, List.of("Dica"), null)),
                 Arguments.of("score acima de cem", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, 101, List.of("Dica"), null)),
                 Arguments.of("recomendações nulas", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, 50, null, null)),
-                Arguments.of("recomendações vazias", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, 50, List.of(), null))
+                Arguments.of("recomendações vazias", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, 50, List.of(), null)),
+                Arguments.of("recomendação em branco", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, 50, List.of(" "), null))
         );
     }
 
