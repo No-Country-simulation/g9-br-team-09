@@ -87,7 +87,7 @@ class H2LocalConfigurationIntegrationTest {
             try (ResultSet columns = connection.getMetaData().getColumns(
                     null, null, "ENERGY_ANALYSIS", "PROBABILIDADE")) {
                 assertTrue(columns.next());
-                assertEquals(18, columns.getInt("COLUMN_SIZE"));
+                assertEquals(20, columns.getInt("COLUMN_SIZE"));
                 assertEquals(17, columns.getInt("DECIMAL_DIGITS"));
             }
         }
