@@ -44,7 +44,7 @@ export function LoginForm() {
       {formError && (
         <p
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"
+          className="border-inefficient-badge-border bg-inefficient-badge-bg text-inefficient-badge-text rounded-xl border px-4 py-3 text-sm"
         >
           {formError}
         </p>
@@ -80,7 +80,8 @@ export function LoginForm() {
       <Button
         type="submit"
         variant="primary"
-        disabled={isSubmitting}
+        isLoading={isSubmitting}
+        loadingLabel="Entrando..."
         className="mt-2 w-full"
       >
         {isSubmitting ? 'Entrando...' : 'Entrar'}
@@ -88,7 +89,11 @@ export function LoginForm() {
 
       <p className="text-muted-foreground text-center text-sm">
         Não possui uma conta?{' '}
-        <Link to="/cadastro" className="text-primary font-medium">
+        <Link
+          to="/cadastro"
+          state={location.state}
+          className="text-primary font-medium"
+        >
           Cadastre-se
         </Link>
       </p>

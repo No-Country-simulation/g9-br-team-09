@@ -6,6 +6,7 @@ import {
   logout as logoutRequest,
   register as registerRequest,
 } from '@/features/auth/api/auth-api'
+import type { LoginFormValues } from '@/features/auth/schemas/login'
 import {
   clearSession,
   refreshAccessToken,
@@ -32,6 +33,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const markAnonymous = useCallback(() => {
     setAuthState(ANONYMOUS_STATE)
+  }, [])
+
+  const authenticate = useCallback(async (input: LoginFormValues) => {
+    const authentication = await loginRequest(input)
+    setAccessToken(authentication.access_token)
+    setAuthState({ status: 'authenticated', user: authentication.usuario })
   }, [])
 
   const restoreSession = useCallback(async () => {
@@ -63,13 +70,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       ...authState,
-      login: async (input) => {
-        const authentication = await loginRequest(input)
-        setAccessToken(authentication.access_token)
-        setAuthState({ status: 'authenticated', user: authentication.usuario })
-      },
+      login: authenticate,
       register: async (input) => {
         await registerRequest(input)
+        await authenticate({ email: input.email, password: input.password })
       },
       logout: async () => {
         try {
@@ -80,7 +84,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       restoreSession,
     }),
-    [authState, restoreSession],
+    [authState, authenticate, restoreSession],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

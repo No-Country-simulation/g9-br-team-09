@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Objects;
 
 @Service
 public class EnergyAnalysisOrchestrator {
@@ -85,7 +84,8 @@ public class EnergyAnalysisOrchestrator {
                 || prediction.score() > 100
                 || prediction.recomendacoes() == null
                 || prediction.recomendacoes().isEmpty()
-                || prediction.recomendacoes().stream().anyMatch(Objects::isNull)) {
+                || prediction.recomendacoes().stream()
+                .anyMatch(recommendation -> recommendation == null || recommendation.isBlank())) {
             throw new InvalidMlPredictionResponseException("Resposta da API de ML inválida");
         }
     }

@@ -30,16 +30,19 @@ export function Card({
       aria-labelledby={labelId}
       className={`${CARD_BASE_CLASSES} ${styles.border} flex h-full flex-col`}
     >
-      <div className="flex items-center justify-between">
-        <div id={labelId} className="text-primary mb-3 flex items-center gap-2">
+      <div className="flex items-center justify-between pb-3">
+        <div id={labelId} className="text-primary flex items-center gap-2">
           <Icon size={16} aria-hidden="true" />
           <span className="text-xs font-semibold uppercase tracking-widest">
             {label}
           </span>
         </div>
         {score !== undefined && (
-          <span className={`text-xs font-semibold ${styles.text}`}>
-            Score: {score}/100
+          <span
+            className={`text-right text-xs font-semibold ${styles.text}`}
+            title="0 representa menor ineficiência; 100, maior ineficiência."
+          >
+            Índice de ineficiência: {score}/100
           </span>
         )}
       </div>

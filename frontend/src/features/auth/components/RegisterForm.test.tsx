@@ -1,14 +1,19 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AxiosError, AxiosHeaders } from 'axios'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { AuthContextValue } from '@/app/providers/auth/auth.types'
 import { AuthContext } from '@/app/providers/auth/AuthContext'
+import { deferred } from '@/test/deferred'
 
 import { RegisterForm } from './RegisterForm'
+
+function CurrentPath() {
+  return <output>{useLocation().pathname}</output>
+}
 
 function renderRegisterForm(register = vi.fn()) {
   const value: AuthContextValue = {
@@ -21,9 +26,10 @@ function renderRegisterForm(register = vi.fn()) {
   }
 
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/cadastro']}>
       <AuthContext value={value}>
         <RegisterForm />
+        <CurrentPath />
       </AuthContext>
     </MemoryRouter>,
   )
@@ -72,20 +78,47 @@ describe('RegisterForm', () => {
     expect(screen.getByText('As senhas não coincidem.')).toBeInTheDocument()
   })
 
-  it('envia valores válidos à camada de autenticação', async () => {
+  it('conclui o cadastro autenticado e segue para a análise', async () => {
     const register = vi.fn().mockResolvedValueOnce(undefined)
     renderRegisterForm(register)
     fillValidForm()
 
     fireEvent.click(screen.getByRole('button', { name: 'Criar conta' }))
 
-    await Promise.resolve()
+    await waitFor(() => expect(register).toHaveBeenCalledOnce())
     expect(register).toHaveBeenCalledWith({
       fullName: 'Test User',
       email: 'user@example.test',
       password: 'password123',
       confirmPassword: 'password123',
     })
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('/analise-energetica'),
+    )
+    expect(screen.getByRole('status')).not.toHaveTextContent('/login')
+  })
+
+  it('bloqueia submits duplicados enquanto cadastra', async () => {
+    const controlled = deferred<void>()
+    const register = vi.fn(() => controlled.promise)
+    renderRegisterForm(register)
+    fillValidForm()
+
+    const form = screen
+      .getByRole('button', { name: 'Criar conta' })
+      .closest('form')
+    expect(form).not.toBeNull()
+    fireEvent.submit(form!)
+    fireEvent.submit(form!)
+
+    await waitFor(() => expect(register).toHaveBeenCalledOnce())
+    expect(
+      screen
+        .getAllByRole('status')
+        .find((status) => status.textContent?.includes('Criando conta...')),
+    ).toBeInTheDocument()
+
+    controlled.resolve()
   })
 
   it('exibe mensagem segura para e-mail já cadastrado', async () => {

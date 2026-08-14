@@ -3,6 +3,7 @@ name: Data Science CI
 on:
   pull_request:
     branches:
+      - main
       - develop
     types:
       - opened

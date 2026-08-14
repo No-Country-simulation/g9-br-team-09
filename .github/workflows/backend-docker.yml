@@ -3,6 +3,7 @@ name: Backend Docker
 on:
   pull_request:
     branches:
+      - main
       - develop
     paths:
       - "backend/**"

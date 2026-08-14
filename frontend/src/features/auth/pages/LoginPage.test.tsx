@@ -35,6 +35,9 @@ describe('LoginPage', () => {
     expect(
       screen.getByText('Faça login para continuar sua análise energética.'),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Voltar para o início' }),
+    ).toHaveAttribute('href', '/')
   })
 
   it('não exibe mensagem de análise para outras origens', () => {
