@@ -6,10 +6,11 @@ Esta suíte usa Playwright para percorrer o fluxo real pelo frontend público:
 navegador -> frontend -> backend -> FastAPI/ML -> Oracle -> frontend
 ```
 
-Os testes criam uma conta descartável e única pela tela de cadastro, autenticam-se
-pela tela de login e interagem somente com a interface e com requisições iniciadas
-naturalmente pelo navegador. A suíte não chama a FastAPI ou o Oracle diretamente,
-não executa SQL e não usa classes internas da aplicação.
+Os testes criam uma conta descartável e única pela tela de cadastro, são
+autenticados automaticamente e navegam para `/analise-energetica`. Interagem somente
+com a interface e com requisições iniciadas naturalmente pelo navegador. A suíte não
+chama a FastAPI ou o Oracle diretamente, não executa SQL e não usa classes internas
+da aplicação.
 
 ## Pré-requisitos
 
@@ -52,7 +53,8 @@ no registro da execução; um frontend mockado não comprova este fluxo E2E.
 ## Cenários cobertos
 
 - carregamento da página pública e disponibilidade do início da análise;
-- criação de usuário único pela interface e login sem credenciais fixas;
+- criação de usuário único pela interface e autenticação automática, sem
+  credenciais fixas;
 - acessibilidade dos campos e bloqueio de um valor inválido antes do POST;
 - análise com `420 kWh`, casa, uso em pico, dez equipamentos e oito horas;
 - categoria pertencente ao contrato, score e probabilidade dentro dos intervalos,
@@ -105,9 +107,10 @@ fica desativado intencionalmente para não serializar cookies ou headers de
 autorização. Não publique artefatos sem revisar imagens e vídeos.
 
 Ao diagnosticar uma falha, confirme nesta ordem: URL e commit, disponibilidade do
-frontend, cadastro/login, fonte esperada, integração interna do backend e saúde do
-Oracle. Uma falha funcional deve ser registrada em issue própria com passos e
-evidências sanitizadas; não ajuste regras de negócio para satisfazer o teste.
+frontend, cadastro/autenticação automática, fonte esperada, integração interna do
+backend e saúde do Oracle. Uma falha funcional deve ser registrada em issue própria
+com passos e evidências sanitizadas; não ajuste regras de negócio para satisfazer o
+teste.
 
 ## Limites e relação com outras suítes
 

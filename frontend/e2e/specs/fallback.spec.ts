@@ -21,10 +21,13 @@ test('mantém a análise disponível durante fallback controlado', async ({
   await expect(
     page.getByRole('heading', { name: 'Resultado da análise' }),
   ).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Categoria' })).toContainText(
+  const categoryCard = page.getByRole('region', { name: 'Categoria' })
+  await expect(categoryCard).toContainText(
     /Eficiente|Moderado|Ineficiente/,
   )
-  const score = await numericContent(page.getByText(/Score:/))
+  const score = await numericContent(
+    categoryCard.getByText(/Índice de ineficiência:/),
+  )
   expect(score).toBeGreaterThanOrEqual(0)
   expect(score).toBeLessThanOrEqual(100)
   await expect(
