@@ -17,14 +17,16 @@ public record UserRegistrationRequest(
         @NotBlank(message = "O e-mail é obrigatório")
         @Email(message = "Formato de e-mail inválido")
         @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres")
-        @Schema(description = "E-mail único do usuário", example = "lucas@email.com")
+        @Schema(description = "E-mail único do usuário. Espaços nas extremidades e maiúsculas são normalizados.",
+                example = "lucas@email.com")
         String email,
 
         @NotBlank(message = "A senha é obrigatória")
         @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
         @Size(max = 100, message = "A senha deve ter no máximo 100 caracteres")
         @JsonProperty("senha")
-        @Schema(description = "Senha de acesso", example = "senha-segura")
+        @Schema(description = "Senha de acesso, com 8 a 100 caracteres", example = "senha-segura",
+                format = "password", accessMode = Schema.AccessMode.WRITE_ONLY)
         String password
 ) {
         public UserRegistrationRequest {

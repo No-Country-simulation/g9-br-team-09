@@ -19,6 +19,8 @@ import org.springframework.context.annotation.Configuration;
 )
 @SecurityScheme(
         name = "bearerAuth",
+        description = "JWT de acesso recebido em `/auth/login` ou `/auth/refresh`. "
+                + "Envie-o no header `Authorization: Bearer <access_token>`.",
         type = SecuritySchemeType.HTTP,
         bearerFormat = "JWT",
         scheme = "bearer"
