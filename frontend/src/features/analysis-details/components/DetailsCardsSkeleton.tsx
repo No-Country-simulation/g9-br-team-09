@@ -2,6 +2,7 @@ import Skeleton, { SkeletonTheme } from 'react-loading-skeleton'
 
 import { CardSkeleton } from '@/shared/components/CardSkeleton'
 import { Divider } from '@/shared/components/Divider'
+import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 
 export function AnalysisDetailsSkeleton() {
   return (
@@ -9,6 +10,11 @@ export function AnalysisDetailsSkeleton() {
       baseColor="var(--skeleton-base-color)"
       highlightColor="var(--skeleton-highlight-color)"
     >
+      <LoadingSpinner
+        label="Carregando detalhes da análise"
+        size="sm"
+        className="mb-4 justify-start"
+      />
       <div aria-hidden="true">
         {/* Topo */}
         <Skeleton width={220} height={36} />
@@ -81,9 +87,6 @@ export function AnalysisDetailsSkeleton() {
           </div>
         </div>
       </div>
-      <span className="sr-only" role="status">
-        Carregando detalhes da análise
-      </span>
     </SkeletonTheme>
   )
 }

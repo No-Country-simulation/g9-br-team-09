@@ -16,9 +16,8 @@ async def test_predict_returns_backend_compatible_payload(client, valid_request:
         "probabilidade": 0.7,
         "score": 80,
         "recomendacoes": [
-            "Reduzir o uso de equipamentos durante horários de pico.",
-            "Distribuir atividades de alto consumo ao longo do dia.",
-            "Revisar os hábitos de consumo e definir um plano de redução gradual.",
+            "Redistribua as atividades de alto consumo para fora do horário de pico sempre que possível.",
+            "Defina um plano de redução gradual e acompanhe sua evolução mensal.",
         ],
         "modelo_versao": "energy-classifier-v2-test",
     }

@@ -25,8 +25,11 @@ vi.mock('@/features/auth/api/auth-api', () => ({
   register: vi.fn(),
 }))
 
-import { logout, refresh } from '@/features/auth/api/auth-api'
-import type { AuthenticationResponse } from '@/features/auth/schemas/responses'
+import { login, logout, refresh, register } from '@/features/auth/api/auth-api'
+import type {
+  AuthenticationResponse,
+  RegistrationResponse,
+} from '@/features/auth/schemas/responses'
 
 import { AuthProvider } from './AuthProvider'
 import { useAuth } from './useAuth'
@@ -45,10 +48,12 @@ const authentication: AuthenticationResponse = {
 }
 
 const refreshMock = vi.mocked(refresh)
+const loginMock = vi.mocked(login)
 const logoutMock = vi.mocked(logout)
+const registerMock = vi.mocked(register)
 
 function AuthProbe() {
-  const { status, user, logout: signOut } = useAuth()
+  const { status, user, logout: signOut, register: signUp } = useAuth()
 
   return (
     <>
@@ -56,6 +61,18 @@ function AuthProbe() {
       <output data-testid="user">{user?.email ?? 'none'}</output>
       <button onClick={() => void signOut().catch(() => undefined)}>
         Sair
+      </button>
+      <button
+        onClick={() =>
+          void signUp({
+            fullName: 'Test User',
+            email: 'user@example.test',
+            password: 'password123',
+            confirmPassword: 'password123',
+          })
+        }
+      >
+        Cadastrar
       </button>
     </>
   )
@@ -68,7 +85,9 @@ describe('AuthProvider', () => {
     clearAccessToken()
     clearCsrfToken()
     refreshMock.mockReset()
+    loginMock.mockReset()
     logoutMock.mockReset()
+    registerMock.mockReset()
   })
 
   it('restaura a sessão e atualiza usuário e access token', async () => {
@@ -122,6 +141,41 @@ describe('AuthProvider', () => {
     })
 
     expect(getAccessToken()).toBeNull()
+  })
+
+  it('autentica automaticamente após o cadastro bem-sucedido', async () => {
+    const registration: RegistrationResponse = authentication.usuario
+    refreshMock.mockRejectedValueOnce(new Error('no refresh cookie'))
+    registerMock.mockResolvedValueOnce(registration)
+    loginMock.mockResolvedValueOnce(authentication)
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status')).toHaveTextContent('anonymous')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastrar' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status')).toHaveTextContent('authenticated')
+    })
+
+    expect(registerMock).toHaveBeenCalledWith({
+      fullName: 'Test User',
+      email: 'user@example.test',
+      password: 'password123',
+      confirmPassword: 'password123',
+    })
+    expect(loginMock).toHaveBeenCalledWith({
+      email: 'user@example.test',
+      password: 'password123',
+    })
+    expect(getAccessToken()).toBe('test-access-token')
   })
 
   it('encerra a sessão local mesmo quando logout falha', async () => {

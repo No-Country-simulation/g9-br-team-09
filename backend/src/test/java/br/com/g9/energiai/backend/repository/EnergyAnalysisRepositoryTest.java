@@ -55,6 +55,7 @@ class EnergyAnalysisRepositoryTest {
     @Test
     @DisplayName("Deve persistir e recuperar a análise usando apenas a tabela energy_analysis")
     void shouldPersistAndLoadAnalysisUsingSingleTable() {
+        double mlProbability = 0.8848920863309353;
         List<String> recommendations = List.of(
             "Reduzir o uso de equipamentos durante horários de pico.",
             "Avaliar equipamentos com alto consumo energético."
@@ -67,7 +68,7 @@ class EnergyAnalysisRepositoryTest {
             .tipoImovel(PropertyType.CASA)
             .horasAltoConsumo(8)
             .categoria(EnergyCategory.INEFICIENTE)
-            .probabilidade(0.95)
+            .probabilidade(mlProbability)
             .score(95)
             .custoEstimadoMensal(new BigDecimal("315.00"))
             .fonteClassificacao(ClassificationSource.RULE_BASED)
@@ -102,6 +103,7 @@ class EnergyAnalysisRepositoryTest {
         assertEquals("[\"Reduzir o uso de equipamentos durante horários de pico.\",\"Avaliar equipamentos com alto consumo energético.\"]", rawRecommendations);
         assertEquals(PropertyType.CASA, reloaded.getTipoImovel());
         assertEquals(EnergyCategory.INEFICIENTE, reloaded.getCategoria());
+        assertEquals(mlProbability, reloaded.getProbabilidade());
         assertEquals(ClassificationSource.RULE_BASED, reloaded.getFonteClassificacao());
         assertEquals(new BigDecimal("315.00"), reloaded.getCustoEstimadoMensal());
         assertEquals(recommendations, reloaded.getRecomendacoes());
@@ -109,6 +111,30 @@ class EnergyAnalysisRepositoryTest {
         assertTrue(reloaded.getUsoHorarioPico());
         assertNotNull(reloaded.getCreatedAt());
         assertTrue(reloaded.getCreatedAt().isEqual(saved.getCreatedAt()) || reloaded.getCreatedAt().isAfter(saved.getCreatedAt()));
+    }
+
+    @Test
+    @DisplayName("Deve persistir e recuperar usoHorarioPico falso")
+    void shouldPersistAndLoadAnalysisWithOffPeakUsage() {
+        EnergyAnalysisEntity saved = energyAnalysisRepository.saveAndFlush(EnergyAnalysisEntity.builder()
+                .user(userA)
+                .consumoKwh(180.0)
+                .usoHorarioPico(false)
+                .quantidadeEquipamentos(4)
+                .tipoImovel(PropertyType.APARTAMENTO)
+                .horasAltoConsumo(2)
+                .categoria(EnergyCategory.EFICIENTE)
+                .probabilidade(0.80)
+                .score(80)
+                .custoEstimadoMensal(new BigDecimal("135.00"))
+                .fonteClassificacao(ClassificationSource.RULE_BASED)
+                .recomendacoes(List.of())
+                .build());
+        entityManager.clear();
+
+        EnergyAnalysisEntity reloaded = energyAnalysisRepository.findById(saved.getId()).orElseThrow();
+
+        assertFalse(reloaded.getUsoHorarioPico());
     }
 
     @Test

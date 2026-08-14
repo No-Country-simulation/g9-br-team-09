@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AuthContextValue } from '@/app/providers/auth/auth.types'
@@ -37,10 +37,15 @@ function auth(status: AuthContextValue['status']): AuthContextValue {
   }
 }
 
-function renderHeader() {
+function CurrentPath() {
+  return <output>{useLocation().pathname}</output>
+}
+
+function renderHeader(initialPath = '/') {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <Header />
+      <CurrentPath />
     </MemoryRouter>,
   )
 }
@@ -55,13 +60,16 @@ describe('Header', () => {
 
     renderHeader()
 
+    expect(
+      screen.getByRole('button', { name: 'Ir para o início' }),
+    ).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Cadastre-se' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Começar análise' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'Começar análise' }),
+    ).toBeNull()
     expect(screen.queryByRole('button', { name: 'Abrir painel' })).toBeNull()
     expect(
       screen.queryByRole('button', { name: 'Abrir histórico de análises' }),
@@ -73,6 +81,9 @@ describe('Header', () => {
 
     renderHeader()
 
+    expect(
+      screen.getByRole('button', { name: 'Ir para o início' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Abrir painel' }),
     ).toBeInTheDocument()
@@ -87,5 +98,62 @@ describe('Header', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Entrar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Cadastre-se' })).toBeNull()
+  })
+
+  it.each([
+    ['/', 'Ir para o início'],
+    ['/painel', 'Abrir painel'],
+    ['/historico', 'Abrir histórico de análises'],
+    ['/analise-energetica', 'Iniciar nova análise energética'],
+    ['/detalhes/42', 'Abrir histórico de análises'],
+    ['/resultado', 'Iniciar nova análise energética'],
+  ])('sinaliza somente a rota ativa em %s', (path, activeAction) => {
+    authState.value = auth('authenticated')
+
+    renderHeader(path)
+
+    expect(screen.getByRole('button', { name: activeAction })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    const navigationActions = [
+      'Ir para o início',
+      'Abrir painel',
+      'Abrir histórico de análises',
+      'Iniciar nova análise energética',
+    ]
+    navigationActions
+      .filter((action) => action !== activeAction)
+      .forEach((action) => {
+        expect(screen.getByRole('button', { name: action })).not.toHaveAttribute(
+          'aria-current',
+        )
+      })
+  })
+
+  it('navega para a página inicial pelo logo', () => {
+    authState.value = auth('authenticated')
+
+    renderHeader('/historico')
+
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Ir para a página inicial do EnergiAI' }),
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('/')
+  })
+
+  it('encerra a sessão e redireciona para o login', async () => {
+    const state = auth('authenticated')
+    authState.value = state
+
+    renderHeader('/painel')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Encerrar sessão' }))
+
+    await waitFor(() => expect(state.logout).toHaveBeenCalledOnce())
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('/login'),
+    )
   })
 })

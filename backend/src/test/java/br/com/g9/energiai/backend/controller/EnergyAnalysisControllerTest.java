@@ -1,10 +1,12 @@
 package br.com.g9.energiai.backend.controller;
 
 import br.com.g9.energiai.backend.client.ml.MlPredictionClient;
+import br.com.g9.energiai.backend.client.ml.dto.MlPredictionResponse;
 import br.com.g9.energiai.backend.client.ml.exception.MlPredictionClientException;
 import br.com.g9.energiai.backend.config.JwtProperties;
 import br.com.g9.energiai.backend.entity.AppUser;
 import br.com.g9.energiai.backend.enums.UserRole;
+import br.com.g9.energiai.backend.enums.EnergyCategory;
 import br.com.g9.energiai.backend.repository.EnergyAnalysisRepository;
 import br.com.g9.energiai.backend.repository.UserRepository;
 import br.com.g9.energiai.backend.service.JwtTokenService;
@@ -24,6 +26,11 @@ import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.stream.Stream;
+import java.util.List;
+
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -33,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,6 +86,7 @@ class EnergyAnalysisControllerTest {
     @Test
     @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa incluindo ID")
     void shouldPerformAnalysisSuccessfully() throws Exception {
+        double mlProbability = 0.8848920863309353;
         AppUser currentUser = userRepository.save(AppUser.builder()
                 .name("Teste").email("teste@email.com").passwordHash("hash")
                 .role(UserRole.USER).active(true).build());
@@ -94,7 +103,9 @@ class EnergyAnalysisControllerTest {
             }
             """;
 
-        when(mlPredictionClient.predict(any())).thenThrow(new MlPredictionClientException("API indisponível"));
+        when(mlPredictionClient.predict(any())).thenReturn(new MlPredictionResponse(
+                EnergyCategory.MODERADO, mlProbability, 81, List.of("Recomendação do modelo"), "v1"
+        ));
 
         long countBefore = energyAnalysisRepository.count();
 
@@ -107,23 +118,18 @@ class EnergyAnalysisControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.categoria").value("INEFICIENTE"))
-                .andExpect(jsonPath("$.probabilidade").value(0.75))
-                .andExpect(jsonPath("$.score").value(95))
+                .andExpect(jsonPath("$.categoria").value("MODERADO"))
+                .andExpect(jsonPath("$.probabilidade").value(mlProbability))
+                .andExpect(jsonPath("$.score").value(81))
                 .andExpect(jsonPath("$.custo_estimado_mensal").value(375.00))
-                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED_FALLBACK"))
+                .andExpect(jsonPath("$.fonte_classificacao").value("ML_MODEL"))
                 .andExpect(jsonPath("$.custoEstimadoMensal").doesNotExist())
                 .andExpect(jsonPath("$.fonteClassificacao").doesNotExist())
                 .andExpect(jsonPath("$.user_id").doesNotExist())
                 .andExpect(jsonPath("$.user").doesNotExist())
                 .andExpect(jsonPath("$.recomendacoes").isArray())
-                .andExpect(jsonPath("$.recomendacoes.length()").value(4))
-                .andExpect(jsonPath("$.recomendacoes", containsInAnyOrder(
-                        "Reduzir o uso de equipamentos durante horários de pico.",
-                        "Avaliar equipamentos com alto consumo energético.",
-                        "Distribuir o consumo ao longo do dia.",
-                        "Verificar a eficiência energética dos equipamentos."
-                )))
+                .andExpect(jsonPath("$.recomendacoes.length()").value(1))
+                .andExpect(jsonPath("$.recomendacoes", containsInAnyOrder("Recomendação do modelo")))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -132,10 +138,84 @@ class EnergyAnalysisControllerTest {
         long persistedId = jsonResponse.get("id").asLong();
         var saved = energyAnalysisRepository.findById(persistedId);
 
+        String detailBody = mockMvc.perform(get("/api/v1/analise-energetica/{id}", persistedId)
+                        .contextPath("/api/v1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode detailResponse = objectMapper.readTree(detailBody);
+
         assertEquals(countBefore + 1, energyAnalysisRepository.count());
         assertTrue(saved.isPresent());
         assertEquals(currentUser.getId(), saved.get().getUser().getId());
+        assertEquals(jsonResponse.get("categoria"), detailResponse.get("categoria"));
+        assertEquals(jsonResponse.get("probabilidade"), detailResponse.get("probabilidade"));
+        assertEquals(jsonResponse.get("score"), detailResponse.get("score"));
+        assertEquals(jsonResponse.get("custo_estimado_mensal"), detailResponse.get("custo_estimado_mensal"));
+        assertEquals(jsonResponse.get("fonte_classificacao"), detailResponse.get("fonte_classificacao"));
         verify(mlPredictionClient).predict(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "Deve persistir uma única análise com fallback para {0}")
+    @org.junit.jupiter.params.provider.MethodSource("mlFailures")
+    void shouldPersistOneFallbackAnalysisForMlFailure(String ignoredDescription,
+                                                       MlPredictionClientException failure) throws Exception {
+        AppUser currentUser = saveUser("Fallback User", "fallback-" + ignoredDescription.hashCode() + "@example.com", true);
+        when(mlPredictionClient.predict(any())).thenThrow(failure);
+
+        long countBefore = energyAnalysisRepository.count();
+
+        mockMvc.perform(post("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .header("Authorization", "Bearer " + jwtTokenService.generateToken(currentUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestJson()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED_FALLBACK"));
+
+        assertEquals(countBefore + 1, energyAnalysisRepository.count());
+        verify(mlPredictionClient).predict(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "Deve persistir uma única análise com fallback para resposta inválida: {0}")
+    @org.junit.jupiter.params.provider.MethodSource("invalidMlPredictions")
+    void shouldPersistOneFallbackAnalysisForInvalidMlResponse(String ignoredDescription,
+                                                               MlPredictionResponse prediction) throws Exception {
+        AppUser currentUser = saveUser("Invalid ML User", "invalid-" + ignoredDescription.hashCode() + "@example.com", true);
+        when(mlPredictionClient.predict(any())).thenReturn(prediction);
+
+        long countBefore = energyAnalysisRepository.count();
+
+        mockMvc.perform(post("/api/v1/analise-energetica")
+                        .contextPath("/api/v1")
+                        .header("Authorization", "Bearer " + jwtTokenService.generateToken(currentUser))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestJson()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fonte_classificacao").value("RULE_BASED_FALLBACK"));
+
+        assertEquals(countBefore + 1, energyAnalysisRepository.count());
+        verify(mlPredictionClient).predict(any());
+    }
+
+    private static Stream<org.junit.jupiter.params.provider.Arguments> mlFailures() {
+        return Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("timeout de conexão", new MlPredictionClientException("Falha", new SocketTimeoutException("Connect timed out"))),
+                org.junit.jupiter.params.provider.Arguments.of("timeout de leitura", new MlPredictionClientException("Falha", new SocketTimeoutException("Read timed out"))),
+                org.junit.jupiter.params.provider.Arguments.of("conexão recusada", new MlPredictionClientException("Falha", new IOException("Connection refused"))),
+                org.junit.jupiter.params.provider.Arguments.of("erro HTTP", new MlPredictionClientException("Falha HTTP")),
+                org.junit.jupiter.params.provider.Arguments.of("body vazio", new MlPredictionClientException("A API de ML retornou uma resposta sem corpo"))
+        );
+    }
+
+    private static Stream<org.junit.jupiter.params.provider.Arguments> invalidMlPredictions() {
+        return Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("resposta nula", null),
+                org.junit.jupiter.params.provider.Arguments.of("categoria nula", new MlPredictionResponse(null, 0.5, 50, List.of("Dica"), null)),
+                org.junit.jupiter.params.provider.Arguments.of("recomendação em branco", new MlPredictionResponse(EnergyCategory.EFICIENTE, 0.5, 50, List.of(" "), null))
+        );
     }
 
     @Test

@@ -3,6 +3,7 @@ import 'react-loading-skeleton/dist/skeleton.css'
 import Skeleton, { SkeletonTheme } from 'react-loading-skeleton'
 
 import { CardSkeleton } from '@/shared/components/CardSkeleton'
+import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 
 export function SummaryCardsSkeleton() {
   return (
@@ -10,6 +11,11 @@ export function SummaryCardsSkeleton() {
       baseColor="var(--skeleton-base-color)"
       highlightColor="var(--skeleton-highlight-color)"
     >
+      <LoadingSpinner
+        label="Carregando resumo de análises"
+        size="sm"
+        className="mb-4 justify-start"
+      />
       <div className="space-y-6" aria-hidden="true">
         {/* Cards superiores */}
         <div className="grid gap-4 sm:max-w-4xl md:grid-cols-3">
@@ -53,9 +59,6 @@ export function SummaryCardsSkeleton() {
           </div>
         </CardSkeleton>
       </div>
-      <span className="sr-only" role="status">
-        Carregando resumo de análises
-      </span>
     </SkeletonTheme>
   )
 }

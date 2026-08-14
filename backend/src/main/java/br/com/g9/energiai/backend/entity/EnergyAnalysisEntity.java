@@ -71,7 +71,7 @@ public class EnergyAnalysisEntity {
     private EnergyCategory categoria;
 
     @JdbcTypeCode(SqlTypes.NUMERIC)
-    @Column(nullable = false, precision = 5, scale = 2)
+    @Column(nullable = false, precision = 20, scale = 17)
     private Double probabilidade;
 
     @Column(nullable = false)
