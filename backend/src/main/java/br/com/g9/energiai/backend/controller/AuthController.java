@@ -16,6 +16,7 @@ import br.com.g9.energiai.backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,6 +29,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,7 +53,24 @@ public class AuthController {
     private final CsrfCookieService csrfCookieService;
 
     @PostMapping("/register")
-    @Operation(summary = "Cadastrar novo usuário")
+    @Operation(summary = "Cadastrar novo usuário", description = "Cria uma conta com o papel `USER`.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Usuário cadastrado com sucesso",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = UserRegistrationResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Dados de cadastro inválidos ou corpo malformado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "E-mail já cadastrado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "415", description = "Media type não suportado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Erro interno inesperado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public ResponseEntity<UserRegistrationResponse> register(@RequestBody @Valid UserRegistrationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.register(request));
     }
@@ -63,6 +82,30 @@ public class AuthController {
                     + "cookie XSRF-TOKEN não HttpOnly. O cliente deve ler preferencialmente o token CSRF no header "
                     + "X-XSRF-TOKEN exposto por CORS; o refresh token nunca aparece no JSON."
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Autenticação concluída",
+                    headers = {
+                            @Header(name = "Set-Cookie", description = "Emite os cookies `refresh_token` (HttpOnly) e "
+                                    + "`XSRF-TOKEN` (não HttpOnly); o refresh token não é retornado no JSON.",
+                                    schema = @Schema(type = "string", example = "refresh_token=<token-opaco>; HttpOnly")),
+                            @Header(name = "X-XSRF-TOKEN", description = "Token CSRF correspondente ao cookie XSRF-TOKEN.",
+                                    schema = @Schema(type = "string", example = "csrf-token"))
+                    },
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = AuthenticationResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Credenciais inválidas ou corpo malformado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "E-mail ou senha inválidos, ou usuário inativo",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "415", description = "Media type não suportado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Erro interno inesperado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public ResponseEntity<AuthenticationResponse> login(@RequestBody @Valid UserLoginRequest request,
                                                          HttpServletRequest servletRequest,
                                                          HttpServletResponse servletResponse) {
@@ -87,11 +130,24 @@ public class AuthController {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Sessão renovada e refresh token rotacionado",
-                    content = @Content(schema = @Schema(implementation = AuthenticationResponse.class))),
+                    headers = {
+                            @Header(name = "Set-Cookie", description = "Emite o novo cookie `refresh_token` HttpOnly; "
+                                    + "o valor não é retornado no JSON.",
+                                    schema = @Schema(type = "string", example = "refresh_token=<token-opaco>; HttpOnly")),
+                            @Header(name = "X-XSRF-TOKEN", description = "Token CSRF correspondente ao cookie XSRF-TOKEN.",
+                                    schema = @Schema(type = "string", example = "csrf-token"))
+                    },
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = AuthenticationResponse.class))),
             @ApiResponse(responseCode = "401", description = "Refresh token ausente, inválido ou indisponível",
-                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
             @ApiResponse(responseCode = "403", description = "Token CSRF ausente ou inválido",
-                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Erro interno inesperado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
     })
     public ResponseEntity<AuthenticationResponse> refresh(HttpServletRequest request,
                                                           HttpServletResponse response) {
@@ -115,9 +171,15 @@ public class AuthController {
             }
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Sessão encerrada ou já ausente"),
+            @ApiResponse(responseCode = "204", description = "Sessão encerrada ou já ausente",
+                    headers = @Header(name = "Set-Cookie", description = "Remove os cookies `refresh_token` e `XSRF-TOKEN`.",
+                            schema = @Schema(type = "string", example = "refresh_token=; Max-Age=0"))),
             @ApiResponse(responseCode = "403", description = "Token CSRF ausente ou inválido",
-                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Erro interno inesperado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
     })
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         refreshTokenService.logout(refreshTokenCookieService.readRawToken(request));
@@ -128,6 +190,20 @@ public class AuthController {
 
     @GetMapping("/me")
     @Operation(summary = "Obter dados do usuário autenticado", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Dados do usuário autenticado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = AuthenticatedUserResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Bearer JWT ausente, inválido, expirado ou associado a usuário inativo",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "JWT sem o papel USER",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Erro interno inesperado",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
     public ResponseEntity<AuthenticatedUserResponse> me(@AuthenticationPrincipal Jwt jwt) {
         try {
             Long userId = Long.valueOf(jwt.getSubject());

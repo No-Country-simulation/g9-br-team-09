@@ -47,7 +47,11 @@ MODEL_PATH=./models/<ARTEFATO_COMPATIVEL>
 MODEL_VERSION=<VERSAO_DO_MODELO>
 ~~~
 
-Modelo é carregado uma vez no startup. Sem MODEL_PATH, MODEL_VERSION ou artefato compatível com predict_proba e três classes oficiais, aplicação falha ao iniciar; não cria modelo fake nem aplica fallback.
+O exemplo versionado usa `./models/modelo_energetico_v2.joblib` e
+`energy-classifier-v2`. O modelo é carregado uma vez no startup. Sem
+`MODEL_PATH`, `MODEL_VERSION` ou artefato compatível com `predict_proba` e as
+três classes oficiais, a aplicação falha ao iniciar; não cria modelo fake nem
+aplica fallback.
 
 ~~~bash
 cd data-science
@@ -92,6 +96,18 @@ python -m compileall app tests
 
 Testes injetam modelo fake determinístico somente em teste; nenhum artefato fake é modelo oficial.
 
-## Dependência e limitações
+## Estado e limitações
 
-Artefato V2 oficial depende da Issue #86. Testes de contrato usam fakes injetados, mas teste contra modelo real permanece bloqueado até artefato compatível. Fora de escopo: treinamento, notebooks históricos, acesso frontend, fallback backend, integração ponta a ponta, credenciais Oracle, OCI e deploy.
+A Issue #86 concluiu o artefato V2 e a Issue #111 publicou esta FastAPI no
+Render. O serviço continua interno: o frontend não recebe nem deve consumir sua
+URL; Spring Boot controla o contrato público e chama `/predict`.
+
+O [relatório final de modelagem V2](docs/modeling-final-report-v2.md) é a fonte
+detalhada de dataset, modelo, métricas, artefato e limitações. Testes de
+contrato ainda usam fakes injetados quando precisam isolar a API; isso não
+substitui a validação integrada registrada na [suíte E2E](../frontend/e2e/README.md).
+
+O dataset é sintético. As métricas não comprovam desempenho em dados reais,
+causalidade ou validade externa. Fora de escopo deste README: treinamento,
+notebooks históricos, acesso direto pelo frontend, fallback do backend,
+credenciais Oracle e operação OCI.

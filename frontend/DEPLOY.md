@@ -87,7 +87,7 @@ Como o roteamento é feito através do React Router, foi criado `vercel.json` na
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Origens a liberar  | `https://energiai.vercel.app` e os ambientes locais usados no desenvolvimento (`http://localhost:3000`, `http://localhost:5173`)                     |
 | Métodos            | GET, POST, PUT, DELETE, OPTIONS                                                                                                                      |
-| Endpoints afetados | `POST /api/v1/analise-energetica`, `GET /api/v1/analise-energetica`, `GET /api/v1/analise-energetica/resumo` e `GET /api/v1/analise-energetica/{id}` |
+| Endpoints afetados | Rotas públicas sob `/api/v1/**`, incluindo autenticação e análises; o contrato normativo permanece em [`docs/api-contract.md`](../docs/api-contract.md). |
 
 ## Diagnóstico de falhas
 
@@ -108,9 +108,16 @@ Fluxo completo testado em produção (`https://energiai.vercel.app`), com chamad
 - Consulta de análise específica por id (`GET /api/v1/analise-energetica/{id}`);
 - Criação de análise energética via formulário (`POST /api/v1/analise-energetica`).
 
+A validação E2E posterior percorreu o happy path publicado com cadastro e
+autenticação pela interface, análise, resultado, histórico, detalhe e dashboard.
+Ela também comprovou o fluxo `ML_MODEL`, o fallback controlado
+`RULE_BASED_FALLBACK` e o retorno a `ML_MODEL` após a restauração da
+configuração. O procedimento, os resultados e as limitações estão em
+[e2e/README.md](e2e/README.md); esta seção não duplica essa evidência.
+
 ## Limitações conhecidas
 
-Testes automatizados ainda não implementados (validação realizada manualmente).
-
-A publicação ainda depende da conta pessoal do responsável atual; o plano Hobby da Vercel não permite convidar outros membros para colaborar no projeto.
-Por ora, apenas essa conta consegue rodar `vercel --prod`.
+A publicação é controlada pela conta proprietária do projeto Vercel; confirme
+com o responsável autorizado antes de executar `vercel --prod`. A validação
+E2E cria usuários e análises descartáveis que permanecem persistidos porque a
+interface não oferece exclusão pública.
