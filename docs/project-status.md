@@ -2,11 +2,10 @@
 
 ## Visão geral
 
-Este documento registra o estado vivo observado em `develop` no commit
-`e5f4d126479de8842dfb2332a7f973c8e5a1f626`, em 14/08/2026. Ele não substitui
-o [contrato HTTP](api-contract.md) nem os runbooks operacionais. A consolidação
-final da entrega permanece em execução na issue `#120` e ainda não integra esse
-estado de `develop`.
+Este documento registra o estado consolidado do projeto após as entregas
+técnicas finais do hackathon. A documentação final de entrega está organizada
+em `docs/delivery/`. Ele não substitui o [contrato HTTP](api-contract.md) nem
+os runbooks operacionais.
 
 ## Estado atual
 
@@ -24,8 +23,8 @@ As issues #86 (modelagem V2), #111 (FastAPI no Render) e #118 (autenticação no
 frontend) estão tecnicamente concluídas e integradas. A entrega técnica da
 #121 (E2E) também está integrada em `develop` no commit
 `e5f4d126479de8842dfb2332a7f973c8e5a1f626`, sem inferir o fechamento
-administrativo da issue. A issue #120 permanece em execução: a documentação de
-entrega desta branch ainda não foi integrada em `develop`.
+administrativo da issue. A documentação final de entrega está consolidada em
+`docs/delivery/`, com arquitetura implantada e roteiro do Demo Day.
 
 ## Fluxo de classificação e disponibilidade
 
