@@ -92,7 +92,9 @@ test('valida análise, persistência, histórico, detalhes, painel e navegação
 
   const categoryCard = page.getByRole('region', { name: 'Categoria' })
   await expect(categoryCard).toContainText(/Eficiente|Moderado|Ineficiente/)
-  const score = await numericContent(categoryCard.getByText(/Score:/))
+  const score = await numericContent(
+    categoryCard.getByText(/Índice de ineficiência:/),
+  )
   expect(score).toBeGreaterThanOrEqual(0)
   expect(score).toBeLessThanOrEqual(100)
 

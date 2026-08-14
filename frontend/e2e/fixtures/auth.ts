@@ -17,10 +17,5 @@ export async function authenticateDisposableUser(page: Page): Promise<void> {
   await page.getByLabel('Confirme a senha').fill(password)
   await page.getByRole('button', { name: 'Criar conta' }).click()
 
-  await page.waitForURL(/\/login$/)
-  await page.getByRole('textbox', { name: 'Email' }).fill(email)
-  await page.getByLabel('Senha', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-
   await page.waitForURL(/\/analise-energetica$/)
 }
