@@ -2,10 +2,10 @@
 
 ## Status
 
-> Proposta técnica em avaliação no Draft PR #122.
->
-> Este documento não substitui automaticamente a Especificação V2 vigente e
-> não representa decisão definitiva da equipe.
+> **Registro histórico de proposta.** Esta revisão foi elaborada durante o
+> Draft PR #122, antes da conclusão da Issue #86. Não representa decisão atual
+> nem instrução operacional. A solução final e os resultados da proposta estão
+> consolidados no [relatório final de modelagem V2](modeling-final-report-v2.md).
 
 ## Contexto
 

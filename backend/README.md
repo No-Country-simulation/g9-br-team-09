@@ -186,34 +186,34 @@ cookie e os endpoints de refresh/logout exigem o token CSRF correspondente.
 
 #### Cadastro (POST /api/v1/auth/register)
 
-```bash
+```json
 {
-  "nome": "Lucas Rossoni",
-  "email": "lucas@email.com",
-  "senha": "senha-segura"
+  "nome": "Pessoa de demonstração",
+  "email": "demo@example.com",
+  "senha": "<senha-de-demonstracao>"
 }
 ```
 
 #### Login (POST /api/v1/auth/login)
 
-```bash
+```json
 {
-  "email": "lucas@email.com",
-  "senha": "senha-segura"
+  "email": "demo@example.com",
+  "senha": "<senha-de-demonstracao>"
 }
 ```
 
 - Resposta de Sucesso no Login
 
-```bash
+```json
 {
-  "access_token": "eyJhbGci...",
+  "access_token": "<access-token-omitido>",
   "token_type": "Bearer",
   "expires_in": 900,
   "usuario": {
     "id": 1,
-    "nome": "Lucas Rossoni",
-    "email": "lucas@email.com",
+    "nome": "Pessoa de demonstração",
+    "email": "demo@example.com",
     "role": "USER",
     "criado_em": "2026-08-02T16:35:32"
   }
@@ -225,11 +225,11 @@ cookie e os endpoints de refresh/logout exigem o token CSRF correspondente.
 - Header: Authorization: Bearer <access_token>
 - Resposta:
 
-```bash
+```json
 {
   "id": 1,
-  "nome": "Lucas Rossoni",
-  "email": "lucas@email.com",
+  "nome": "Pessoa de demonstração",
+  "email": "demo@example.com",
   "role": "USER",
   "criado_em": "2026-08-02T16:35:32"
 }

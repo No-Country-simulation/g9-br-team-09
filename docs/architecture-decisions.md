@@ -2,7 +2,8 @@
 
 Este documento registra decisões técnicas e organizacionais relevantes para o projeto EnergIAI.
 
-As decisões abaixo devem ser revisadas pela equipe via Pull Request antes de serem consideradas definitivas.
+As decisões abaixo registram o estado adotado no repositório. Alterações nelas
+devem ser revisadas pela equipe via Pull Request.
 
 ## ADR-001 — Idioma da documentação
 
@@ -113,7 +114,7 @@ O contrato documental e os testes públicos devem referenciar `POST /api/v1/anal
 
 ### Decisão ADR-007
 
-Oracle Autonomous Database é o serviço OCI principal definido para persistência no ambiente cloud.
+Oracle Autonomous Database é o serviço OCI principal usado para persistência no ambiente cloud.
 
 ### Motivo ADR-007
 
@@ -121,7 +122,7 @@ Essa escolha atende ao requisito de uso de OCI e alinha a estratégia de persist
 
 ### Impacto ADR-007
 
-A documentação deve tratar Oracle Autonomous Database como serviço cloud alvo, mantendo a necessidade de evidência técnica compatível com o estado real do projeto.
+A documentação deve tratar Oracle Autonomous Database como serviço de persistência do ambiente OCI e manter evidência técnica compatível com o estado real do projeto.
 
 ---
 

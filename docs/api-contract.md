@@ -55,9 +55,9 @@ A resposta pública contém id, categoria, probabilidade, score, custo_estimado_
 | score | Score numérico da análise. |
 | custo_estimado_mensal | Estimativa mensal em reais calculada pelo backend. |
 | recomendacoes | Recomendações da análise. |
-| fonte_classificacao | RULE_BASED, ML_MODEL ou RULE_BASED_FALLBACK. |
+| fonte_classificacao | Fonte da classificação: RULE_BASED, ML_MODEL ou RULE_BASED_FALLBACK. |
 
-Categorias: EFICIENTE, MODERADO e INEFICIENTE. O backend calcula custo_estimado_mensal como consumo_kwh * 0.75. RULE_BASED, ML_MODEL e RULE_BASED_FALLBACK identificam a estratégia. Em regras, 0.75 é confiança heurística, não acurácia nem probabilidade estatística.
+Categorias: EFICIENTE, MODERADO e INEFICIENTE. O backend calcula custo_estimado_mensal como consumo_kwh * 0.75. `ML_MODEL` identifica uma resposta válida da FastAPI aceita pelo backend. `RULE_BASED_FALLBACK` identifica que o backend tentou a integração ML-first, mas usou o classificador local após indisponibilidade, timeout, erro ou resposta inválida da FastAPI. `RULE_BASED` identifica uma classificação realizada diretamente pelo classificador baseado em regras quando essa fonte é utilizada pelo domínio. No fluxo de produção ML-first demonstrado, os resultados normalmente observados são `ML_MODEL` ou `RULE_BASED_FALLBACK`; isso não remove `RULE_BASED` do contrato. Nas classificações por regras, a probabilidade é uma confiança heurística, não acurácia nem probabilidade estatística.
 
 modelo_versao é exclusivo do contrato FastAPI → Spring Boot. Não integra EnergyAnalysisResponse e não é exposto ao frontend.
 
@@ -109,10 +109,10 @@ Campos extras são rejeitados.
 {"categoria":"INEFICIENTE","probabilidade":0.81,"score":81,"recomendacoes":["Reduzir o uso de equipamentos durante horários de pico."],"modelo_versao":"energy-classifier-v2"}
 ~~~
 
-Números e versão são exemplos, não resultado garantido nem artefato final da Issue #86.
+Números são exemplos, não resultado garantido. A versão exemplificada corresponde ao artefato V2 atual; metodologia, artefato e métricas oficiais estão no [relatório final de modelagem](../data-science/docs/modeling-final-report-v2.md).
 
 - categoria: EFICIENTE, MODERADO ou INEFICIENTE, definida por argmax das probabilidades das três classes; não é recalculada pelo score.
-- probabilidade: número finito de 0 a 1 associado à categoria escolhida por argmax. Não é necessariamente calibrada; pipeline final com calibração tecnicamente justificada mantém o mesmo campo.
+- probabilidade: número finito de 0 a 1 associado à categoria escolhida por argmax. O modelo V2 atual usa calibração isotônica; a faixa e a semântica de contrato permanecem as mesmas para futuras evoluções compatíveis.
 - score: severidade esperada de 0 a 100:
 
 ~~~text
@@ -149,8 +149,6 @@ RULE_BASED_FALLBACK pertence ao Spring Boot. FastAPI não o envia e não impleme
 
 Nomes, tipos e semântica não mudam unilateralmente. Breaking changes exigem coordenação Java/Python. Algoritmo ou artefato pode mudar sem alterar HTTP se invariantes permanecerem; calibração não altera formato. modelo_versao identifica modelo, não contrato. Nenhuma evolução permite frontend consumir /predict. Mudanças atualizam esta fonte normativa antes ou junto do código.
 
-## Limites da Issue #86
+## Relação com a modelagem V2
 
-Contrato estável: cinco features, categorias, argmax, probabilidade da categoria, score de severidade 0–100, recomendações, modelo_versao e formato de /predict.
-
-Pendente na #86: modelo vencedor, hiperparâmetros, métricas, holdout, decisão de calibração, artefato serializado final e versão concreta. Isso não bloqueia contrato HTTP.
+O contrato estável preserva cinco features, categorias, argmax, probabilidade da categoria, score de severidade 0–100, recomendações, `modelo_versao` e formato de `/predict`. A Issue #86 está concluída: a solução V2 é Random Forest com calibração isotônica e versão `energy-classifier-v2`. O contrato não torna métricas ou algoritmo parte da API; a fonte detalhada é o [relatório final de modelagem](../data-science/docs/modeling-final-report-v2.md).

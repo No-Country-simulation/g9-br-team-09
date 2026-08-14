@@ -2,6 +2,16 @@
 
 Frontend da aplicação EnergiAI, construído como SPA com React, TypeScript, Vite e Tailwind CSS.
 
+O frontend publicado está em [https://energiai.vercel.app](https://energiai.vercel.app).
+Ele oferece cadastro, login e renovação de sessão, rotas protegidas, nova
+análise, resultado, histórico, detalhe e dashboard. A SPA consome somente a
+API pública Spring Boot configurada por `VITE_API_BASE_URL`; ela não chama a
+FastAPI nem `/predict` diretamente.
+
+Consulte o [guia de deploy](DEPLOY.md), a [suíte E2E](e2e/README.md) e a
+[documentação final de entrega](../docs/delivery/README.md) para o estado
+publicado, validações e arquitetura resumida.
+
 ## Stack
 
 | Tecnologia             | Finalidade                               |

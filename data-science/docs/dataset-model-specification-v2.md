@@ -1,5 +1,12 @@
 # Especificação V2 — Dataset e Modelo EnergIAI
 
+> **Documento histórico de planejamento.** Esta especificação registra a
+> proposta anterior à conclusão da Issue #86 e, por isso, contém linguagem de
+> futuro, critérios de aceite e pendências daquele momento. Ela não descreve o
+> estado atual do produto. Para a solução congelada, o artefato, as métricas e
+> as limitações vigentes, consulte o
+> [relatório final de modelagem V2](modeling-final-report-v2.md).
+
 ## 1. Conclusão
 
 A nova versão deverá produzir um **dataset sintético com 5.000 registros**, compatível com o contrato atual do backend, acompanhado de análise científica robusta, modelo supervisionado, probabilidades avaliadas e, somente quando houver justificativa técnica, calibradas, score de risco, recomendações explicáveis e artefatos preparados para integração com FastAPI.
