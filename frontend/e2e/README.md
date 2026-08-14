@@ -93,6 +93,23 @@ simular a FastAPI pelo navegador.
 
 ## Evidências e diagnóstico
 
+### Validação final registrada
+
+A aplicação publicada validada corresponde ao snapshot de `main`
+`196246909ef953085d35ce57b02da6285ab3a47f`. A suíte foi integrada depois em
+`develop`, no commit `e5f4d126479de8842dfb2332a7f973c8e5a1f626`; os commits
+identificam coisas diferentes.
+
+| Cenário | Configuração | Resultado | Fonte observada |
+| --- | --- | --- | --- |
+| Normal | `E2E_EXPECTED_SOURCE=ML_MODEL` | `2 passed`, `1 skipped` | `ML_MODEL` |
+| Fallback controlado | `E2E_EXPECTED_SOURCE=RULE_BASED_FALLBACK` | `3 passed` | `RULE_BASED_FALLBACK` |
+| Após restauração | `E2E_EXPECTED_SOURCE=ML_MODEL` | `2 passed`, `1 skipped` | `ML_MODEL` |
+
+O fallback foi preparado por operador autorizado conforme o procedimento
+abaixo; a suíte não alterou a implantação. Esses resultados são evidência da
+execução registrada, não promessa de disponibilidade futura.
+
 O relatório HTML é salvo em `playwright-report/`. Em falha, o Playwright retém
 também screenshot, vídeo e um anexo de erros do console/página em `test-results/`.
 Abra o relatório com:

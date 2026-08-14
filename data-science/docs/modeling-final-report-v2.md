@@ -416,7 +416,9 @@ data-science/tests/test_predict.py
 data-science/tests/test_validate_notebook.py
 ```
 
-A execução completa da suíte será repetida após a sincronização final com `develop`, antes do fechamento do Marco 3.
+A execução completa da suíte e a sincronização com `develop` foram concluídas
+na integração da Issue #86. A validação ponta a ponta posterior pertence à
+Issue #121 e está documentada em [frontend/e2e/README.md](../../frontend/e2e/README.md).
 
 ### Preservação do notebook histórico
 
@@ -560,8 +562,9 @@ O runtime local da API foi executado com as dependências instaladas no ambiente
 | Item | Referência |
 | --- | --- |
 | Issue | `#86` |
-| Draft PR | `#122` |
-| Branch | `feature/86/dataset-modelagem-v2` |
+| PR histórica | `#122` — concluída e integrada |
+| Branch histórica | `feature/86/dataset-modelagem-v2` |
+| Commit de integração | `85f6acd` — Issue `#86` concluída |
 | Dataset SHA-256 | `6c147517fce6108f0f663d72c41428736325e248db171a8357050ab02c8a73a3` |
 | Modelo SHA-256 | `ba4a2d8df87d0e0d6f4226a7b782f193a16c9722029c45cf2ab17a707532380e` |
 | Exemplos SHA-256 | `e842a7dc16b2660395b349ea7355bf821fb3c409ad9a2b84922a6d5bf5982c75` |
@@ -606,9 +609,9 @@ A validação local da FastAPI não substitui integração completa com Spring B
 
 ---
 
-## 19. Estado do Marco 3
+## 19. Fechamento do Marco 3
 
-Concluído até este relatório:
+Concluído nesta entrega:
 
 ```text
 avaliação oficial única do holdout
@@ -621,13 +624,7 @@ validação local de /predict
 relatório final de modelagem
 ```
 
-Ainda pendente para fechamento do Marco 3:
-
-```text
-sincronização final com develop
-execução completa dos testes após sincronização
-CI completo pós-sincronização
-revisão final do Marco 3
-```
-
-A PR deve permanecer em Draft até a conclusão desses checkpoints e autorização correspondente.
+Os checkpoints de sincronização, suíte completa, CI e revisão final foram
+concluídos no fechamento da Issue #86. Este relatório mantém a delimitação de
+escopo original: a publicação FastAPI e a validação E2E completa são entregas
+posteriores, registradas nas fontes específicas de deploy e E2E.
