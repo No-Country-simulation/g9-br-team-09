@@ -1,8 +1,8 @@
 # Roteiro de apresentação — EnergiAI
 
-**Demo Day:** 18/08  
-**Apresentador:** Fabio  
-**Apoio técnico e manutenção do roteiro:** Lucas  
+**Demo Day:** 18/08
+**Apresentador:** Fabio
+**Apoio técnico e manutenção do roteiro:** Lucas
 **Tempo-alvo:** aproximadamente 4min35, abaixo do limite de 5 minutos.
 
 Os tempos são referências de ensaio. Se a resposta da análise carregar antes,
@@ -216,39 +216,39 @@ principal.
 
 ## Perguntas prováveis
 
-**Onde Oracle foi utilizado?**  
+**Onde Oracle foi utilizado?**
 Usamos a Oracle Cloud em duas partes principais: o backend e o Caddy executam
 em uma instância OCI Compute, e a persistência das análises utiliza Oracle
 Autonomous Database, com o schema gerenciado por Flyway.
 
-**Onde entra Machine Learning?**  
+**Onde entra Machine Learning?**
 O Spring Boot consulta a FastAPI no Render, que executa o modelo para produzir a
 inferência.
 
-**O frontend chama o modelo diretamente?**  
+**O frontend chama o modelo diretamente?**
 Não. O frontend chama somente a API Spring Boot; o backend orquestra a chamada
 interna para a FastAPI.
 
-**O que acontece se o serviço de ML cair?**  
+**O que acontece se o serviço de ML cair?**
 O backend usa uma classificação de contingência baseada em regras, mantendo a
 análise disponível. Ela não é equivalente ao modelo de Machine Learning.
 
-**O que significa F1-macro?**  
+**O que significa F1-macro?**
 É a média do F1 das classes, dando o mesmo peso a cada uma delas. O valor de
 aproximadamente 96,1% foi obtido no holdout da base sintética.
 
-**O dataset é real?**  
+**O dataset é real?**
 Não. É uma base sintética de 5.000 registros; por isso o resultado não comprova
 desempenho equivalente em dados do mundo real.
 
-**Por que a tarifa é R$ 0,75 por kWh?**  
+**Por que a tarifa é R$ 0,75 por kWh?**
 É uma tarifa de referência do MVP usada para a estimativa de custo, não uma
 tarifa universal.
 
-**O que representa o Índice de Ineficiência?**  
+**O que representa o Índice de Ineficiência?**
 É o indicador de severidade do padrão identificado, apresentado pela interface
 em escala de 0 a 100; ele não substitui a categoria nem a probabilidade.
 
-**Como o histórico é isolado por usuário?**  
+**Como o histórico é isolado por usuário?**
 O backend associa cada análise à conta autenticada e restringe histórico,
 detalhes e dados consolidados aos registros daquele usuário.

@@ -1039,7 +1039,7 @@ operacionais sustentados por essa fonte.
   automação.
 - Ficou definido que os entregáveis devem ser atualizados, principalmente o
   link da Vercel do front-end e a seção "Pendências principais" na documentação
-  publicada na No-Country (projeto > Entregáveis > Tarefa 1: Documentação do 
+  publicada na No-Country (projeto > Entregáveis > Tarefa 1: Documentação do
   projeto), preferencialmente após a conclusão de todas as alterações.
 
 ### Cronograma e prazos
@@ -1103,7 +1103,7 @@ operacionais sustentados por essa fonte.
 - Definir, via Discord ou na próxima reunião, o responsável pela gravação do
   vídeo e pela apresentação.
 - Gravar o vídeo de demonstração, publicá-lo no YouTube e enviar o link na plataforma.
-- Atualizar os entregáveis, o que inclui o link da Vercel do front-end e as 
+- Atualizar os entregáveis, o que inclui o link da Vercel do front-end e as
   pendências de documentação do site do hackathon
 - Publicar a enquete de horários no grupo.
 
