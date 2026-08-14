@@ -10,10 +10,13 @@ import br.com.g9.energiai.backend.service.EnergyAnalysisResult;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Component
 public class EnergyAnalysisMapper {
+
+    private static final int PROBABILITY_SCALE = 17;
 
     public EnergyAnalysisEntity toEntity(EnergyAnalysisRequest request,
                                          EnergyAnalysisResult analysisResult,
@@ -30,7 +33,7 @@ public class EnergyAnalysisMapper {
                 .tipoImovel(request.tipoImovel())
                 .horasAltoConsumo(request.horasAltoConsumo())
                 .categoria(analysisResult.categoria())
-                .probabilidade(analysisResult.probabilidade())
+                .probabilidade(normalizeProbability(analysisResult.probabilidade()))
                 .score(analysisResult.score())
                 .custoEstimadoMensal(estimatedCost)
                 .recomendacoes(safeRecommendations)
@@ -53,7 +56,7 @@ public class EnergyAnalysisMapper {
                 .tipoImovel(request.tipoImovel())
                 .horasAltoConsumo(request.horasAltoConsumo())
                 .categoria(classification.categoria())
-                .probabilidade(classification.probabilidade())
+                .probabilidade(normalizeProbability(classification.probabilidade()))
                 .score(classification.score())
                 .custoEstimadoMensal(estimatedCost)
                 .recomendacoes(safeRecommendations)
@@ -107,5 +110,15 @@ public class EnergyAnalysisMapper {
                 entity.getFonteClassificacao(),
                 entity.getCreatedAt()
         );
+    }
+
+    private Double normalizeProbability(Double probability) {
+        if (probability == null) {
+            return null;
+        }
+
+        return BigDecimal.valueOf(probability)
+                .setScale(PROBABILITY_SCALE, RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }
