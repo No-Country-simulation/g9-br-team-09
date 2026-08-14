@@ -77,12 +77,19 @@ class H2LocalConfigurationIntegrationTest {
         assertEquals("true", environment.getProperty("spring.flyway.clean-disabled"));
         assertTrue(
             Arrays.stream(flyway.info().applied())
-                .anyMatch(migration -> "1".equals(migration.getVersion().getVersion()))
+                .anyMatch(migration -> "5".equals(migration.getVersion().getVersion()))
         );
 
-        try (Connection connection = dataSource.getConnection();
-             ResultSet resultSet = connection.getMetaData().getTables(null, null, "ENERGY_ANALYSIS", null)) {
-            assertTrue(resultSet.next());
+        try (Connection connection = dataSource.getConnection()) {
+            try (ResultSet resultSet = connection.getMetaData().getTables(null, null, "ENERGY_ANALYSIS", null)) {
+                assertTrue(resultSet.next());
+            }
+            try (ResultSet columns = connection.getMetaData().getColumns(
+                    null, null, "ENERGY_ANALYSIS", "PROBABILIDADE")) {
+                assertTrue(columns.next());
+                assertEquals(18, columns.getInt("COLUMN_SIZE"));
+                assertEquals(17, columns.getInt("DECIMAL_DIGITS"));
+            }
         }
     }
 

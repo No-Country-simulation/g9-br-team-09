@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -85,6 +86,7 @@ class EnergyAnalysisControllerTest {
     @Test
     @DisplayName("Deve realizar análise energética com sucesso pela URL pública e retornar resposta completa incluindo ID")
     void shouldPerformAnalysisSuccessfully() throws Exception {
+        double mlProbability = 0.8848920863309353;
         AppUser currentUser = userRepository.save(AppUser.builder()
                 .name("Teste").email("teste@email.com").passwordHash("hash")
                 .role(UserRole.USER).active(true).build());
@@ -102,7 +104,7 @@ class EnergyAnalysisControllerTest {
             """;
 
         when(mlPredictionClient.predict(any())).thenReturn(new MlPredictionResponse(
-                EnergyCategory.MODERADO, 0.81, 81, List.of("Recomendação do modelo"), "v1"
+                EnergyCategory.MODERADO, mlProbability, 81, List.of("Recomendação do modelo"), "v1"
         ));
 
         long countBefore = energyAnalysisRepository.count();
@@ -117,7 +119,7 @@ class EnergyAnalysisControllerTest {
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.categoria").value("MODERADO"))
-                .andExpect(jsonPath("$.probabilidade").value(0.81))
+                .andExpect(jsonPath("$.probabilidade").value(mlProbability))
                 .andExpect(jsonPath("$.score").value(81))
                 .andExpect(jsonPath("$.custo_estimado_mensal").value(375.00))
                 .andExpect(jsonPath("$.fonte_classificacao").value("ML_MODEL"))
@@ -136,9 +138,23 @@ class EnergyAnalysisControllerTest {
         long persistedId = jsonResponse.get("id").asLong();
         var saved = energyAnalysisRepository.findById(persistedId);
 
+        String detailBody = mockMvc.perform(get("/api/v1/analise-energetica/{id}", persistedId)
+                        .contextPath("/api/v1")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode detailResponse = objectMapper.readTree(detailBody);
+
         assertEquals(countBefore + 1, energyAnalysisRepository.count());
         assertTrue(saved.isPresent());
         assertEquals(currentUser.getId(), saved.get().getUser().getId());
+        assertEquals(jsonResponse.get("categoria"), detailResponse.get("categoria"));
+        assertEquals(jsonResponse.get("probabilidade"), detailResponse.get("probabilidade"));
+        assertEquals(jsonResponse.get("score"), detailResponse.get("score"));
+        assertEquals(jsonResponse.get("custo_estimado_mensal"), detailResponse.get("custo_estimado_mensal"));
+        assertEquals(jsonResponse.get("fonte_classificacao"), detailResponse.get("fonte_classificacao"));
         verify(mlPredictionClient).predict(any());
     }
 

@@ -112,6 +112,17 @@ class OracleAutonomousDatabaseIntegrationTest {
                 );
             }
 
+            try (ResultSet columns = connection.getMetaData().getColumns(
+                    null,
+                    currentSchema,
+                    "ENERGY_ANALYSIS",
+                    "PROBABILIDADE"
+            )) {
+                assertTrue(columns.next(), "PROBABILIDADE deve existir em ENERGY_ANALYSIS");
+                assertEquals(18, columns.getInt("COLUMN_SIZE"));
+                assertEquals(17, columns.getInt("DECIMAL_DIGITS"));
+            }
+
             try (ResultSet tables = connection.getMetaData().getTables(
                     null,
                     currentSchema,
@@ -123,8 +134,8 @@ class OracleAutonomousDatabaseIntegrationTest {
         }
         assertTrue(
             Arrays.stream(flyway.info().applied())
-                .anyMatch(migration -> "4".equals(migration.getVersion().getVersion())),
-            "Flyway deve aplicar ou validar a migration V4"
+                .anyMatch(migration -> "5".equals(migration.getVersion().getVersion())),
+            "Flyway deve aplicar ou validar a migration V5"
         );
 
         AppUser user = userRepository.saveAndFlush(AppUser.builder()

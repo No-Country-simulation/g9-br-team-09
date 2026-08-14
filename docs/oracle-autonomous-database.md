@@ -198,10 +198,16 @@ O Hibernate 7, ao utilizar o dialect Oracle, esperava tipos diferentes dos defin
 Para manter o schema existente e a precisão decimal:
 
 - `consumoKwh` utiliza `SqlTypes.NUMERIC` com precisão 10 e escala 2.
-- `probabilidade` utiliza `SqlTypes.NUMERIC` com precisão 5 e escala 2.
+- `probabilidade` utiliza `SqlTypes.NUMERIC` com precisão 18 e escala 17. A migration V5 amplia
+  a coluna para 17 casas decimais fixas, não para 17 dígitos significativos independentes da
+  magnitude. Esse formato não representa exatamente todo `binary64` entre 0 e 1, e valores abaixo
+  da resolução de `1e-17` podem ser arredondados. No EnergiAI, porém, a probabilidade persistida é a
+  da classe selecionada entre três probabilidades não negativas e aproximadamente normalizadas;
+  nesse domínio efetivamente produzido pelo modelo, a escala preserva o round-trip. Registros
+  existentes com duas casas permanecem compatíveis com a ampliação.
 - `usoHorarioPico` utiliza `NumericBooleanConverter`, preservando o armazenamento numérico `0`/`1`.
 
-Essas alterações afetam somente o mapeamento ORM da entidade.
+Essas alterações mantêm o mapeamento ORM alinhado ao schema gerenciado pelo Flyway.
 
 Não foram alterados:
 

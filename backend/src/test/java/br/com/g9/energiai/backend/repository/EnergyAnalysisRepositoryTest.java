@@ -55,6 +55,7 @@ class EnergyAnalysisRepositoryTest {
     @Test
     @DisplayName("Deve persistir e recuperar a análise usando apenas a tabela energy_analysis")
     void shouldPersistAndLoadAnalysisUsingSingleTable() {
+        double mlProbability = 0.8848920863309353;
         List<String> recommendations = List.of(
             "Reduzir o uso de equipamentos durante horários de pico.",
             "Avaliar equipamentos com alto consumo energético."
@@ -67,7 +68,7 @@ class EnergyAnalysisRepositoryTest {
             .tipoImovel(PropertyType.CASA)
             .horasAltoConsumo(8)
             .categoria(EnergyCategory.INEFICIENTE)
-            .probabilidade(0.95)
+            .probabilidade(mlProbability)
             .score(95)
             .custoEstimadoMensal(new BigDecimal("315.00"))
             .fonteClassificacao(ClassificationSource.RULE_BASED)
@@ -102,6 +103,7 @@ class EnergyAnalysisRepositoryTest {
         assertEquals("[\"Reduzir o uso de equipamentos durante horários de pico.\",\"Avaliar equipamentos com alto consumo energético.\"]", rawRecommendations);
         assertEquals(PropertyType.CASA, reloaded.getTipoImovel());
         assertEquals(EnergyCategory.INEFICIENTE, reloaded.getCategoria());
+        assertEquals(mlProbability, reloaded.getProbabilidade());
         assertEquals(ClassificationSource.RULE_BASED, reloaded.getFonteClassificacao());
         assertEquals(new BigDecimal("315.00"), reloaded.getCustoEstimadoMensal());
         assertEquals(recommendations, reloaded.getRecomendacoes());
