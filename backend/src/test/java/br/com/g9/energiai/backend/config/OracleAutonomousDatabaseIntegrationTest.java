@@ -119,7 +119,7 @@ class OracleAutonomousDatabaseIntegrationTest {
                     "PROBABILIDADE"
             )) {
                 assertTrue(columns.next(), "PROBABILIDADE deve existir em ENERGY_ANALYSIS");
-                assertEquals(18, columns.getInt("COLUMN_SIZE"));
+                assertEquals(20, columns.getInt("COLUMN_SIZE"));
                 assertEquals(17, columns.getInt("DECIMAL_DIGITS"));
             }
 
